@@ -9,6 +9,8 @@ export type FilterOp =
   | 'le' // Less than or equal
   ;
 
+export type FieldFn = (item: any) => boolean;
+
 export interface IQuickFilter {
   term: string;
   fields: string[];
@@ -17,7 +19,7 @@ export interface IQuickFilter {
 export interface IQueryFilter {
   name: string;
   rx?: RegExp;
-  fn?: FilterFn;
+  fn?: FieldFn;
   or?: boolean;
 }
 
@@ -26,7 +28,6 @@ export interface IQueryParams {
   page?: number;
   pageSize?: number;
   conditions?: Array<IQueryFilter>;
-  useFilterOr?: boolean;
 }
 
 export interface IQueryResult {

@@ -6,6 +6,7 @@ export class BackendConfig implements BackendConfigArgs {
       // default config:
       caseSensitiveSearch: false,
       dataEncapsulation: false, // do NOT wrap content within an object with a `data` property
+      pageEncapsulation: true,
       strategyId: 'autoincrement', // use `autoincrement` with default strategy
       appendPut: true, // assign attributes values in body preserving original item
       appendExistingPost: true, // assign attributes values in body preserving original item

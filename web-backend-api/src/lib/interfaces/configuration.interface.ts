@@ -19,6 +19,12 @@ export abstract class BackendConfigArgs {
    */
   dataEncapsulation?: boolean;
   /**
+   * false: put content directly inside the response body when not request a page.
+   * true (default) encapsulate content in a `object` property inside the response body, `{ hasNext: boolean, itens: ... }`.
+   * Note: When a page param is sent in query string, it always returns content in an `object` property
+   */
+  pageEncapsulation?: boolean;
+  /**
    * 'autoincrement' (default) strategy for generate ids for items in collections
    */
   strategyId?: 'uuid'|'autoincrement'|'provided';

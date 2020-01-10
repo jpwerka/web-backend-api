@@ -3,7 +3,7 @@ import { v4 } from 'uuid';
 import { IBackendService, LoadFn, TransformPostFn, TransformPutFn, TransformGetFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IQueryParams, IQueryResult } from '../interfaces/query.interface';
+import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, clone } from './backend.service';
 
@@ -82,6 +82,29 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
+  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any> {
+    const self = this;
+    return new Observable((observer) => {
+      const objectStore = self.db.get(collectionName);
+      const queryParams: IQueryParams = { count: 0, conditions };
+      const queryResults: IQueryResult = { hasNext: false, items: [] };
+
+      const cursor = {
+        index: 0,
+        value: null,
+        continue: (): any => {}
+      };
+      while (cursor.index <= objectStore.length) {
+        cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+        if (self.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined)) {
+          observer.next(queryResults.items);
+          observer.complete();
+          break;
+        }
+      }
+    });
+  }
+
   get$(
     collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
   ): Observable<any> {
@@ -120,8 +143,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         while (cursor.index <= objectStore.length) {
           cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
           if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, transformfn)) {
-            const response = this.utils.createResponseOptions(url, STATUS.OK,
-              queryParams.page ? queryResults : this.bodify(queryResults.items));
+            const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
             observer.next(response);
             observer.complete();
             break;

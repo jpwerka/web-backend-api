@@ -16,9 +16,9 @@ export class HttpClientBackendService implements HttpBackend {
     private xhrFactory: XhrFactory
   ) {
     this.dbService.backendUtils({
-      createPassThruBackend: this.createPassThruBackend,
-      createResponseOptions: this.createResponseOptions,
-      createErrorResponseOptions: this.createErrorResponseOptions
+      createPassThruBackend: this.createPassThruBackend.bind(this),
+      createResponseOptions: this.createResponseOptions.bind(this),
+      createErrorResponseOptions: this.createErrorResponseOptions.bind(this)
     });
   }
 

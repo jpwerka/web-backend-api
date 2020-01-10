@@ -5,7 +5,7 @@ import { BackendConfigArgs } from '../interfaces/configuration.interface';
 // tslint:disable-next-line: max-line-length
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInfo, IRequestInterceptor, IRequestCore, IPostToOtherMethod } from '../interfaces/interceptor.interface';
 // tslint:disable-next-line: max-line-length
-import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
+import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
@@ -20,8 +20,12 @@ export function clone(data: any) {
   return JSON.parse(JSON.stringify(data));
 }
 
-export function removeTrailingSlash(path: string) {
+export function removeRightSlash(path: string) {
   return path.replace(/\/$/, '');
+}
+
+export function removeLeftSlash(path: string) {
+  return path.replace(/^\//, '');
 }
 
 export function paramParser(rawParams: string): Map<string, string[]> {
@@ -44,7 +48,7 @@ export function paramParser(rawParams: string): Map<string, string[]> {
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
-  protected replaceMap: Map<string, string[]> = new Map();
+  protected replaceMap: Map<string, Array<string[]>> = new Map();
   protected postToOtherMethodMap: Map<string, IPostToOtherMethod[]> = new Map();
   protected transformGetAllMap: Map<string, TransformGetFn> = new Map();
   protected transformGetByIdMap: Map<string, TransformGetFn> = new Map();
@@ -111,11 +115,19 @@ export abstract class BackendService {
   }
 
   addReplaceUrl(collectionName: string, replace: string | string[]) {
+    let replaceAdd = [];
+    let replaces = this.replaceMap.get(collectionName);
     if (typeof replace === 'string') {
-      const replaces = replace.split('/').filter(value => value.trim().length > 0);
-      this.replaceMap.set(collectionName, replaces);
+      replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
     } else {
-      this.replaceMap.set(collectionName, replace);
+      replaceAdd = replace;
+    }
+    if (replaces !== undefined) {
+      replaces.push(replaceAdd);
+    } else {
+      replaces = new Array();
+      replaces.push(replaceAdd);
+      this.replaceMap.set(collectionName, replaces);
     }
   }
 
@@ -419,6 +431,12 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
+  protected pagefy(queryResults: IQueryResult, queryParams: IQueryParams) {
+    return (queryParams.page || this.config.pageEncapsulation) ?
+      queryResults : this.config.dataEncapsulation ?
+        { data: queryResults.items } : queryResults.items;
+  }
+
   protected bodify(data: any) {
     return this.config.dataEncapsulation ? { data } : data;
   }
@@ -436,10 +454,11 @@ export abstract class BackendService {
     }
   }
 
-  private filterItem(item: any, conditions: Array<IQueryFilter>, useFilterOr: boolean): boolean {
+  private filterItem(item: any, conditions: Array<IQueryFilter>): boolean {
     if (conditions === undefined) {
       return true;
     }
+    const useFilterOr = conditions.findIndex(cond => cond.or) >= 0;
     return useFilterOr ? this.filterItemOr(item, conditions) : this.filterItemAnd(item, conditions);
   }
 
@@ -486,13 +505,13 @@ export abstract class BackendService {
     return okOr && okAnd;
   }
 
-  private createFilterFn(value: string|string[], filterFn: FilterFn): FilterFn {
+  private createFilterFn(value: string|string[], filterFn: FilterFn): FieldFn {
     return (item: any) => {
       return filterFn.call(this, value, item);
     };
   }
 
-  private createFilterOpFn(field: string, value: string, filterOp: FilterOp): FilterFn {
+  private createFilterOpFn(field: string, value: string, filterOp: FilterOp): FieldFn {
     return (item: any) => {
       switch (filterOp) {
         case 'eq':
@@ -515,7 +534,7 @@ export abstract class BackendService {
     };
   }
 
-  private createFilterArrayFn(field: string, value: string[]): FilterFn {
+  private createFilterArrayFn(field: string, value: string[]): FieldFn {
     return (item: any) => {
       return value.includes(item[field]);
     };
@@ -530,7 +549,6 @@ export abstract class BackendService {
       } else if (name === 'pageSize') {
         queryParams['pageSize'] = parseInt(value[0], 10);
       } else if (quickFilter && quickFilter.term === name && value[0]) {
-        queryParams['useFilterOr'] = true;
         const fields = quickFilter.fields;
         if (fields !== undefined) {
           if (queryParams['conditions'] === undefined) {
@@ -540,7 +558,8 @@ export abstract class BackendService {
             return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
           }));
         }
-      } else if (name !== 'order' && name !== 'fields' && name !== '$filter') {
+      } else if ((!quickFilter || (quickFilter && quickFilter.term !== name)) &&
+        (name !== 'order' && name !== 'fields' && name !== '$filter')) {
         if (queryParams['conditions'] === undefined) {
           queryParams['conditions'] = [];
         }
@@ -565,7 +584,7 @@ export abstract class BackendService {
     let retorna = false;
     if (cursor) {
       const item = cursor.value;
-      if (this.filterItem(item, queryParams.conditions, queryParams.useFilterOr)) {
+      if (this.filterItem(item, queryParams.conditions)) {
         if (queryParams.page && queryParams.pageSize) {
           if (queryParams.count < ((queryParams.page - 1) * queryParams.pageSize)) {
             queryParams.count++;
@@ -655,7 +674,7 @@ export abstract class BackendService {
       return false;
     }
 
-    const intPaths = removeTrailingSlash(interceptor.path).split('/');
+    const intPaths = removeLeftSlash(removeRightSlash(interceptor.path)).split('/');
     // Se possui o mesmo número de segmentos na URL
     interceptorPathOk = intPaths.length === uriPaths.length;
     if (interceptorPathOk) {
@@ -736,16 +755,26 @@ export abstract class BackendService {
 
   private applyReplaceMap(pathSegments: string[]): string[] {
     for (const item of this.replaceMap.entries()) {
-      const segments = item[1];
+      const replaces = item[1];
       let match = true;
-      let i = 0;
-      for (; i < segments.length && i < pathSegments.length && match; i++) {
-        if (segments[i] !== pathSegments[i]) {
-          match = false;
+      for (const segments of replaces) {
+        let i = 0;
+        match = true;
+        for (; i < segments.length && match; i++) {
+          if (i >= (pathSegments.length)) {
+            match = false;
+          } else {
+            if (segments[i] !== pathSegments[i]) {
+              match = false;
+            }
+          }
+        }
+        if (match) {
+          pathSegments.splice(0, i, item[0]);
+          break;
         }
       }
       if (match) {
-        pathSegments.splice(0, i, item[0]);
         break;
       }
     }
@@ -804,7 +833,7 @@ export abstract class BackendService {
       if (this.config.apiBase == undefined) {
         parsed.apiBase = pathSegments[segmentIx++];
       } else {
-        parsed.apiBase = removeTrailingSlash(this.config.apiBase.trim());
+        parsed.apiBase = removeLeftSlash(removeRightSlash(this.config.apiBase.trim()));
         if (parsed.apiBase) {
           segmentIx = parsed.apiBase.split('/').length;
         } else {

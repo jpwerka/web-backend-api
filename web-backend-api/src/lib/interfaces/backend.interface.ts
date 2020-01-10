@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 // tslint:disable-next-line: max-line-length
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IPassThruBackend, IRequestCore, IRequestInterceptor, IPostToOtherMethod } from './interceptor.interface';
-import { FilterFn, FilterOp, IQuickFilter } from './query.interface';
+import { FilterFn, FilterOp, IQuickFilter, IQueryFilter } from './query.interface';
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada para a configuração
@@ -265,6 +265,16 @@ export interface IBackendService {
    *   }
    */
   getInstance$(collectionName: string, id: any): Observable<any>;
+
+  /**
+   * Permite buscar itens diretamente da coleção através de condições. Pode ser utilizado para complementar informações
+   * em uma requisição com dados de outra coleção. Quando acionado diretamente via getAllByFilter$
+   * o item não será submetido a função de transformação mapeada, caso esta exista.
+   * @param collectionName - Nome da coleção a qual se deseja buscar o item
+   * @param conditions - Lista de condições a serem aplicadas para filtar os itens
+   * @returns Um observable que retorna a listagem dos itens quando completo.
+   */
+  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
 
   /**
    * Permite recuperar um ou mais itens de uma coleação retonando um resposta HTTP.
