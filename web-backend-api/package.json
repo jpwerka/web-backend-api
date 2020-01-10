@@ -1,6 +1,30 @@
 {
   "name": "web-backend-api",
   "version": "0.0.1",
+  "private": false,
+  "description": "API para simular um backend em memoria para ser usado em aplicações angular",
+  "readmeFilename": "README.md" ,
+  "keywords": [
+    "minhas",
+    "palavras",
+    "chaves"
+  ],
+  "tags": [
+    "backend",
+    "mock"
+  ],
+  "author": {
+    "name": "Jackson Patrick Werka",
+    "email": "jpwerka@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jpwerka/web-backend-api.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=10.0.0"
+  },
   "peerDependencies": {
     "@angular/common": "^8.0.1",
     "@angular/core": "^8.0.1"
