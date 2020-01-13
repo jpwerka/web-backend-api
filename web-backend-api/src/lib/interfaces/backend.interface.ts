@@ -136,15 +136,48 @@ export interface IBackendService {
    *     item['customer'] = { id: item.customerId }
    *     delete item.customerId;
    *     return item;
-   *   }
+   *   };
    *   service.addTransformGetByIdMap('documents', tranformGetById);
    */
   addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn): void;
 
+  /**
+   * Permite adicionar uma configuração de JOIN automático ao recuperar os itens da coleção
+   * via GetAll, injetando os dados nos itens recuperados
+   * @param collectionName Nome da coleção a qual se deseja aplicar a configuração de JOIN
+   * @param joinField Configuração de JOIN a ser aplicada
+   * @example
+   *   const joinClient = {
+   *     fieldId: 'clientId',
+   *     collectionSource: 'clients',
+   *     fieldDest: 'client',
+   *     transformerGet: ['id', 'name']
+   *   };
+   *   service.addJoinGetAllMap('documents', joinClient);
+   */
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void;
 
+  /**
+   * Permite adicionar uma configuração de JOIN automático ao recuperar o item da coleção
+   * via GetById, injetando os dados no item recuperados
+   * @param collectionName Nome da coleção a qual se deseja aplicar a configuração de JOIN
+   * @param joinField Configuração de JOIN a ser aplicada
+   * @example
+   *   const joinClient = {
+   *     fieldId: 'clientId',
+   *     collectionSource: 'clients',
+   *   };
+   *   service.addJoinGetAllMap('documents', joinClient);
+   */
   addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void;
 
+  /**
+   * Junção das funções `addJoinGetAllMap` e `addJoinGetByIdMap`.
+   * Quando chamado esta função elá ira chamar as duas funções adicionando
+   * o JOIN em ambos os endpoints (GetAll e GetById) com a mesma configuração
+   * @see addJoinGetAllMap
+   * @see addJoinGetByIdMap
+   */
   addJoinGetBothMap(collectionName: string, joinField: IJoinField): void;
 
   /**

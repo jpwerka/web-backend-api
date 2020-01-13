@@ -1,6 +1,6 @@
-# Web Backend API
+# Web Backend API Sample
 
-Projeto para simular uma API de backend de forma "mocada"
+Projeto de exemplo de uso da biblioteca web-backend-api para simular uma API de backend de forma "mocada"
 
 ## Autor
 
