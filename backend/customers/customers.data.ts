@@ -1,4 +1,4 @@
-import { dataService, IBackendService } from 'web-backend-api/src';
+import { dataService, IBackendService } from 'web-backend-api';
 import { collectionName, customers } from './customers.mock';
 
 dataService(collectionName, (dbService: IBackendService) => {
