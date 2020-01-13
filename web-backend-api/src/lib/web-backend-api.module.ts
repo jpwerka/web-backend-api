@@ -3,6 +3,7 @@ import { ModuleWithProviders, NgModule } from '@angular/core';
 import { getBackendService } from './data-service/backend-data.mapper';
 import { BACKEND_SERVICE, HttpClientBackendService } from './http-client-backend.service';
 import { IBackendService } from './interfaces/interface.index';
+import { DownloadDataService } from './download-data.service';
 
 
 export function httpClientBackendServiceFactory(
@@ -22,7 +23,9 @@ export class WebBackendApiModule {
         { provide: BACKEND_SERVICE, useFactory: getBackendService },
         { provide: HttpBackend,
           useFactory: httpClientBackendServiceFactory,
-          deps: [BACKEND_SERVICE, XhrFactory]}
+          deps: [BACKEND_SERVICE, XhrFactory]
+        },
+        DownloadDataService,
       ]
     };
   }

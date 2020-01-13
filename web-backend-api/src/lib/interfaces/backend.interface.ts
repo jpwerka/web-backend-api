@@ -36,6 +36,31 @@ export type TransformPostFn = (body: any, dbService: IBackendService) => any|Obs
  */
 export type TransformPutFn = (item: any, body: any, dbService: IBackendService) => any|Observable<any>;
 
+/**
+ * Interface que permite o mapeamento dos JOINs a serem feitos ao recuperar um item da coleção
+ */
+export interface IJoinField {
+  /**
+   * Campo que contém o valor a ser utilizado como chave para busca na coleção de origem
+   */
+  fieldId: string;
+  /**
+   * Nome da coleção de origem que contém os dados a serem pesquisados
+   * @obs Sempre será feito a pesquisa pelo campo ID na coleção origem
+   */
+  collectionSource: string;
+  /**
+   * (Opcional) Campo destino que irá conter as propriedades do objeto recuperado
+   * @obs Caso não seja passado será utilizado o `fieldId`retirando o id do final
+   */
+  fieldDest?: string;
+  /**
+   * (Opcional) Lista de proprieadades a serem retornadas do item da coleção origem
+   * ou uma instância de função que irá fazer esta transformação ao recuperar o item da coleção.
+   */
+  transformerGet?: string[] | TransformGetFn;
+}
+
 export interface IBackendService {
 
   /**
@@ -74,6 +99,11 @@ export interface IBackendService {
   hasCollection(collectionName: string): boolean;
 
   /**
+   * Retorna listagem com os nomes das coleções
+   */
+  listCollections(): string[];
+
+  /**
    * Grava um registro na coleção retornando o seu respectivo ID
    * @param collectionName - Nome da coleção a qual se deseja adicionar dados
    * @param data - Dado (objeto) que se deseja adicionar a coleção
@@ -110,6 +140,12 @@ export interface IBackendService {
    *   service.addTransformGetByIdMap('documents', tranformGetById);
    */
   addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn): void;
+
+  addJoinGetAllMap(collectionName: string, joinField: IJoinField): void;
+
+  addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void;
+
+  addJoinGetBothMap(collectionName: string, joinField: IJoinField): void;
 
   /**
    * Permite adicionar uma função que irá fazer a transformação dos dados

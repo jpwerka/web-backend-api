@@ -1,6 +1,6 @@
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { concatMap, first } from 'rxjs/operators';
-import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils } from '../interfaces/backend.interface';
+import { BehaviorSubject, Observable, throwError, of, from, merge } from 'rxjs';
+import { concatMap, first, map } from 'rxjs/operators';
+import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 // tslint:disable-next-line: max-line-length
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInfo, IRequestInterceptor, IRequestCore, IPostToOtherMethod } from '../interfaces/interceptor.interface';
@@ -52,6 +52,8 @@ export abstract class BackendService {
   protected postToOtherMethodMap: Map<string, IPostToOtherMethod[]> = new Map();
   protected transformGetAllMap: Map<string, TransformGetFn> = new Map();
   protected transformGetByIdMap: Map<string, TransformGetFn> = new Map();
+  protected joinnersGetAllMap: Map<string, IJoinField[]> = new Map();
+  protected joinnersGetByIdMap: Map<string, IJoinField[]> = new Map();
   protected transformPostMap: Map<string, TransformPostFn> = new Map();
   protected transformPutMap: Map<string, TransformPutFn> = new Map();
   protected fieldsFilterMap: Map<string, Map<string, FilterFn | FilterOp>> = new Map();
@@ -91,6 +93,38 @@ export abstract class BackendService {
     this.transformGetByIdMap.set(collectionName, transformfn);
   }
 
+  addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
+    }
+    const joinGetAllMap = this.joinnersGetAllMap.get(collectionName);
+    if (joinGetAllMap !== undefined) {
+      joinGetAllMap.push(joinField);
+    } else {
+      this.joinnersGetAllMap.set(collectionName, [ joinField ]);
+    }
+  }
+
+  addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void {
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
+    }
+    const joinGetByIdMap = this.joinnersGetByIdMap.get(collectionName);
+    if (joinGetByIdMap !== undefined) {
+      joinGetByIdMap.push(joinField);
+    } else {
+      this.joinnersGetByIdMap.set(collectionName, [ joinField ]);
+    }
+  }
+
+  addJoinGetBothMap(collectionName: string, joinField: IJoinField): void {
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
+    }
+    this.addJoinGetAllMap(collectionName, joinField);
+    this.addJoinGetByIdMap(collectionName, joinField);
+  }
+
   addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
     this.transformPostMap.set(collectionName, transformfn);
   }
@@ -116,29 +150,25 @@ export abstract class BackendService {
 
   addReplaceUrl(collectionName: string, replace: string | string[]) {
     let replaceAdd = [];
-    let replaces = this.replaceMap.get(collectionName);
     if (typeof replace === 'string') {
       replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
     } else {
       replaceAdd = replace;
     }
+    const replaces = this.replaceMap.get(collectionName);
     if (replaces !== undefined) {
       replaces.push(replaceAdd);
     } else {
-      replaces = new Array();
-      replaces.push(replaceAdd);
-      this.replaceMap.set(collectionName, replaces);
+      this.replaceMap.set(collectionName, [ replaceAdd ]);
     }
   }
 
   addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod) {
-    let postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
+    const postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod !== undefined) {
       postsToOtherMethod.push(postToOtherMethod);
     } else {
-      postsToOtherMethod = new Array<IPostToOtherMethod>();
-      postsToOtherMethod.push(postToOtherMethod);
-      this.postToOtherMethodMap.set(collectionName, postsToOtherMethod);
+      this.postToOtherMethodMap.set(collectionName, [ postToOtherMethod ]);
     }
   }
 
@@ -324,6 +354,8 @@ export abstract class BackendService {
     return response$;
   }
 
+  abstract getInstance$(collectionName: string, id: any): Observable<any>;
+
   abstract get$(
     collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
   ): Observable<any>;
@@ -342,6 +374,54 @@ export abstract class BackendService {
 
     response$ = this.get$(collectionName, id, query, url, this.config.caseSensitiveSearch ? undefined : 'i');
     return this.addDelay(response$, this.config.delay);
+  }
+
+  private createJoinFn(properties: string[]): TransformGetFn {
+    return (item: any) => {
+      const result = {};
+      properties.forEach(property => {
+        if (item.hasOwnProperty(property)) {
+          result[property] = item[property];
+        }
+      });
+      return result;
+    };
+  }
+
+  protected applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
+    const self = this;
+    return new Promise<any>((resolve, reject) => {
+      const observers = [];
+      for (const joinField of joinFields) {
+        if (item[joinField.fieldId]) {
+          const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
+          observers.push(this.getInstance$(joinField.collectionSource, item[joinField.fieldId]).pipe(
+            concatMap(data => {
+              if (data && joinField.transformerGet instanceof Function) {
+                return from(self.applyTransformGet(data, joinField.transformerGet)).pipe(
+                  map(dataGet => {
+                    return {property: fieldDest, data: dataGet};
+                  })
+                );
+              } else {
+                return of({property: fieldDest, data});
+              }
+            })
+          ));
+        }
+      }
+      if (observers.length > 0) {
+        merge(...observers).subscribe(
+          (result: { property: string, data: any }) => {
+            item[result.property] = result.data;
+          },
+          (error) => reject(error),
+          () => resolve(item)
+        );
+      } else {
+        resolve(item);
+      }
+    });
   }
 
   protected applyTransformGet(item: any, transformfn: TransformGetFn): Promise<any> {
@@ -580,7 +660,9 @@ export abstract class BackendService {
     return queryParams;
   }
 
-  protected getAllItems(cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams, transformfn: TransformGetFn): boolean {
+  protected getAllItems(
+    cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams, joinFields: IJoinField[], transformfn: TransformGetFn
+  ): boolean {
     let retorna = false;
     if (cursor) {
       const item = cursor.value;
@@ -591,12 +673,15 @@ export abstract class BackendService {
             cursor.continue();
           } else if (queryParams.count < (queryParams.page * queryParams.pageSize)) {
 
-            (async (itemAsync: any, transformGetFn: TransformGetFn) => {
+            (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
+              if (getJoinFields !== undefined) {
+                await this.applyJoinFields(itemAsync, getJoinFields);
+              }
               if (transformfn !== undefined) {
                 itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
               }
               return itemAsync;
-            })(item, transformfn).then(itemAsync => {
+            })(item, joinFields, transformfn).then(itemAsync => {
               queryResults.items.push(itemAsync);
               queryResults.hasNext = true;
               queryParams.count++;
@@ -607,12 +692,15 @@ export abstract class BackendService {
           }
         } else {
 
-          (async (itemAsync: any, transformGetFn: TransformGetFn) => {
+          (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
+            if (getJoinFields !== undefined) {
+              await this.applyJoinFields(itemAsync, getJoinFields);
+            }
             if (transformfn !== undefined) {
               itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
             }
             return itemAsync;
-          })(item, transformfn).then(itemAsync => {
+          })(item, joinFields, transformfn).then(itemAsync => {
             queryResults.items.push(itemAsync);
             queryResults.hasNext = true;
             cursor.continue();

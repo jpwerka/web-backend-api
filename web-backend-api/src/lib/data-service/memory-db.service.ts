@@ -1,6 +1,6 @@
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformPostFn, TransformPutFn, TransformGetFn } from '../interfaces/backend.interface';
+import { IBackendService, LoadFn, TransformPostFn, TransformPutFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
@@ -70,6 +70,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return this.db.has(collectionName);
   }
 
+  listCollections(): string[] {
+    return Array.from( this.db.keys() );
+  }
+
   getInstance$(collectionName: string, id: any): Observable<any> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
@@ -96,7 +100,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       };
       while (cursor.index <= objectStore.length) {
         cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-        if (self.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined)) {
+        if (self.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined, undefined)) {
           observer.next(queryResults.items);
           observer.complete();
           break;
@@ -112,18 +116,22 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const objectStore = this.db.get(collectionName);
 
       if (id !== undefined && id !== '') {
+        const joinFields = this.joinnersGetByIdMap.get(collectionName);
         const transformfn = this.transformGetByIdMap.get(collectionName);
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
         item = item ? clone(item) : item;
 
-        (async (itemAsync: any, transformGetFn: TransformGetFn) => {
-          if (transformfn !== undefined) {
+        (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
+          if (itemAsync && getJoinFields !== undefined) {
+            await this.applyJoinFields(itemAsync, getJoinFields);
+          }
+          if (itemAsync && transformGetFn !== undefined) {
             itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
           }
           return this.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, this.bodify(itemAsync));
-        })(item, transformfn).then(response => {
+        })(item, joinFields, transformfn).then(response => {
           observer.next(response);
           observer.complete();
         });
@@ -134,6 +142,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           queryParams = this.getQueryParams(collectionName,
             query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
+        const joinFields = this.joinnersGetAllMap.get(collectionName);
         const transformfn = this.transformGetAllMap.get(collectionName);
         const cursor = {
           index: 0,
@@ -142,7 +151,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         };
         while (cursor.index <= objectStore.length) {
           cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, transformfn)) {
+          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, joinFields, transformfn)) {
             const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
             observer.next(response);
             observer.complete();

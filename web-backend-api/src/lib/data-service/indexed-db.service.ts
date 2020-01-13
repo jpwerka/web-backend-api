@@ -1,6 +1,6 @@
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformGetFn } from '../interfaces/backend.interface';
+import { IBackendService, LoadFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
@@ -11,6 +11,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
   private dbName: string;
   private db: IDBDatabase;
+  private transaction: IDBTransaction;
 
   constructor(config: BackendConfigArgs, dbName: string = 'web-backend-api-db') {
     super(config);
@@ -137,10 +138,21 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return this.db.objectStoreNames.contains(collectionName);
   }
 
+  listCollections(): string[] {
+    const result: string[] = [];
+    // iterate backwards ensuring that length is an UInt32
+    for (let i = this.db.objectStoreNames.length; i--;) {
+      result.push(this.db.objectStoreNames[i]);
+    }
+    return result;
+  }
+
   getInstance$(collectionName: string, id: any): Observable<any> {
     return new Observable((observer) => {
       let request: IDBRequest<any>;
-      const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
+      const objectStore = this.transaction ?
+        this.transaction.objectStore(collectionName) :
+        this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       if (id !== undefined && id !== '') {
         request = objectStore.get(id);
         request.onsuccess = (event) => {
@@ -166,7 +178,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-        if (self.getAllItems(cursor, queryResults, queryParams, undefined)) {
+        if (self.getAllItems(cursor, queryResults, queryParams, undefined, undefined)) {
           observer.next(queryResults.items);
           observer.complete();
         }
@@ -186,17 +198,30 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let request: IDBRequest<any>;
       let isCursor = false;
       let transformfn: TransformGetFn;
+      let joinFields: IJoinField[];
       let queryParams: IQueryParams = { count: 0 };
       const queryResults: IQueryResult = { hasNext: false, items: [] };
-      const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
+      const storeNames = [collectionName];
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
-        request = objectStore.get(findId);
+        joinFields = self.joinnersGetByIdMap.get(collectionName);
         transformfn = self.transformGetByIdMap.get(collectionName);
+        if (joinFields instanceof Array) {
+          storeNames.push(...joinFields.map(value => value.collectionSource));
+        }
+        self.transaction = self.db.transaction(storeNames, 'readwrite');
+        const objectStore = self.transaction.objectStore(collectionName);
+        request = objectStore.get(findId);
       } else {
-        request = objectStore.openCursor();
+        joinFields = self.joinnersGetAllMap.get(collectionName);
         transformfn = self.transformGetAllMap.get(collectionName);
+        if (joinFields instanceof Array) {
+          storeNames.push(...joinFields.map(value => value.collectionSource));
+        }
+        self.transaction = self.db.transaction(storeNames, 'readwrite');
+        const objectStore = self.transaction.objectStore(collectionName);
+        request = objectStore.openCursor();
         isCursor = true;
         if (query) {
           queryParams = self.getQueryParams(collectionName,
@@ -206,18 +231,25 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         if (!isCursor) {
-          let item = request.result;
+          (async (item: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
+            if (item && getJoinFields !== undefined) {
+              await self.applyJoinFields(item, getJoinFields);
+            }
 
-          if (item && transformfn !== undefined) {
-            item = transformfn.call(self, item, self);
-          }
-
-          response = self.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, item);
-          observer.next(response);
-          observer.complete();
+            if (item && transformGetFn !== undefined) {
+              item = await self.applyTransformGet(item, transformGetFn);
+            }
+            return item;
+          })(request.result, joinFields, transformfn).then(item => {
+            self.transaction = undefined;
+            response = self.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, item);
+            observer.next(response);
+            observer.complete();
+          });
         } else {
           const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-          if (self.getAllItems(cursor, queryResults, queryParams, transformfn)) {
+          if (self.getAllItems(cursor, queryResults, queryParams, joinFields, transformfn)) {
+            self.transaction = undefined;
             response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
             observer.next(response);
             observer.complete();
@@ -226,6 +258,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       };
 
       request.onerror = (event) => {
+        self.transaction = undefined;
         response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as any).error);
         observer.error(response);
       };
