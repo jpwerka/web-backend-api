@@ -23,7 +23,7 @@ Sample tree project:
 
 To separate info and configuration of data, create two files (optional):
 
-File: customers.mock.ts
+File: `customers.mock.ts`
 ```typescript
 import { ICustomer } from 'src/app/entities/customer/customer.interface';
 
@@ -38,7 +38,7 @@ export const customers: ICustomer[] = [
 ];
 ```
 
-File: customers.data.ts
+File: `customers.data.ts`
 ```typescript
 import { dataService, IBackendService } from 'web-backend-api/src';
 import { collectionName, customers } from './customers.mock';
@@ -51,6 +51,8 @@ dataService(collectionName, (dbService: IBackendService) => {
   });
 });
 ```
+
+_**Note:** To view all possible configurations for a collection see all methods in: [IBackendService](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/backend.interface.ts)_
 
 To start and load all data to simulate backend is necessary create a different main entry file. 
 In this sample use a main-mem.ts
@@ -127,7 +129,8 @@ $ ng serve --configuration=backend
 To separate backend from production is necessary create an module in your app that load web-backend-api when necessary and don't load it when unnecessary.
 
 Create the same module in two different folders in your app:
-`backend/app-web-backend-api.module.ts` is the module used for backend configuration.
+
+File `backend/app-web-backend-api.module.ts` is the module used for backend configuration.
 ```typescript
 import { ModuleWithProviders, NgModule } from '@angular/core';
 import { WebBackendApiModule } from 'web-backend-api';
@@ -144,7 +147,7 @@ export class AppWebBackendApiModule {
 }
 ```
 
-`shared/app-web-backend-api.module.ts` is the module used for production configuration.
+File `shared/app-web-backend-api.module.ts` is the module used for production configuration.
 ```typescript
 import { ModuleWithProviders, NgModule } from '@angular/core';
 
