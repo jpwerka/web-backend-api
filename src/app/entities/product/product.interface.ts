@@ -3,4 +3,5 @@ export interface IProduct {
   code: string;
   codBar: string;
   description: string;
+  active: boolean;
 }

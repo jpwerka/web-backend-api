@@ -18,7 +18,8 @@ context.keys().map(context);
 
 const config: BackendConfigArgs = {
   post204: false, // return the item in body after POST
-  put204: false // return the item in body after PUT
+  put204: false, // return the item in body after PUT
+  pageEncapsulation: false,
 };
 setupBackend(config, {dbtype: 'memory'}).then(() => {
   platformBrowserDynamic().bootstrapModule(AppModule).then(

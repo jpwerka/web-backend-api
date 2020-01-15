@@ -33,6 +33,10 @@
                 {
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.prod.ts"
+                },
+                {
+                  "replace": "src/app/backend/app-web-backend-api.module.ts",
+                  "with": "src/app/shared/app-web-backend-api.module.ts"
                 }
               ],
               "optimization": true,

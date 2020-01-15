@@ -1,0 +1,21 @@
+<div [ngClass]="customClass || ''" class="modal" [ngStyle]="{display: isHidden ? 'none' : 'block'}">
+  <div class="overlay" (click)="onClickOut()"></div>
+  <div class="modal-body">
+    <div class="modal-header">
+      <div class="modal-title">{{ title }}</div>
+      <a *ngIf="!hideClose" class="close-modal" tabindex="0" title="close" (click)="close()">⛌</a>
+    </div>
+
+    <div class="modal-content">
+      <ng-content></ng-content>
+    </div>
+    <div class="modal-actions">
+      <button *ngIf="secondaryAction" class="leak-button" (click)="secondaryActionClick()">
+        {{ secondaryAction.label }}
+      </button>
+      <button (click)="primaryActionClick()">
+        {{ primaryAction.label }}
+      </button>
+    </div>
+  </div>
+</div>

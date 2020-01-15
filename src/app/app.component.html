@@ -1,10 +1,19 @@
-<app-top-bar></app-top-bar>
+<div class="app-top-bar">
+  <h1>Web Backend API Sample</h1>
+</div>
+
+<div class="app-link-bar">
+  <a [routerLink]="['/products']" class="button">Products</a>
+  <a [routerLink]="['/customers']" class="button">Customers</a>
+  <a [routerLink]="['/outbound-documents']" class="button">Outbound Documents</a>
+  <a [routerLink]="['/outbound-loads']" class="button">Outbound Loads</a>
+</div>
 
 <div class="container">
   <router-outlet></router-outlet>
 </div>
 
-<!-- 
+<!--
 Copyright Google LLC. All Rights Reserved.
 Use of this source code is governed by an MIT-style license that
 can be found in the LICENSE file at http://angular.io/license

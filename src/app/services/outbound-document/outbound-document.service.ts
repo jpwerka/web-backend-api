@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { IOutboundDocument } from '../../entities/outbound-documents/outbound-document.interface';
@@ -10,7 +10,7 @@ export class OutboundDocumentService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(params): Observable<IOutboundDocument[]> {
+  getAll(params?: HttpParams | { [param: string]: string | string[]; }): Observable<IOutboundDocument[]> {
     return this.http.get<IOutboundDocument[]>(this.url, { params });
   }
 

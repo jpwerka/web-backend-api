@@ -1,7 +1,89 @@
 <h2>Products</h2>
 
+<table>
+  <colgroup>
+    <col style="width:  50px;">
+    <col style="width: 100px;">
+    <col style="width: 300px;">
+    <col style="width: 150px;">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Id</th>
+      <th>Code</th>
+      <th>Description</th>
+      <th>Code bar</th>
+      <th>
+        <a href="#" class="icon" title="add" (click)="add($event)">✚</a>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let product of products">
+      <td style="text-align: right;">{{ product.id }}</td>
+      <td>{{ product.code }}</td>
+      <td>{{ product.description }}</td>
+      <td>{{ product.codBar }}</td>
+      <td style="text-align: center;">
+        <div *ngIf="product.active">
+          <a href="#" class="icon" title="edit" (click)="edit($event, product)">🖉</a>
+          <a href="#" class="icon" title="delete" (click)="delete($event, product)">🗑</a>
+          <a href="#" class="icon" title="inactive" (click)="inactive($event, product)">🔀</a>
+        </div>
+        <div *ngIf="!product.active">
+          <a href="#" class="icon" title="active" (click)="active($event, product)">🔀</a>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-<!-- 
+<app-modal #modalForm [title]="modalTitle" [primaryAction]="confirmAction" [secondaryAction]="cancelFormAction">
+  <form [formGroup]="productForm" #formDir="ngForm">
+
+    <div class="form-group">
+
+      <label for="code">Code</label>
+      <input id="code" class="form-control" formControlName="code" required>
+
+      <div *ngIf="code.invalid && (code.dirty || code.touched)" class="form-control-error">
+
+        <div *ngIf="code.errors.required">
+          Code is required.
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+
+      <label for="description">Description</label>
+      <input id="description" class="form-control" formControlName="description" required>
+
+      <div *ngIf="description.invalid && (description.dirty || description.touched)" class="form-control-error">
+
+        <div *ngIf="description.errors.required">
+          Description is required.
+        </div>
+        <div *ngIf="description.errors.minlength">
+          Description must be at least 4 characters long.
+        </div>
+      </div>
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="codBar">Code bar</label>
+      <input id="codBar" class="form-control" formControlName="codBar">
+    </div>
+  </form>
+</app-modal>
+
+<app-modal #modalQuestion [title]="'Delete product'" [primaryAction]="deleteAction" [secondaryAction]="cancelQuestionAction">
+  <span>Confirm product deletion?</span>
+</app-modal>
+
+<!--
 Copyright Google LLC. All Rights Reserved.
 Use of this source code is governed by an MIT-style license that
 can be found in the LICENSE file at http://angular.io/license

@@ -1,0 +1,140 @@
+import { Component, ViewChild, OnInit } from '@angular/core';
+import { ICustomer } from '../entities/customer/customer.interface';
+import { CustomerService } from '../services/customer/customer-service';
+import { ModalComponent, IModalAction } from '../modal/modal.component';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
+
+@Component({
+  selector: 'app-customer-list',
+  templateUrl: './customer-list.component.html',
+  styleUrls: ['./customer-list.component.css'],
+  providers: [ CustomerService ]
+})
+export class CustomerListComponent implements OnInit {
+
+  customers: ICustomer[];
+
+  modalTitle = '';
+  confirmAction: IModalAction = {
+    label: 'Confirm',
+    action: () => this.confirmForm()
+  };
+  cancelFormAction: IModalAction = {
+    label: 'Cancel',
+    action: () => this.modalForm.close()
+  };
+  deleteAction: IModalAction = {
+    label: 'Delete',
+    action: () => this.deleteCustomer()
+  };
+  cancelQuestionAction: IModalAction = {
+    label: 'Cancel',
+    action: () => this.modalQuestion.close()
+  };
+
+  @ViewChild('modalForm', {static: true}) modalForm: ModalComponent;
+  @ViewChild('modalQuestion', {static: true}) modalQuestion: ModalComponent;
+
+  customerForm: FormGroup;
+
+  get id() { return this.customerForm.get('id'); }
+
+  get name() { return this.customerForm.get('name'); }
+
+  constructor(private customerService: CustomerService) {
+  }
+
+  ngOnInit() {
+    this.customerForm = new FormGroup({
+      id: new FormControl(''),
+      name: new FormControl('', {
+        validators: [
+          Validators.required,
+          Validators.minLength(4)
+        ],
+        updateOn: 'blur'
+      }),
+      active: new FormControl(true)
+    });
+
+    this.customerService.getAll().subscribe(customers => this.customers = customers);
+  }
+
+  add(event: Event) {
+    event.preventDefault();
+    this.customerForm.reset();
+    this.customerForm.get('active').setValue(true, {emitModelToViewChange: false});
+    this.modalTitle = 'Add customer';
+    this.modalForm.open();
+  }
+
+  edit(event: Event, customer: ICustomer) {
+    event.preventDefault();
+    this.customerForm.setValue(customer);
+    this.modalTitle = 'Edit customer';
+    this.modalForm.open();
+  }
+
+  delete(event: Event, customer: ICustomer) {
+    event.preventDefault();
+    this.customerForm.setValue(customer);
+    this.modalQuestion.open();
+  }
+
+  active(event: Event, customer: ICustomer) {
+    event.preventDefault();
+    this.customerService.active(customer.id).subscribe(() => {
+      const index = this.customers.findIndex(item => item.id === customer.id);
+      if (index >= 0) {
+        this.customers[index].active = true;
+      }
+    });
+  }
+
+  inactive(event: Event, customer: ICustomer) {
+    event.preventDefault();
+    this.customerService.inactive(customer.id).subscribe(() => {
+      const index = this.customers.findIndex(item => item.id === customer.id);
+      if (index >= 0) {
+        this.customers[index].active = false;
+      }
+    });
+  }
+
+  confirmForm() {
+    this.name.markAsDirty({onlySelf: true});
+    if (this.customerForm.valid) {
+      if (!this.id.value) {
+        this.customerService.create(this.customerForm.value).subscribe(customer => {
+          this.customers.push(customer);
+          this.modalForm.close();
+        });
+      } else {
+        this.customerService.update(this.customerForm.value).subscribe(customer => {
+          const index = this.customers.findIndex(item => item.id === customer.id);
+          if (index >= 0) {
+            this.customers[index] = customer;
+          }
+          this.modalForm.close();
+        });
+      }
+    }
+  }
+
+  deleteCustomer() {
+    this.customerService.delete(this.customerForm.value).subscribe(() => {
+      const index = this.customers.findIndex(item => item.id === this.id.value);
+      if (index >= 0) {
+        this.customers.splice(index, 1);
+      }
+      this.modalQuestion.close();
+    });
+  }
+}
+
+
+/*
+Copyright Google LLC. All Rights Reserved.
+Use of this source code is governed by an MIT-style license that
+can be found in the LICENSE file at http://angular.io/license
+*/

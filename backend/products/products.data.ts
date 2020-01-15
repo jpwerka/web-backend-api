@@ -1,7 +1,31 @@
-import { dataService, IBackendService } from 'web-backend-api/src';
+import { dataService, IBackendService, ResponseInterceptorFn, IInterceptorUtils } from 'web-backend-api/src';
 import { collectionName, products } from './products.mock';
 
 dataService(collectionName, (dbService: IBackendService) => {
+
+  const responseActive: ResponseInterceptorFn = (utils: IInterceptorUtils): any => {
+    return dbService.put$(collectionName, utils.id, { id: utils.id, active: true }, utils.url);
+  };
+
+  const responseInactive: ResponseInterceptorFn = (utils: IInterceptorUtils): any => {
+    return dbService.put$(collectionName, utils.id, { id: utils.id, active: false }, utils.url);
+  };
+
+  dbService.addRequestInterceptor({
+    method: 'POST',
+    path: 'active',
+    collectionName,
+    applyToPath: 'afterId',
+    response: responseActive
+  });
+
+  dbService.addRequestInterceptor({
+    method: 'POST',
+    path: 'inactive',
+    collectionName,
+    applyToPath: 'afterId',
+    response: responseInactive
+  });
 
   products.forEach((product) => {
     dbService.storeData(collectionName, product);

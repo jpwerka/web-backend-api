@@ -168,6 +168,8 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
       if (!item.id) {
         item['id'] = this.generateStrategyId(objectStore, collectionName);
+      } else {
+        item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
       }
 
       let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -226,6 +228,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
     // tslint:disable-next-line:triple-equals
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+    }
+
+    if (item.id) {
+      item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;

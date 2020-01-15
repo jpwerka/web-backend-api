@@ -2,11 +2,12 @@ import { HttpClientModule } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
-import { RouterModule } from '@angular/router';
-import { WebBackendApiModule } from 'web-backend-api/src';
 import { AppComponent } from './app.component';
 import { ProductListComponent } from './product-list/product-list.component';
-import { TopBarComponent } from './top-bar/top-bar.component';
+import { AppWebBackendApiModule } from './backend/app-web-backend-api.module';
+import { AppRoutingModule } from './app-routing.module';
+import { CustomerListComponent } from './customer-list/customer-list.component';
+import { ModalComponent } from './modal/modal.component';
 
 
 @NgModule({
@@ -14,15 +15,14 @@ import { TopBarComponent } from './top-bar/top-bar.component';
     BrowserModule,
     HttpClientModule,
     ReactiveFormsModule,
-    RouterModule.forRoot([
-      { path: '', component: ProductListComponent },
-    ]),
-    WebBackendApiModule.forRoot(),
+    AppRoutingModule,
+    AppWebBackendApiModule.forRoot(),
   ],
   declarations: [
     AppComponent,
-    TopBarComponent,
-    ProductListComponent
+    ModalComponent,
+    ProductListComponent,
+    CustomerListComponent
   ],
   bootstrap: [ AppComponent ]
 })
