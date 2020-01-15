@@ -116,22 +116,17 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const objectStore = this.db.get(collectionName);
 
       if (id !== undefined && id !== '') {
-        const joinFields = this.joinnersGetByIdMap.get(collectionName);
-        const transformfn = this.transformGetByIdMap.get(collectionName);
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
         item = item ? clone(item) : item;
 
-        (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
-          if (itemAsync && getJoinFields !== undefined) {
-            await this.applyJoinFields(itemAsync, getJoinFields);
-          }
-          if (itemAsync && transformGetFn !== undefined) {
-            itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
+        (async (itemAsync: any) => {
+          if (itemAsync) {
+            itemAsync = await this.applyTransformersGetById(collectionName, itemAsync);
           }
           return this.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, this.bodify(itemAsync));
-        })(item, joinFields, transformfn).then(response => {
+        })(item).then(response => {
           observer.next(response);
           observer.complete();
         });
@@ -191,7 +186,9 @@ export class MemoryDbService extends BackendService implements IBackendService {
           }
 
           objectStore.push(item);
-          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(clone(item)));
+
+          item = await this.applyTransformersGetById(collectionName, clone(item));
+          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
         })().then(response => {
           observer.next(response);
@@ -213,9 +210,13 @@ export class MemoryDbService extends BackendService implements IBackendService {
             item = Object.assign({}, objectStore[existingIx], item);
           }
           objectStore[existingIx] = item;
-          return this.config.post204 ?
-            this.utils.createResponseOptions(url, STATUS.NO_CONTENT ) : // successful; no content
-            this.utils.createResponseOptions(url, STATUS.OK, this.bodify(clone(item))); // successful; return entity
+
+          if (this.config.post204) {
+            return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
+          } else {
+            item = await this.applyTransformersGetById(collectionName, clone(item));
+            return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
@@ -258,9 +259,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
           }
 
           objectStore[existingIx] = item;
-          return this.config.put204 ?
-            this.utils.createResponseOptions(url, STATUS.NO_CONTENT) :
-            this.utils.createResponseOptions(url, STATUS.OK, this.bodify(clone(item)));
+          if (this.config.put204) {
+            return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
+           } else {
+            item = await this.applyTransformersGetById(collectionName, clone(item));
+            return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
@@ -283,7 +287,9 @@ export class MemoryDbService extends BackendService implements IBackendService {
           }
 
           objectStore.push(item);
-          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(clone(item)));
+
+          item = await this.applyTransformersGetById(collectionName, clone(item));
+          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
         })().then(response => {
           observer.next(response);

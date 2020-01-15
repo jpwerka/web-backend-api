@@ -388,6 +388,19 @@ export abstract class BackendService {
     };
   }
 
+  protected async applyTransformersGetById(collectionName: string, item: any): Promise<any> {
+    const getJoinFields = this.joinnersGetByIdMap.get(collectionName);
+    const transformGetFn = this.transformGetByIdMap.get(collectionName);
+
+    if (getJoinFields !== undefined) {
+      await this.applyJoinFields(item, getJoinFields);
+    }
+    if (transformGetFn !== undefined) {
+      item = await this.applyTransformGet(item, transformGetFn);
+    }
+    return item;
+  }
+
   protected applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
     const self = this;
     return new Promise<any>((resolve, reject) => {

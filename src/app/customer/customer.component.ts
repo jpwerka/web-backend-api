@@ -5,12 +5,12 @@ import { ModalComponent, IModalAction } from '../modal/modal.component';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 
 @Component({
-  selector: 'app-customer-list',
-  templateUrl: './customer-list.component.html',
-  styleUrls: ['./customer-list.component.css'],
+  selector: 'app-customer',
+  templateUrl: './customer.component.html',
+  styleUrls: ['./customer.component.css'],
   providers: [ CustomerService ]
 })
-export class CustomerListComponent implements OnInit {
+export class CustomerComponent implements OnInit {
 
   customers: ICustomer[];
 

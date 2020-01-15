@@ -3,11 +3,12 @@ import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
-import { ProductListComponent } from './product-list/product-list.component';
+import { ProductComponent } from './product/product.component';
 import { AppWebBackendApiModule } from './backend/app-web-backend-api.module';
 import { AppRoutingModule } from './app-routing.module';
-import { CustomerListComponent } from './customer-list/customer-list.component';
+import { CustomerComponent } from './customer/customer.component';
 import { ModalComponent } from './modal/modal.component';
+import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
 
 
 @NgModule({
@@ -21,8 +22,9 @@ import { ModalComponent } from './modal/modal.component';
   declarations: [
     AppComponent,
     ModalComponent,
-    ProductListComponent,
-    CustomerListComponent
+    ProductComponent,
+    CustomerComponent,
+    OutboundDocumentComponent
   ],
   bootstrap: [ AppComponent ]
 })

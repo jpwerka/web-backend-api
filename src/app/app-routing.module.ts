@@ -1,7 +1,8 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { ProductListComponent } from './product-list/product-list.component';
-import { CustomerListComponent } from './customer-list/customer-list.component';
+import { ProductComponent } from './product/product.component';
+import { CustomerComponent } from './customer/customer.component';
+import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
 
 const routes: Routes = [
   {
@@ -11,11 +12,15 @@ const routes: Routes = [
   },
   {
     path: 'products',
-    component: ProductListComponent,
+    component: ProductComponent,
   },
   {
     path: 'customers',
-    component: CustomerListComponent,
+    component: CustomerComponent,
+  },
+  {
+    path: 'outbound-documents',
+    component: OutboundDocumentComponent,
   },
   {
     path: '**',

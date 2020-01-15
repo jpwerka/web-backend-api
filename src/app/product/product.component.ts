@@ -5,12 +5,12 @@ import { ModalComponent, IModalAction } from '../modal/modal.component';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 
 @Component({
-  selector: 'app-product-list',
-  templateUrl: './product-list.component.html',
-  styleUrls: ['./product-list.component.css'],
+  selector: 'app-product',
+  templateUrl: './product.component.html',
+  styleUrls: ['./product.component.css'],
   providers: [ ProductService ]
 })
-export class ProductListComponent implements OnInit {
+export class ProductComponent implements OnInit {
 
   products: IProduct[];
 

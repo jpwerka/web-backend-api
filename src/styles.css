@@ -258,8 +258,20 @@ td a.icon:last-child {
   border-left: 5px solid #42A948; /* green */
 }
 
-.ng-invalid:not(form)  {
+input.ng-invalid, optgroup.ng-invalid, select.ng-invalid, textarea.ng-invalid   {
   border-left: 5px solid #a94442; /* red */
+}
+
+.inline {
+  display: inline-block;
+}
+
+.pl-sm {
+  padding-left: 8px;
+}
+
+.pr-sm {
+  padding-left: 8px;
 }
 
 

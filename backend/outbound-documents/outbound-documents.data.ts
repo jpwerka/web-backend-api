@@ -1,7 +1,7 @@
 
 import { dataService, IBackendService, IInterceptorUtils } from 'web-backend-api/src';
 import { collectionName, outboundDocuments, transformPost, transformPut } from './outbound-documents.mock';
-import { IOutboundDocument } from 'src/app/entities/outbound-documents/outbound-document.interface';
+import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-document.interface';
 import { collectionName as customerCollection } from '../customers/customers.mock';
 import { map } from 'rxjs/operators';
 
@@ -29,6 +29,11 @@ dataService(collectionName, (dbService: IBackendService) => {
 
   // add customer object to entity
   dbService.addTransformGetByIdMap(collectionName, transformGetEntity);
+
+  dbService.addJoinGetAllMap(collectionName, {
+    fieldId: 'customerId',
+    collectionSource: customerCollection,
+  });
 
   // add atribute createdAt
   dbService.addTransformPostMap(collectionName, transformPost);

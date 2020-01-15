@@ -1,4 +1,4 @@
-import { IOutboundLoad } from 'src/app/entities/outbound-loads/outbound-load.interface';
+import { IOutboundLoad } from 'src/app/entities/outbound-load/outbound-load.interface';
 
 export const collectionName = 'outbound_loads';
 

@@ -1,4 +1,4 @@
-import { IOutboundDocument } from 'src/app/entities/outbound-documents/outbound-document.interface';
+import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-document.interface';
 
 export const collectionName = 'outbound_documents';
 

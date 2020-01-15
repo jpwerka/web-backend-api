@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { IOutboundDocument } from '../../entities/outbound-documents/outbound-document.interface';
+import { IOutboundDocument } from '../../entities/outbound-document/outbound-document.interface';
 
 @Injectable()
 export class OutboundDocumentService {
