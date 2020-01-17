@@ -129,7 +129,8 @@ export class MemoryDbService extends BackendService implements IBackendService {
         })(item).then(response => {
           observer.next(response);
           observer.complete();
-        });
+        },
+        (error) => observer.error(error));
       } else {
         let queryParams: IQueryParams = { count: 0 };
         const queryResults: IQueryResult = { hasNext: false, items: [] };
@@ -144,15 +145,21 @@ export class MemoryDbService extends BackendService implements IBackendService {
           value: null,
           continue: (): any => {}
         };
-        while (cursor.index <= objectStore.length) {
-          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, joinFields, transformfn)) {
-            const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
-            observer.next(response);
-            observer.complete();
-            break;
+        (async () => {
+          while (cursor.index <= objectStore.length) {
+            cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+            const allItens = await this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, joinFields, transformfn);
+            if (allItens) {
+              return null;
+            }
           }
-        }
+          return null;
+        })().then(() => {
+          const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
+          observer.next(response);
+          observer.complete();
+        },
+        (error) => observer.error(error));
       }
     });
   }

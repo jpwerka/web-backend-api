@@ -245,15 +245,22 @@ export class IndexedDbService extends BackendService implements IBackendService 
             response = self.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, item);
             observer.next(response);
             observer.complete();
-          });
+          },
+          (error) => observer.error(error));
         } else {
           const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-          if (self.getAllItems(cursor, queryResults, queryParams, joinFields, transformfn)) {
-            self.transaction = undefined;
-            response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
-            observer.next(response);
-            observer.complete();
-          }
+          (async () => {
+            const allItens = await self.getAllItems(cursor, queryResults, queryParams, joinFields, transformfn);
+            return allItens;
+          })().then(allItens => {
+            if (allItens) {
+              self.transaction = undefined;
+              response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
+              observer.next(response);
+              observer.complete();
+            }
+          },
+          (error) => observer.error(error));
         }
       };
 

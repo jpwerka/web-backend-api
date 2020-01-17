@@ -673,12 +673,12 @@ export abstract class BackendService {
     return queryParams;
   }
 
-  protected getAllItems(
+  protected async getAllItems(
     cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams, joinFields: IJoinField[], transformfn: TransformGetFn
-  ): boolean {
+  ): Promise<boolean> {
     let retorna = false;
     if (cursor) {
-      const item = cursor.value;
+      let item = cursor.value;
       if (this.filterItem(item, queryParams.conditions)) {
         if (queryParams.page && queryParams.pageSize) {
           if (queryParams.count < ((queryParams.page - 1) * queryParams.pageSize)) {
@@ -686,38 +686,31 @@ export abstract class BackendService {
             cursor.continue();
           } else if (queryParams.count < (queryParams.page * queryParams.pageSize)) {
 
-            (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
-              if (getJoinFields !== undefined) {
-                await this.applyJoinFields(itemAsync, getJoinFields);
-              }
-              if (transformfn !== undefined) {
-                itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
-              }
-              return itemAsync;
-            })(item, joinFields, transformfn).then(itemAsync => {
-              queryResults.items.push(itemAsync);
-              queryResults.hasNext = true;
-              queryParams.count++;
-              cursor.continue();
-            });
+            if (joinFields !== undefined) {
+              await this.applyJoinFields(item, joinFields);
+            }
+            if (transformfn !== undefined) {
+              item = await this.applyTransformGet(item, transformfn);
+            }
+
+            queryResults.items.push(item);
+            queryResults.hasNext = true;
+            queryParams.count++;
+            cursor.continue();
           } else {
             retorna = true;
           }
         } else {
+          if (joinFields !== undefined) {
+            await this.applyJoinFields(item, joinFields);
+          }
+          if (transformfn !== undefined) {
+            item = await this.applyTransformGet(item, transformfn);
+          }
 
-          (async (itemAsync: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
-            if (getJoinFields !== undefined) {
-              await this.applyJoinFields(itemAsync, getJoinFields);
-            }
-            if (transformfn !== undefined) {
-              itemAsync = await this.applyTransformGet(itemAsync, transformGetFn);
-            }
-            return itemAsync;
-          })(item, joinFields, transformfn).then(itemAsync => {
-            queryResults.items.push(itemAsync);
-            queryResults.hasNext = true;
-            cursor.continue();
-          });
+          queryResults.items.push(item);
+          queryResults.hasNext = true;
+          cursor.continue();
         }
       } else {
         cursor.continue();
