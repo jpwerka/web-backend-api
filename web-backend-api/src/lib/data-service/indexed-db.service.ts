@@ -11,7 +11,6 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
   private dbName: string;
   private db: IDBDatabase;
-  private transaction: IDBTransaction;
 
   constructor(config: BackendConfigArgs, dbName: string = 'web-backend-api-db') {
     super(config);
@@ -150,9 +149,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
   getInstance$(collectionName: string, id: any): Observable<any> {
     return new Observable((observer) => {
       let request: IDBRequest<any>;
-      const objectStore = this.transaction ?
-        this.transaction.objectStore(collectionName) :
-        this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
+      const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       if (id !== undefined && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number'  ? parseInt(id, 10) : id;
         request = objectStore.get(id);
@@ -179,16 +176,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-        (async () => {
-          const allItens = await self.getAllItems(cursor, queryResults, queryParams, undefined, undefined);
-          return allItens;
-        })().then(allItens => {
-          if (allItens) {
-            observer.next(queryResults.items);
-            observer.complete();
-          }
-        },
-        (error) => observer.error(error));
+        if (self.getAllItems(cursor, queryResults, queryParams)) {
+          observer.next(queryResults.items);
+          observer.complete();
+        }
       };
       request.onerror = (event) => {
         observer.error((event.target as any).error);
@@ -204,30 +195,15 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let response: any;
       let request: IDBRequest<any>;
       let isCursor = false;
-      let transformfn: TransformGetFn;
-      let joinFields: IJoinField[];
       let queryParams: IQueryParams = { count: 0 };
       const queryResults: IQueryResult = { hasNext: false, items: [] };
-      const storeNames = [collectionName];
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
-        joinFields = self.joinnersGetByIdMap.get(collectionName);
-        transformfn = self.transformGetByIdMap.get(collectionName);
-        if (joinFields instanceof Array) {
-          storeNames.push(...joinFields.map(value => value.collectionSource));
-        }
-        self.transaction = self.db.transaction(storeNames, 'readwrite');
-        const objectStore = self.transaction.objectStore(collectionName);
+        const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
         request = objectStore.get(findId);
       } else {
-        joinFields = self.joinnersGetAllMap.get(collectionName);
-        transformfn = self.transformGetAllMap.get(collectionName);
-        if (joinFields instanceof Array) {
-          storeNames.push(...joinFields.map(value => value.collectionSource));
-        }
-        self.transaction = self.db.transaction(storeNames, 'readwrite');
-        const objectStore = self.transaction.objectStore(collectionName);
+        const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
         request = objectStore.openCursor();
         isCursor = true;
         if (query) {
@@ -238,17 +214,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         if (!isCursor) {
-          (async (item: any, getJoinFields: IJoinField[], transformGetFn: TransformGetFn) => {
-            if (item && getJoinFields !== undefined) {
-              await self.applyJoinFields(item, getJoinFields);
-            }
-
-            if (item && transformGetFn !== undefined) {
-              item = await self.applyTransformGet(item, transformGetFn);
+          (async (item: any) => {
+            if (item) {
+              item = await self.applyTransformersGetById(collectionName, item);
             }
             return item;
-          })(request.result, joinFields, transformfn).then(item => {
-            self.transaction = undefined;
+          })(request.result).then(item => {
             response = self.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, item);
             observer.next(response);
             observer.complete();
@@ -256,23 +227,22 @@ export class IndexedDbService extends BackendService implements IBackendService 
           (error) => observer.error(error));
         } else {
           const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-          (async () => {
-            const allItens = await self.getAllItems(cursor, queryResults, queryParams, joinFields, transformfn);
-            return allItens;
-          })().then(allItens => {
-            if (allItens) {
-              self.transaction = undefined;
+          if (self.getAllItems(cursor, queryResults, queryParams)) {
+            (async () => {
+              if (queryResults.items.length) {
+                await self.applyTransformersGetAll(collectionName, queryResults.items);
+              }
+            })().then(() => {
               response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
               observer.next(response);
               observer.complete();
-            }
-          },
-          (error) => observer.error(error));
+            },
+            (error) => observer.error(error));
+          }
         }
       };
 
       request.onerror = (event) => {
-        self.transaction = undefined;
         response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as any).error);
         observer.error(response);
       };

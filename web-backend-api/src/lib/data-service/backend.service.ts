@@ -101,7 +101,7 @@ export abstract class BackendService {
     if (joinGetAllMap !== undefined) {
       joinGetAllMap.push(joinField);
     } else {
-      this.joinnersGetAllMap.set(collectionName, [ joinField ]);
+      this.joinnersGetAllMap.set(collectionName, [joinField]);
     }
   }
 
@@ -113,7 +113,7 @@ export abstract class BackendService {
     if (joinGetByIdMap !== undefined) {
       joinGetByIdMap.push(joinField);
     } else {
-      this.joinnersGetByIdMap.set(collectionName, [ joinField ]);
+      this.joinnersGetByIdMap.set(collectionName, [joinField]);
     }
   }
 
@@ -159,7 +159,7 @@ export abstract class BackendService {
     if (replaces !== undefined) {
       replaces.push(replaceAdd);
     } else {
-      this.replaceMap.set(collectionName, [ replaceAdd ]);
+      this.replaceMap.set(collectionName, [replaceAdd]);
     }
   }
 
@@ -168,7 +168,7 @@ export abstract class BackendService {
     if (postsToOtherMethod !== undefined) {
       postsToOtherMethod.push(postToOtherMethod);
     } else {
-      this.postToOtherMethodMap.set(collectionName, [ postToOtherMethod ]);
+      this.postToOtherMethodMap.set(collectionName, [postToOtherMethod]);
     }
   }
 
@@ -396,9 +396,26 @@ export abstract class BackendService {
       await this.applyJoinFields(item, getJoinFields);
     }
     if (transformGetFn !== undefined) {
-      item = await this.applyTransformGet(item, transformGetFn);
+      item = await this.applyTransformGetFn(item, transformGetFn);
     }
     return item;
+  }
+
+  protected async applyTransformersGetAll(collectionName: string, items: any[]): Promise<any> {
+    const getJoinFields = this.joinnersGetAllMap.get(collectionName);
+    const transformGetFn = this.transformGetAllMap.get(collectionName);
+
+    let index = 0;
+    for (let item of items) {
+      if (getJoinFields !== undefined) {
+        await this.applyJoinFields(item, getJoinFields);
+      }
+      if (transformGetFn !== undefined) {
+        item = await this.applyTransformGetFn(item, transformGetFn);
+        items[index] = item;
+      }
+      index++;
+    }
   }
 
   protected applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
@@ -411,13 +428,13 @@ export abstract class BackendService {
           observers.push(this.getInstance$(joinField.collectionSource, item[joinField.fieldId]).pipe(
             concatMap(data => {
               if (data && joinField.transformerGet instanceof Function) {
-                return from(self.applyTransformGet(data, joinField.transformerGet)).pipe(
+                return from(self.applyTransformGetFn(data, joinField.transformerGet)).pipe(
                   map(dataGet => {
-                    return {property: fieldDest, data: dataGet};
+                    return { property: fieldDest, data: dataGet };
                   })
                 );
               } else {
-                return of({property: fieldDest, data});
+                return of({ property: fieldDest, data });
               }
             })
           ));
@@ -437,7 +454,7 @@ export abstract class BackendService {
     });
   }
 
-  protected applyTransformGet(item: any, transformfn: TransformGetFn): Promise<any> {
+  protected applyTransformGetFn(item: any, transformfn: TransformGetFn): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       const retorno = transformfn.call(this, item, this);
       if (retorno instanceof Observable) {
@@ -598,7 +615,7 @@ export abstract class BackendService {
     return okOr && okAnd;
   }
 
-  private createFilterFn(value: string|string[], filterFn: FilterFn): FieldFn {
+  private createFilterFn(value: string | string[], filterFn: FilterFn): FieldFn {
     return (item: any) => {
       return filterFn.call(this, value, item);
     };
@@ -673,26 +690,16 @@ export abstract class BackendService {
     return queryParams;
   }
 
-  protected async getAllItems(
-    cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams, joinFields: IJoinField[], transformfn: TransformGetFn
-  ): Promise<boolean> {
+  protected getAllItems(cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams): boolean {
     let retorna = false;
     if (cursor) {
-      let item = cursor.value;
+      const item = cursor.value;
       if (this.filterItem(item, queryParams.conditions)) {
         if (queryParams.page && queryParams.pageSize) {
           if (queryParams.count < ((queryParams.page - 1) * queryParams.pageSize)) {
             queryParams.count++;
             cursor.continue();
           } else if (queryParams.count < (queryParams.page * queryParams.pageSize)) {
-
-            if (joinFields !== undefined) {
-              await this.applyJoinFields(item, joinFields);
-            }
-            if (transformfn !== undefined) {
-              item = await this.applyTransformGet(item, transformfn);
-            }
-
             queryResults.items.push(item);
             queryResults.hasNext = true;
             queryParams.count++;
@@ -701,13 +708,6 @@ export abstract class BackendService {
             retorna = true;
           }
         } else {
-          if (joinFields !== undefined) {
-            await this.applyJoinFields(item, joinFields);
-          }
-          if (transformfn !== undefined) {
-            item = await this.applyTransformGet(item, transformfn);
-          }
-
           queryResults.items.push(item);
           queryResults.hasNext = true;
           cursor.continue();

@@ -99,20 +99,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
         value: null,
         continue: (): any => {}
       };
-      (async () => {
-        while (cursor.index <= objectStore.length) {
-          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-          const allItens = await this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined, undefined);
-          if (allItens) {
-            return null;
-          }
+      while (cursor.index <= objectStore.length) {
+        cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+        if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
+          observer.next(queryResults.items);
+          observer.complete();
+          break;
         }
-        return null;
-      })().then(() => {
-        observer.next(queryResults.items);
-        observer.complete();
-      },
-      (error) => observer.error(error));
+      }
     });
   }
 
@@ -132,8 +126,9 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (itemAsync) {
             itemAsync = await this.applyTransformersGetById(collectionName, itemAsync);
           }
-          return this.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, this.bodify(itemAsync));
-        })(item).then(response => {
+          return itemAsync;
+        })(item).then(itemAsync => {
+          const response = this.utils.createResponseOptions(url, itemAsync ? STATUS.OK : STATUS.NOT_FOUND, this.bodify(itemAsync));
           observer.next(response);
           observer.complete();
         },
@@ -145,22 +140,21 @@ export class MemoryDbService extends BackendService implements IBackendService {
           queryParams = this.getQueryParams(collectionName,
             query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
-        const joinFields = this.joinnersGetAllMap.get(collectionName);
-        const transformfn = this.transformGetAllMap.get(collectionName);
         const cursor = {
           index: 0,
           value: null,
           continue: (): any => {}
         };
-        (async () => {
-          while (cursor.index <= objectStore.length) {
-            cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-            const allItens = await this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, joinFields, transformfn);
-            if (allItens) {
-              return null;
-            }
+        while (cursor.index <= objectStore.length) {
+          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
+            break;
           }
-          return null;
+        }
+        (async () => {
+          if (queryResults.items.length) {
+            await this.applyTransformersGetAll(collectionName, queryResults.items);
+          }
         })().then(() => {
           const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
           observer.next(response);
