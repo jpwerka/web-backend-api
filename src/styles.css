@@ -56,21 +56,19 @@ button, input, optgroup, select, textarea {
   margin: 0;
 }
 
-/* Input */
-
-input, select, textarea {
-  margin-bottom: 8px;
-}
-
 form {
   width: 100%;
 }
 
-label {
+label, .label {
   display: inline-block;
   max-width: 100%;
   margin-bottom: 5px;
   font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 8px;
 }
 
 .form-control {
@@ -101,7 +99,6 @@ label {
 
 .form-control-error * {
   color: #a94442;
-  margin-bottom: 8px;
 }
 
 /* Button */
@@ -264,6 +261,7 @@ input.ng-invalid, optgroup.ng-invalid, select.ng-invalid, textarea.ng-invalid   
 
 .inline {
   display: inline-block;
+  vertical-align: top;
 }
 
 .pl-sm {

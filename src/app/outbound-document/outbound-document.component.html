@@ -39,48 +39,77 @@
   <form [formGroup]="outboundDocumentForm" #formDir="ngForm">
 
     <div class="form-group">
-      <span>{{ identifier.value }}</span>
-
-      <!-- label for="name">Name</label>
-      <input id="name" class="form-control" formControlName="name" required>
-
-      <div *ngIf="name.invalid && (name.dirty || name.touched)" class="form-control-error">
-
-        <div *ngIf="name.errors.required">
-          Name is required.
-        </div>
-        <div *ngIf="name.errors.minlength">
-          Name must be at least 4 characters long.
-        </div>
-      </div -->
+      <div class="label">Identifier</div>
+      <div>{{ identifier.value }}</div>
     </div>
 
-    <span class="pr-sm">Items:</span>
+    <div class="form-group">
+      <label for="customer">Customer </label>
+      <select id="customer" class="form-control" formControlName="customerId" required>
+        <option *ngFor="let customer of customers" value={{customer.id}}>
+          {{customer.name}}
+        </option>
+      </select>
+      <div *ngIf="customerId.invalid && (customerId.dirty || customerId.touched)" class="form-control-error">
+
+        <div *ngIf="customerId.errors.required">
+          Customer is required.
+        </div>
+      </div>
+    </div>
+
+    <span class="pr-sm">Items</span>
     <a href="#" class="icon pl-sm" title="add" (click)="addItem($event)">✚</a>
     <hr style="width: 100%; margin-top: 0;">
     <div formArrayName="items">
-      <div *ngFor="let item of items.controls; let i=index">
+      <div *ngFor="let item of items.controls; let i=index;">
         <div [formGroupName]="i" class="form-group">
           <div class="inline pr-sm" style="width: 50%;">
             <label for="productId">Product</label>
-            <input id="productId" class="form-control" formControlName="productId" required>
+            <select id="productId" class="form-control" formControlName="productId" required>
+              <option *ngFor="let product of products" value={{product.id}}>
+                {{product.code + ' - ' + product.description}}
+              </option>
+            </select>
+            <div *ngIf="productId(i).invalid && (productId(i).dirty || productId(i).touched)" class="form-control-error">
+              <div *ngIf="productId(i).errors.required">
+                Product is required.
+              </div>
+            </div>
           </div>
           <div class="inline pr-sm" style="width: 40%;">
             <label for="quantity">Quantity</label>
             <input type="number"  id="quantity"  class="form-control" formControlName="quantity" required>
+            <div *ngIf="quantity(i).invalid && (quantity(i).dirty || quantity(i).touched)" class="form-control-error">
+              <div *ngIf="quantity(i).errors.required">
+                Quantity is required.
+              </div>
+              <div *ngIf="!quantity(i).errors.required && quantity(i).errors.nonZero">
+                Quantity must be greater than zero.
+              </div>
+            </div>
           </div>
           <div class="inline pl-sm" style="width: 10%;">
-            <a href="#" class="icon" title="delete" (click)="removeItem($event, i)">🗑</a>
+            <div class="label">&nbsp;</div>
+            <div style="height: 34px; position: relative;;">
+              <a href="#" class="icon" style="position: absolute; top: calc(50% - 0.5em);" title="delete" (click)="removeItem($event, i)">🗑</a>
+            </div>
           </div>
+        </div>
+      </div>
+      <div *ngIf="this.items.controls.length == 0 && items.invalid && (items.dirty || items.touched)" class="form-control-error">
+
+        <div *ngIf="items.errors.required">
+          At least one item is required.
         </div>
       </div>
     </div>
   </form>
 </app-modal>
 
-<app-modal #modalQuestion [title]="'Delete outboundDocument'" [primaryAction]="deleteAction"
+<app-modal #modalQuestion [title]="'Delete outbound document'" [primaryAction]="deleteAction"
   [secondaryAction]="cancelQuestionAction">
-  <span>Confirm outboundDocument deletion?</span>
+  <span>Confirm outbound document deletion?</span>
 </app-modal>
 
 <!--

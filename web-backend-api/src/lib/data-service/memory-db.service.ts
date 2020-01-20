@@ -78,6 +78,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== '') {
+        id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
         observer.next(this.findById(objectStore, id));
         observer.complete();
       } else {
@@ -98,14 +99,20 @@ export class MemoryDbService extends BackendService implements IBackendService {
         value: null,
         continue: (): any => {}
       };
-      while (cursor.index <= objectStore.length) {
-        cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-        if (self.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined, undefined)) {
-          observer.next(queryResults.items);
-          observer.complete();
-          break;
+      (async () => {
+        while (cursor.index <= objectStore.length) {
+          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+          const allItens = await this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams, undefined, undefined);
+          if (allItens) {
+            return null;
+          }
         }
-      }
+        return null;
+      })().then(() => {
+        observer.next(queryResults.items);
+        observer.complete();
+      },
+      (error) => observer.error(error));
     });
   }
 
@@ -171,7 +178,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       if (!item.id) {
         item['id'] = this.generateStrategyId(objectStore, collectionName);
       } else {
-        item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
+        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
       }
 
       let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -239,7 +246,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     }
 
     if (item.id) {
-      item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
+      item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;

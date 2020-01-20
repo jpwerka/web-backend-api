@@ -154,6 +154,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         this.transaction.objectStore(collectionName) :
         this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       if (id !== undefined && id !== '') {
+        id = this.config.strategyId === 'autoincrement' && typeof id !== 'number'  ? parseInt(id, 10) : id;
         request = objectStore.get(id);
         request.onsuccess = (event) => {
           observer.next(request.result);
@@ -178,10 +179,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-        if (self.getAllItems(cursor, queryResults, queryParams, undefined, undefined)) {
-          observer.next(queryResults.items);
-          observer.complete();
-        }
+        (async () => {
+          const allItens = await self.getAllItems(cursor, queryResults, queryParams, undefined, undefined);
+          return allItens;
+        })().then(allItens => {
+          if (allItens) {
+            observer.next(queryResults.items);
+            observer.complete();
+          }
+        },
+        (error) => observer.error(error));
       };
       request.onerror = (event) => {
         observer.error((event.target as any).error);
@@ -281,7 +288,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       if (!item.id && self.config.strategyId !== 'autoincrement') {
         item['id'] = self.generateStrategyId();
       } else {
-        item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
+        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
       }
 
       let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -380,7 +387,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     }
 
     if (item.id) {
-      item['id'] = typeof item.id !== 'number' && this.config.strategyId === 'autoincrement' ? parseInt(item.id, 10) : item.id;
+      item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
