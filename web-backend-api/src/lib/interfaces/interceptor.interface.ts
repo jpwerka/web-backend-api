@@ -60,7 +60,7 @@ export interface IResponseUtils {
   interceptorIds?: string[];
 }
 
-export type ResponseInterceptorFn = (utils: IInterceptorUtils) => IHttpResponse<any> | IHttpErrorResponse;
+export type ResponseInterceptorFn = (utils: IInterceptorUtils) => IHttpResponse<any> | IHttpErrorResponse | Observable<any>;
 
 export interface IRequestInterceptor {
   method?: string;

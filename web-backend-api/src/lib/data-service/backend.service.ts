@@ -768,7 +768,7 @@ export abstract class BackendService {
       return false;
     }
 
-    const intPaths = removeLeftSlash(removeRightSlash(interceptor.path)).split('/');
+    const intPaths = interceptor.path.split('/').filter(value => value.trim().length > 0);
     // Se possui o mesmo número de segmentos na URL
     interceptorPathOk = intPaths.length === uriPaths.length;
     if (interceptorPathOk) {
@@ -912,7 +912,7 @@ export abstract class BackendService {
       }
       const path = loc.path.substring(drop);
       const query = paramParser(loc.query);
-      let pathSegments = path.split('/');
+      let pathSegments = path.split('/').filter(value => value.trim().length > 0);
       let segmentIx = 0;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
@@ -950,7 +950,7 @@ export abstract class BackendService {
 
       parsed.id = pathSegments[segmentIx++];
 
-      if (pathSegments.length > segmentIx) {
+      if (pathSegments.length >= segmentIx) {
         if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
           return parsed;
         }

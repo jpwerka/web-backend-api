@@ -74,6 +74,18 @@ dataService(collectionName, (dbService: IBackendService) => {
     }
   });
 
+  // add interceptor to generate a document identifier
+  dbService.addRequestInterceptor({
+    method: 'GET',
+    path: '',
+    applyToPath: 'afterId',
+    collectionName,
+    response: (utils: IInterceptorUtils) => {
+      return dbService.get$(collectionName, utils.id, undefined, utils.url);
+    }
+  });
+
+
   // add existing mock data to collection initial data
   outboundDocuments.forEach((outboundDocument) => {
     dbService.storeData(collectionName, outboundDocument);
