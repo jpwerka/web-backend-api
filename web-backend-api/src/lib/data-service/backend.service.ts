@@ -669,7 +669,7 @@ export abstract class BackendService {
           }));
         }
       } else if ((!quickFilter || (quickFilter && quickFilter.term !== name)) &&
-        (name !== 'order' && name !== 'fields' && name !== '$filter')) {
+        (name !== 'order' && name !== 'fields' && name !== '$filter' && name !== 'expand')) {
         if (queryParams['conditions'] === undefined) {
           queryParams['conditions'] = [];
         }
