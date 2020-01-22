@@ -169,10 +169,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
-      if (!item.id) {
-        item['id'] = this.generateStrategyId(objectStore, collectionName);
-      } else {
+      if (item.id) {
         item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      } else {
+        item['id'] = this.generateStrategyId(objectStore, collectionName);
       }
 
       let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;

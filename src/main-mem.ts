@@ -21,7 +21,7 @@ const config: BackendConfigArgs = {
   put204: false, // return the item in body after PUT
   pageEncapsulation: false,
 };
-setupBackend(config, {dbtype: 'memory'}).then(() => {
+setupBackend(config, {dbtype: 'indexdb'}).then(() => {
   platformBrowserDynamic().bootstrapModule(AppModule).then(
     () => {
       console.log('[Backend]', 'Backend database application started!');

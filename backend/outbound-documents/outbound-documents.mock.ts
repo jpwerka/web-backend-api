@@ -17,7 +17,8 @@ export const outboundDocuments: IOutboundDocument[] = [
         productId: 5,
         quantity: 12
       },
-    ]
+    ],
+    isLoaded: false,
   },
   {
     id: 2,
@@ -34,7 +35,8 @@ export const outboundDocuments: IOutboundDocument[] = [
         productId: 4,
         quantity: 6
       },
-    ]
+    ],
+    isLoaded: true,
   },
   {
     id: 3,
@@ -50,7 +52,8 @@ export const outboundDocuments: IOutboundDocument[] = [
         productId: 3,
         quantity: 4
       },
-    ]
+    ],
+    isLoaded: true,
   },
   {
     id: 4,
@@ -66,12 +69,31 @@ export const outboundDocuments: IOutboundDocument[] = [
         productId: 3,
         quantity: 6
       },
-    ]
+    ],
+    isLoaded: true,
+  },
+  {
+    id: 5,
+    identifier: '978342308',
+    customerId: 1,
+    createdAt: new Date('2019-12-18T07:09:48Z'),
+    items: [
+      {
+        productId: 1,
+        quantity: 2
+      },
+      {
+        productId: 5,
+        quantity: 6
+      },
+    ],
+    isLoaded: false,
   }
 ];
 
 export function transformPost(body: IOutboundDocument): IOutboundDocument {
   body['createdAt'] = new Date();
+  body['isLoaded'] = false;
   return body;
 }
 

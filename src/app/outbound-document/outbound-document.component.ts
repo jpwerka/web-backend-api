@@ -123,6 +123,10 @@ export class OutboundDocumentComponent implements OnInit {
     });
   }
 
+  alert() {
+    window.alert('This document is loaded. To modify remove it from load.');
+  }
+
   edit(event: Event, outboundDocument: IOutboundDocument) {
     event.preventDefault();
     this.items.clear();

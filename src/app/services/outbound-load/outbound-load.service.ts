@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { IOutboundLoad } from '../../entities/outbound-load/outbound-load.interface';
+import { IOutboundDocument } from '../../entities/outbound-document/outbound-document.interface';
 
 @Injectable()
 export class OutboundLoadService {
@@ -16,6 +17,14 @@ export class OutboundLoadService {
 
   getById(id: number): Observable<IOutboundLoad> {
     return this.http.get<IOutboundLoad>(`${this.url}/${id}`);
+  }
+
+  getDocuments(id: number): Observable<IOutboundDocument[]> {
+    return this.http.get<IOutboundDocument[]>(`${this.url}/${id}/documents`);
+  }
+
+  getUnloadedDocuments(): Observable<IOutboundDocument[]> {
+    return this.http.get<IOutboundDocument[]>(`${this.url}/documents`);
   }
 
   getIdentifier(): Observable<{identifier: string}> {

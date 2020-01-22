@@ -1,5 +1,5 @@
 
-import { dataService, IBackendService, IInterceptorUtils } from 'web-backend-api/src';
+import { dataService, IBackendService, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/src';
 import { collectionName, outboundDocuments, transformPost, transformPut } from './outbound-documents.mock';
 import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-document.interface';
 import { collectionName as customerCollection } from '../customers/customers.mock';
@@ -74,17 +74,19 @@ dataService(collectionName, (dbService: IBackendService) => {
     }
   });
 
-  // add interceptor to generate a document identifier
+  const responseUnloadedDocuments: ResponseInterceptorFn = (utils: IInterceptorUtils) => {
+    const query = new Map<string, any[]>();
+    query.set('isLoaded', [false]);
+    return dbService.get$(collectionName, undefined, query, utils.url);
+  };
+
   dbService.addRequestInterceptor({
     method: 'GET',
-    path: '',
-    applyToPath: 'afterId',
+    path: 'unloaded',
+    applyToPath: 'beforeId',
     collectionName,
-    response: (utils: IInterceptorUtils) => {
-      return dbService.get$(collectionName, utils.id, undefined, utils.url);
-    }
+    response: responseUnloadedDocuments,
   });
-
 
   // add existing mock data to collection initial data
   outboundDocuments.forEach((outboundDocument) => {

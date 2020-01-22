@@ -13,4 +13,5 @@ export interface IOutboundDocument {
   items: IOutboundDocumentItems[];
   createdAt?: Date;
   updatedAt?: Date;
+  isLoaded?: boolean;
 }

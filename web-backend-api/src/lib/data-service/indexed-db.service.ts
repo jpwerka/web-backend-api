@@ -255,10 +255,14 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let response: any;
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
 
-      if (!item.id && self.config.strategyId !== 'autoincrement') {
-        item['id'] = self.generateStrategyId();
-      } else {
+      if (item['id']) {
         item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      } else {
+        if (self.config.strategyId !== 'autoincrement') {
+          item['id'] = self.generateStrategyId();
+        } else if (item.hasOwnProperty('id')) {
+          delete item.id;
+        }
       }
 
       let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -278,28 +282,36 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       requestGet.onsuccess = () => {
         if (!requestGet.result) {
-          const transformfn = self.transformPostMap.get(collectionName);
-          if (transformfn !== undefined) {
-            item = transformfn.call(self, item, self);
-          }
 
-          const requestAdd = objectStore.add(item);
-          requestAdd.onsuccess = () => {
-            if (requestAdd.result) {
-              item['id'] = requestAdd.result;
-              response = self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
-              response = response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
-              observer.next(response);
-              observer.complete();
+          (async () => {
+            const transformfn = this.transformPostMap.get(collectionName);
+            if (transformfn !== undefined) {
+              item = await this.applyTransformPost(item, transformfn);
             }
-          };
+          })().then(() => {
+            const requestAdd = objectStore.add(item);
+            requestAdd.onsuccess = () => {
+              if (requestAdd.result) {
+                item['id'] = requestAdd.result;
+                (async () => {
+                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  response = self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
+                })().then(responseAsync => {
+                  observer.next(responseAsync);
+                  observer.complete();
+                }, error => observer.error(error));
+              }
+            };
 
-          requestAdd.onerror = (event) => {
-            response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-              {message: `Error to add '${collectionName}' with id='${item.id}'`,
-              detailedMessage: (event.target as any).error});
-            observer.error(response);
-          };
+            requestAdd.onerror = (event) => {
+              response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
+                {message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as any).error});
+              observer.error(response);
+            };
+          });
+
         } else if (self.config.post409) {
           response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
             {message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
@@ -310,30 +322,41 @@ export class IndexedDbService extends BackendService implements IBackendService 
             item['id'] = findId;
           }
 
-          const transformfn = self.transformPutMap.get(collectionName);
-          if (transformfn !== undefined) {
-            item = transformfn.call(self, requestGet.result, item, self);
-          }
+          (async () => {
+            const transformfn = this.transformPutMap.get(collectionName);
+            if (transformfn !== undefined) {
+              item = await this.applyTransformPut(requestGet.result, item, transformfn);
+            }
+          })().then(() => {
 
-          if (self.config.appendExistingPost) {
-            item = Object.assign({}, requestGet.result, item);
-          }
+            if (self.config.appendExistingPost) {
+              item = Object.assign({}, requestGet.result, item);
+            }
 
-          const requestPut = objectStore.put(item);
-          requestPut.onsuccess = () => {
-            response = self.config.post204 ?
-              self.utils.createResponseOptions(url, STATUS.NO_CONTENT) :
-              self.utils.createResponseOptions(url, STATUS.OK, self.bodify(clone(item)));
-            observer.next(response);
-            observer.complete();
-          };
+            const requestPut = objectStore.put(item);
+            requestPut.onsuccess = () => {
+              (async () => {
+                if (this.config.put204) {
+                  return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
+                  } else {
+                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
+                }
+              })().then(responseAsync => {
+                observer.next(responseAsync);
+                observer.complete();
+              });
 
-          requestPut.onerror = (event) => {
-            response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-              {message: `Error to update '${collectionName}' with id='${id}'`,
-              detailedMessage: (event.target as any).error});
-            observer.error(response);
-          };
+            };
+
+            requestPut.onerror = (event) => {
+              response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
+                {message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as any).error});
+              observer.error(response);
+            };
+
+          });
         }
       };
 
@@ -375,30 +398,40 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       requestGet.onsuccess = () => {
         if (requestGet.result) {
-          const transformfn = self.transformPutMap.get(collectionName);
-          if (transformfn !== undefined) {
-            item = transformfn.call(self, requestGet.result, item, self);
-          }
 
-          if (self.config.appendPut) {
-            item = Object.assign({}, requestGet.result, item);
-          }
+          (async () => {
+            const transformfn = this.transformPutMap.get(collectionName);
+            if (transformfn !== undefined) {
+              item = await this.applyTransformPut(requestGet.result, item, transformfn);
+            }
+          })().then(() => {
 
-          const requestPut = objectStore.put(item);
-          requestPut.onsuccess = () => {
-            response = self.config.put204 ?
-              self.utils.createResponseOptions(url, STATUS.NO_CONTENT) :
-              self.utils.createResponseOptions(url, STATUS.OK, self.bodify(clone(item)));
-            observer.next(response);
-            observer.complete();
-          };
+            if (self.config.appendPut) {
+              item = Object.assign({}, requestGet.result, item);
+            }
 
-          requestPut.onerror = (event) => {
-            response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-              {message: `Error to update '${collectionName}' with id='${id}'`,
-              detailedMessage: (event.target as any).error});
-            observer.error(response);
-          };
+            const requestPut = objectStore.put(item);
+            requestPut.onsuccess = () => {
+              (async () => {
+                if (this.config.put204) {
+                  return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
+                  } else {
+                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
+                }
+              })().then(responseAsync => {
+                observer.next(responseAsync);
+                observer.complete();
+              });
+            };
+
+            requestPut.onerror = (event) => {
+              response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
+                {message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as any).error});
+              observer.error(response);
+            };
+          });
 
         } else if (self.config.put404) {
           response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
@@ -410,28 +443,35 @@ export class IndexedDbService extends BackendService implements IBackendService 
             item['id'] = findId;
           }
 
-          const transformfn = self.transformPostMap.get(collectionName);
-          if (transformfn !== undefined) {
-            item = transformfn.call(self, item, self);
-          }
-
-          const requestAdd = objectStore.add(item);
-          requestAdd.onsuccess = () => {
-            if (requestAdd.result) {
-              item['id'] = requestAdd.result;
-              response = self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
-              response = response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
-              observer.next(response);
-              observer.complete();
+          (async () => {
+            const transformfn = this.transformPostMap.get(collectionName);
+            if (transformfn !== undefined) {
+              item = await this.applyTransformPost(item, transformfn);
             }
-          };
+          })().then(() => {
 
-          requestAdd.onerror = (event) => {
-            response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-              {message: `Error to add '${collectionName}' with id='${item.id}'`,
-              detailedMessage: (event.target as any).error});
-            observer.error(response);
-          };
+            const requestAdd = objectStore.add(item);
+            requestAdd.onsuccess = () => {
+              if (requestAdd.result) {
+                item['id'] = requestAdd.result;
+                (async () => {
+                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  response = self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
+                })().then(responseAsync => {
+                  observer.next(responseAsync);
+                  observer.complete();
+                }, error => observer.error(error));
+              }
+            };
+
+            requestAdd.onerror = (event) => {
+              response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
+                {message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as any).error});
+              observer.error(response);
+            };
+          });
         }
       };
 

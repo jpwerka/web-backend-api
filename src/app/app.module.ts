@@ -9,6 +9,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { CustomerComponent } from './customer/customer.component';
 import { ModalComponent } from './modal/modal.component';
 import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
+import { OutboundLoadComponent } from './outbound-load/outbound-load.component';
 
 
 @NgModule({
@@ -24,7 +25,8 @@ import { OutboundDocumentComponent } from './outbound-document/outbound-document
     ModalComponent,
     ProductComponent,
     CustomerComponent,
-    OutboundDocumentComponent
+    OutboundDocumentComponent,
+    OutboundLoadComponent
   ],
   bootstrap: [ AppComponent ]
 })

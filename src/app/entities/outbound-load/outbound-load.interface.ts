@@ -1,7 +1,10 @@
+import { IOutboundDocument } from '../outbound-document/outbound-document.interface';
+
 export interface IOutboundLoad {
   id?: number;
   identifier: string;
-  documents: number[]; // ids of outbound documents
+  documentsId: number[]; // ids of outbound documents
+  documents?: IOutboundDocument[];
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -14,6 +14,10 @@ export class OutboundDocumentService {
     return this.http.get<IOutboundDocument[]>(this.url, { params });
   }
 
+  getAllUnloaded(): Observable<IOutboundDocument[]> {
+    return this.http.get<IOutboundDocument[]>(`${this.url}/unloaded`);
+  }
+
   getById(id: number): Observable<IOutboundDocument> {
     return this.http.get<IOutboundDocument>(`${this.url}/${id}`);
   }

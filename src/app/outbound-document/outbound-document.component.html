@@ -15,6 +15,7 @@
       <th>Customer</th>
       <th>Created At</th>
       <th>Updated At</th>
+      <th>Is Loaded</th>
       <th>
         <a href="#" class="icon" title="add" (click)="add($event)">✚</a>
       </th>
@@ -27,9 +28,14 @@
       <td>{{ outboundDocument.customer.name }}</td>
       <td style="text-align: center;">{{ outboundDocument.createdAt | date : 'dd/MM/yyyy' }}</td>
       <td style="text-align: center;">{{ outboundDocument.updatedAt | date : 'dd/MM/yyyy' }}</td>
+      <td style="text-align: center;">{{ outboundDocument.isLoaded ? '☒' : '☐' }}</td>
       <td style="text-align: center;">
-        <a href="#" class="icon" title="edit" (click)="edit($event, outboundDocument)">🖉</a>
-        <a href="#" class="icon" title="delete" (click)="delete($event, outboundDocument)">🗑</a>
+        <div *ngIf="outboundDocument.isLoaded">
+          <a class="icon" title="loaded alert" (click)="alert();">⛔</a></div>
+        <div *ngIf="!outboundDocument.isLoaded">
+          <a class="icon" title="edit" (click)="edit($event, outboundDocument)">🖉</a>
+          <a class="icon pl-sm" title="delete" (click)="delete($event, outboundDocument)">🗑</a>
+        </div>
       </td>
     </tr>
   </tbody>

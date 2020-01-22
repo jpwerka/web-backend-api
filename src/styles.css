@@ -165,17 +165,9 @@ table, th, td {
 }
 
 th, td {
-  padding: 4px 8px;
+  line-height: 1em;
+  padding: 5px 8px;
 }
-
-td a.icon {
-  padding-right: 8px;
-}
-
-td a.icon:last-child {
-  padding-right: 0;
-}
-
 
 .modal {
   position: fixed;
