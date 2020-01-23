@@ -77,7 +77,7 @@ export type ResponseFn = (url: string, status: number, body?: any) => IHttpRespo
  *    );
  *  };
  *  dbService.addRequestInterceptor({
- *    method: 'POST',
+ *    method: 'GET',
  *    path: '',
  *    applyToPath: 'beforeId',
  *    collectionName: 'documents',
