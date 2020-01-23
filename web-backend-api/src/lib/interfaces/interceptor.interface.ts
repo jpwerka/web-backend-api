@@ -81,7 +81,7 @@ export type ResponseFn = (url: string, status: number, body?: any) => IHttpRespo
  *    path: '',
  *    applyToPath: 'beforeId',
  *    collectionName: 'documents',
- *    response: responseIdentifier
+ *    response: responseDocuments
  *   });
  */
 export type ResponseInterceptorFn = (utils: IInterceptorUtils) => IHttpResponse<any> | IHttpErrorResponse | Observable<any>;
