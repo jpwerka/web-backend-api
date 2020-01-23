@@ -2,6 +2,15 @@
 
 Library to simulate a backend API for use in angular projects.
 
+When using this mock library, it will not be necessary to run any other service or application to simulate the backend, since it will run together with the application at run time.
+
+The library allows working with restful applications, applications that use concepts from different end-points to interact with the user for the same data collection.\
+If it does not meet your needs, it is possible to implement an interceptor that will process the request and send a customized response.
+
+This library was inspired by two other most used libraries and combines in a simplified way some the features of both:\
+[Angular => in-memory-web-api](https://github.com/angular/in-memory-web-api)\
+[MockServer => mockserver-client-node](https://github.com/mock-server/mockserver-client-node)
+
 ## Installation
 
 To install this library, run:
@@ -13,6 +22,7 @@ $ npm install web-backend-api --save
 ## Setup the app project
 
 To simulate backend is necessary create a collection files that have the configuration about every collection used in application
+
 Sample tree project:
 ```
  '-> backend
@@ -52,10 +62,11 @@ dataService(collectionName, (dbService: IBackendService) => {
 });
 ```
 
-_**Note:** To view all possible configurations for a collection see all methods in: [IBackendService](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/backend.interface.ts)_
+_**Note:** To view all possible configurations for a collection see all methods in: [IBackendService](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/backend.interface.ts)\
+To view a sample project that use the lib, see: [Web Backend API Sample](https://github.com/jpwerka/web-backend-api)_
 
-To start and load all data to simulate backend is necessary create a different main entry file. 
-In this sample use a main-mem.ts
+
+To start and load all data to simulate backend is necessary create a different main entry file. In this sample use a main-mem.ts
 
 ```typescript
 import { enableProdMode } from '@angular/core';
@@ -91,6 +102,8 @@ setupBackend(config, {dbtype: 'memory'}).then(() => {
 }).catch(err => console.error(err));
 
 ```
+_**Note:** To view all possible configurations for a setup backend, see all configurations flags in: [BackendConfigArgs](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/configuration.interface.ts)_
+
 
 To enable the different main entry file is necessary create a configuration in `angular.json` file another configuration in configurations node.
 ```json
@@ -104,13 +117,13 @@ To enable the different main entry file is necessary create a configuration in `
   }
 ```
 
-Then, import the WebBackendApiModule into your root AppModule
+Import the WebBackendApiModule into your root AppModule
 
 ```typescript
 import { WebBackendApiModule } from 'web-backend-api';
 ```
 
-Then, add WebBackendApiModule.forRoot() to your AppModule's import array
+Add WebBackendApiModule.forRoot() to your AppModule's import array
 
 ```typescript
 @NgModule({
@@ -165,13 +178,13 @@ export class AppWebBackendApiModule {
   }
 }
 ```
-Then, import the WebBackendApiModule into your root AppModule
+Import the WebBackendApiModule into your root AppModule
 
 ```typescript
 import { AppWebBackendApiModule } from './backend/app-web-backend-api.module';
 ```
 
-Then, add WebBackendApiModule.forRoot() to your AppModule's import array
+Add WebBackendApiModule.forRoot() to your AppModule's import array
 
 ```typescript
 @NgModule({

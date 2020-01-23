@@ -3,13 +3,28 @@ import { concatMap, first, map } from 'rxjs/operators';
 import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 // tslint:disable-next-line: max-line-length
-import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInfo, IRequestInterceptor, IRequestCore, IPostToOtherMethod } from '../interfaces/interceptor.interface';
+import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod } from '../interfaces/interceptor.interface';
 // tslint:disable-next-line: max-line-length
 import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
+
+interface IRequestInfo {
+  req: IRequestCore<any>;
+  method: string;
+  url: string;
+  apiBase: string;
+  collectionName: string;
+  id: string;
+  query: Map<string, string[]>;
+  extras?: string;
+  resourceUrl: string;
+  body?: any;
+  interceptor?: IRequestInterceptor;
+  interceptorIds?: string[];
+}
 
 interface IInterceptorInfo {
   interceptor?: IRequestInterceptor;
