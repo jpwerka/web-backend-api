@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { IOutboundLoad } from '../entities/outbound-load/outbound-load.interface';
-import { IModalAction, ModalComponent } from '../modal/modal.component';
+import { IModalAction, ModalComponent } from '../components/modal/modal.component';
 import { OutboundLoadService } from '../services/outbound-load/outbound-load.service';
 import { IOutboundDocument } from '../entities/outbound-document/outbound-document.interface';
 import { from, of } from 'rxjs';

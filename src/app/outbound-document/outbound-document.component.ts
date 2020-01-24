@@ -1,7 +1,7 @@
 import { Component, ViewChild, OnInit } from '@angular/core';
 import { IOutboundDocument, IOutboundDocumentItems } from '../entities/outbound-document/outbound-document.interface';
 import { OutboundDocumentService } from '../services/outbound-document/outbound-document.service';
-import { ModalComponent, IModalAction } from '../modal/modal.component';
+import { ModalComponent, IModalAction } from '../components/modal/modal.component';
 import { FormGroup, FormControl, Validators, FormBuilder, FormArray, AbstractControl } from '@angular/forms';
 import { CustomerService } from '../services/customer/customer-service';
 import { ICustomer } from '../entities/customer/customer.interface';

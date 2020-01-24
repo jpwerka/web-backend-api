@@ -7,10 +7,9 @@ import { ProductComponent } from './product/product.component';
 import { AppWebBackendApiModule } from './backend/app-web-backend-api.module';
 import { AppRoutingModule } from './app-routing.module';
 import { CustomerComponent } from './customer/customer.component';
-import { ModalComponent } from './modal/modal.component';
+import { ModalComponent } from './components/modal/modal.component';
 import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
 import { OutboundLoadComponent } from './outbound-load/outbound-load.component';
-
 
 @NgModule({
   imports: [
@@ -26,7 +25,7 @@ import { OutboundLoadComponent } from './outbound-load/outbound-load.component';
     ProductComponent,
     CustomerComponent,
     OutboundDocumentComponent,
-    OutboundLoadComponent
+    OutboundLoadComponent,
   ],
   bootstrap: [ AppComponent ]
 })

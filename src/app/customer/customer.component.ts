@@ -1,7 +1,7 @@
 import { Component, ViewChild, OnInit } from '@angular/core';
 import { ICustomer } from '../entities/customer/customer.interface';
 import { CustomerService } from '../services/customer/customer-service';
-import { ModalComponent, IModalAction } from '../modal/modal.component';
+import { ModalComponent, IModalAction } from '../components/modal/modal.component';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 
 @Component({
