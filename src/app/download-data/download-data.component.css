@@ -1,0 +1,17 @@
+form {
+  width: 500px;
+}
+
+label.for-radio {
+  font-weight: lighter !important;
+  padding-left: 8px;
+  cursor: pointer;
+}
+
+input[type=radio] {
+  cursor: pointer;
+}
+
+button {
+  float: right;
+}

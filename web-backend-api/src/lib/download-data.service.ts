@@ -1,9 +1,19 @@
 import { Injectable } from '@angular/core';
 import { stringify } from 'json5';
+import camelCase from 'lodash-es/camelCase';
+import kebabCase from 'lodash-es/kebabCase';
+import upperFirst from 'lodash-es/upperFirst';
 import { Observable } from 'rxjs';
 import { getBackendService } from './data-service/backend-data.mapper';
 import { IBackendService } from './interfaces/backend.interface';
 
+export type GetDataType = 'json' | 'json5' | 'typescript';
+
+export interface ITypescriptInfo {
+  hasInterface: boolean;
+  interfaceName?: string;
+  convertDate?: boolean;
+}
 
 @Injectable()
 export class DownloadDataService {
@@ -19,22 +29,55 @@ export class DownloadDataService {
   }
 
   downloadAsJson(collectionName: string, v5: boolean = true): Observable<any> {
+    return this.getOrDownloadData(collectionName, v5 ? 'json5' : 'json', true);
+  }
+
+  downloadData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<any> {
+    return this.getOrDownloadData(collectionName, getDataType, true, tsInfo);
+  }
+
+  getAllData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<any> {
+    return this.getOrDownloadData(collectionName, getDataType, false, tsInfo);
+  }
+
+  // tslint:disable-next-line: max-line-length
+  private getOrDownloadData(collectionName: string, getDataType: GetDataType, isDownload: boolean, tsInfo?: ITypescriptInfo): Observable<any> {
     return new Observable(observer => {
 
       this.dbService.getAllByFilter$(collectionName, undefined).subscribe(items => {
-        const contentStr = encodeURIComponent(v5 ? stringify(items, { space: 2 }) : JSON.stringify(items, null, 2));
-        const dataStr = 'data:text/json;charset=utf-8,' + contentStr;
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute('href', dataStr);
-        downloadAnchorNode.setAttribute('download', collectionName + '.json');
-        document.body.appendChild(downloadAnchorNode); // required for firefox
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-        observer.next();
+        let dataStr = getDataType === 'json' ? JSON.stringify(items, null, 2) : stringify(items, { space: 2 });
+        if (getDataType === 'typescript') {
+          const camelCaseName = camelCase(collectionName);
+          const singleName = camelCaseName.endsWith('es') ?
+            camelCaseName.substr(0, camelCaseName.length - 2) : camelCaseName.endsWith('s') ?
+              camelCaseName.substr(0, camelCaseName.length - 1) : camelCaseName;
+          const interfaceName = tsInfo && tsInfo.hasInterface ?
+            (tsInfo.interfaceName ? tsInfo.interfaceName + '[]' : ': I' + upperFirst(singleName) + '[]') : '';
+          let tsStr = 'export const collectionName = \'' + collectionName + '\';\n';
+          tsStr += 'export const ' + camelCaseName + interfaceName + ' =\n';
+          if (tsInfo.convertDate) {
+            const rx = /('\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z')/gm;
+            dataStr = tsStr + dataStr.replace(rx, 'new Date($1)');
+          } else {
+            dataStr = tsStr + dataStr;
+          }
+        }
+        if (isDownload) {
+          const contentStr = 'data:text/json;charset=utf-8,' + dataStr;
+          const fileName = (getDataType === 'typescript') ? kebabCase(collectionName) + '.mock.ts' : collectionName + '.json';
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute('href', contentStr);
+          downloadAnchorNode.setAttribute('download', fileName);
+          document.body.appendChild(downloadAnchorNode); // required for firefox
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+          observer.next();
+        } else {
+          observer.next(dataStr);
+        }
         observer.complete();
       },
       (error) => observer.error(error));
     });
   }
-
 }

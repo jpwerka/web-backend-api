@@ -2,7 +2,8 @@ import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-d
 
 export const collectionName = 'outbound_documents';
 
-export const outboundDocuments: IOutboundDocument[] = [
+export const outboundDocuments: IOutboundDocument[] =
+[
   {
     id: 1,
     identifier: '4167161881',

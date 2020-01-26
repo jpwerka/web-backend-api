@@ -1,0 +1,32 @@
+<form [formGroup]="downloadForm" #formDir="ngForm">
+
+  <div class="form-group">
+    <label for="collectionName">Collection name</label>
+    <select id="collectionName" class="form-control" formControlName="collectionName" required>
+      <option *ngFor="let collection of collections" value={{collection}}>
+        {{collection}}
+      </option>
+    </select>
+    <div *ngIf="collectionName.invalid && (collectionName.dirty || collectionName.touched)" class="form-control-error">
+
+      <div *ngIf="collectionName.errors.required">
+        Collection name is required.
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <div>
+      <input type="radio" id="downloadJson" name="downloadType" value="json" formControlName="downloadType" />
+      <label class="for-radio" for="downloadJson">Download data as JSON</label>
+    </div>
+    <div>
+      <input type="radio" id="downloadJson5" name="downloadType" value="json5" formControlName="downloadType" checked/>
+      <label class="for-radio" for="downloadJson5">Download data as JSON5</label>
+    </div>
+    <div>
+      <input type="radio" id="downloadTs" name="downloadType" value="typescript" formControlName="downloadType" />
+      <label class="for-radio" for="downloadTs">Download data as typescript</label>
+    </div>
+  </div>
+  <button (click)="downloadData()">Download</button>
+</form>

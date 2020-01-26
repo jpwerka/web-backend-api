@@ -4,6 +4,7 @@ import { ProductComponent } from './product/product.component';
 import { CustomerComponent } from './customer/customer.component';
 import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
 import { OutboundLoadComponent } from './outbound-load/outbound-load.component';
+import { DownloadDataComponent } from './download-data/download-data.component';
 
 const routes: Routes = [
   {
@@ -26,6 +27,10 @@ const routes: Routes = [
   {
     path: 'outbound-loads',
     component: OutboundLoadComponent,
+  },
+  {
+    path: 'download-data',
+    component: DownloadDataComponent,
   },
   {
     path: '**',
