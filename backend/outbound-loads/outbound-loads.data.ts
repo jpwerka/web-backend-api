@@ -15,6 +15,12 @@ dataService(collectionName, (dbService: IBackendService) => {
 
   dbService.addTransformPutMap(collectionName, transformPut);
 
+  dbService.addJoinGetAllMap(collectionName, {
+    fieldId: 'documentsId',
+    collectionSource: collectionDocuments,
+    transformerGet: true,
+  });
+
   // add interceptor to generate a document identifier
   dbService.addRequestInterceptor({
     method: 'POST',

@@ -1,14 +1,19 @@
 import { Observable } from 'rxjs';
 
+export interface IHeadersCore {
+  set(name: string, value: string | string[]): void | any;
+  append(name: string, value: string | string[]): void | any;
+  keys(): string[] | Iterator<string>;
+  get(name: string): string | string[] | null;
+  getAll?(name: string): string | string[] | null;
+}
+
 export interface IRequestCore<T> {
   method: string;
   url: string;
   urlWithParams?: string;
+  headers?: IHeadersCore;
   body?: any;
-}
-
-export interface IHeadersCore {
-  set(name: string, value: string): void | any;
 }
 
 export interface IResponseBase {

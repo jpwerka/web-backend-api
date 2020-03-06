@@ -54,12 +54,16 @@ export class HttpClientBackendService implements HttpBackend {
   }
 
   private createResponseOptions(url: string, status: number, body?: any): HttpResponse<any> {
+    let headers = (typeof body === 'string') ?
+      new HttpHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) :
+      new HttpHeaders({ 'Content-Type': 'application/json' });
+    if (status === STATUS.CREATED && !! body.id) {
+      headers = headers.set('Location', url + '/' + body.id);
+    }
     return new HttpResponse({
       body,
       url,
-      headers: (typeof body === 'string') ?
-        new HttpHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) :
-        new HttpHeaders({ 'Content-Type': 'application/json' }),
+      headers,
       status,
       statusText: getStatusText(status)
     });

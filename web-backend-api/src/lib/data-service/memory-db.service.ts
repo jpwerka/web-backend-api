@@ -71,7 +71,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   listCollections(): string[] {
-    return Array.from( this.db.keys() );
+    return Array.from(this.db.keys());
   }
 
   getInstance$(collectionName: string, id: any): Observable<any> {
@@ -97,7 +97,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const cursor = {
         index: 0,
         value: null,
-        continue: (): any => {}
+        continue: (): any => { }
       };
       while (cursor.index <= objectStore.length) {
         cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
@@ -132,7 +132,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           observer.next(response);
           observer.complete();
         },
-        (error) => observer.error(error));
+          (error) => observer.error(error));
       } else {
         let queryParams: IQueryParams = { count: 0 };
         const queryResults: IQueryResult = { hasNext: false, items: [] };
@@ -143,7 +143,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         const cursor = {
           index: 0,
           value: null,
-          continue: (): any => {}
+          continue: (): any => { }
         };
         while (cursor.index <= objectStore.length) {
           cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
@@ -160,7 +160,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           observer.next(response);
           observer.complete();
         },
-        (error) => observer.error(error));
+          (error) => observer.error(error));
       }
     });
   }
@@ -196,16 +196,17 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.push(item);
 
           item = await this.applyTransformersGetById(collectionName, clone(item));
-          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
-          return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
+          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
         })().then(response => {
           observer.next(response);
           observer.complete();
         }, error => observer.error(error));
       } else if (this.config.post409) {
         const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
-          {message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
-          detailedMessage: 'Use PUT instead.'});
+          {
+            message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
+            detailedMessage: 'Use PUT instead.'
+          });
         observer.error(response);
       } else {
         (async () => {
@@ -246,8 +247,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
     if (item.id && item.id !== findId) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST,
-        {message: `Request for '${collectionName}' id does not match item.id`,
-        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`}));
+        {
+          message: `Request for '${collectionName}' id does not match item.id`,
+          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+        }));
     }
 
     return new Observable((observer) => {
@@ -269,7 +272,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore[existingIx] = item;
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-           } else {
+          } else {
             item = await this.applyTransformersGetById(collectionName, clone(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
@@ -280,8 +283,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
       } else if (this.config.put404) {
         const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          {message: `'${collectionName}' item with id='${id} not found and may not be created with PUT.`,
-          detailedMessage: 'Use POST instead.'});
+          {
+            message: `'${collectionName}' item with id='${id} not found and may not be created with PUT.`,
+            detailedMessage: 'Use POST instead.'
+          });
         observer.error(response);
       } else {
         if (!item.id) {
@@ -297,8 +302,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.push(item);
 
           item = await this.applyTransformersGetById(collectionName, clone(item));
-          const response: any = this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
-          return response.clone({ headers: response.headers.append('Location', url + '/' + item.id) });
+          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
         })().then(response => {
           observer.next(response);
           observer.complete();
@@ -321,7 +325,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         observer.complete();
       } else {
         const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          {message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.'});
+          { message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.' });
         observer.error(response);
       }
     });

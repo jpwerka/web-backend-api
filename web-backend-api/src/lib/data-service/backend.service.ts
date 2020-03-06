@@ -109,9 +109,7 @@ export abstract class BackendService {
   }
 
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
-    if (joinField.transformerGet instanceof Array) {
-      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
-    }
+    this.normalizeJoinFieldTransformerGet(joinField);
     const joinGetAllMap = this.joinnersGetAllMap.get(collectionName);
     if (joinGetAllMap !== undefined) {
       joinGetAllMap.push(joinField);
@@ -121,9 +119,7 @@ export abstract class BackendService {
   }
 
   addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void {
-    if (joinField.transformerGet instanceof Array) {
-      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
-    }
+    this.normalizeJoinFieldTransformerGet(joinField);
     const joinGetByIdMap = this.joinnersGetByIdMap.get(collectionName);
     if (joinGetByIdMap !== undefined) {
       joinGetByIdMap.push(joinField);
@@ -133,11 +129,18 @@ export abstract class BackendService {
   }
 
   addJoinGetBothMap(collectionName: string, joinField: IJoinField): void {
-    if (joinField.transformerGet instanceof Array) {
-      joinField.transformerGet = this.createJoinFn(joinField.transformerGet);
-    }
+    this.normalizeJoinFieldTransformerGet(joinField);
     this.addJoinGetAllMap(collectionName, joinField);
     this.addJoinGetByIdMap(collectionName, joinField);
+  }
+
+  private normalizeJoinFieldTransformerGet(joinField: IJoinField) {
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+    } else if (typeof joinField.transformerGet === 'boolean') {
+      joinField.transformerGet = joinField.transformerGet ?
+        this.transformGetByIdMap.get(joinField.collectionSource) : undefined;
+    }
   }
 
   addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
@@ -370,6 +373,7 @@ export abstract class BackendService {
   }
 
   abstract getInstance$(collectionName: string, id: any): Observable<any>;
+  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
 
   abstract get$(
     collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
@@ -391,7 +395,7 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  private createJoinFn(properties: string[]): TransformGetFn {
+  private createJoinTransformGetFn(properties: string[]): TransformGetFn {
     return (item: any) => {
       const result = {};
       properties.forEach(property => {
@@ -433,40 +437,38 @@ export abstract class BackendService {
     }
   }
 
-  protected applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
+  protected async applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
     const self = this;
-    return new Promise<any>((resolve, reject) => {
-      const observers = [];
-      for (const joinField of joinFields) {
-        if (item[joinField.fieldId]) {
-          const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
-          observers.push(this.getInstance$(joinField.collectionSource, item[joinField.fieldId]).pipe(
-            concatMap(data => {
-              if (data && joinField.transformerGet instanceof Function) {
-                return from(self.applyTransformGetFn(data, joinField.transformerGet)).pipe(
-                  map(dataGet => {
-                    return { property: fieldDest, data: dataGet };
-                  })
-                );
-              } else {
-                return of({ property: fieldDest, data });
-              }
-            })
-          ));
+    for (const joinField of joinFields) {
+      const joinFieldItem = item[joinField.fieldId];
+      if (joinFieldItem) {
+        const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
+        let data: any;
+        if (Array.isArray(joinFieldItem)) {
+          const conditions: IQueryFilter[] = [{
+            name: 'id',
+            fn: this.createFilterArrayFn('id', joinFieldItem)
+          }];
+          data = await this.getAllByFilter$(joinField.collectionSource, conditions).toPromise();
+          if (data && data.length && joinField.transformerGet instanceof Function) {
+            let index = 0;
+            for (const element of data) {
+              data[index++] = await self.applyTransformGetFn(element, joinField.transformerGet);
+            }
+          }
+        } else {
+          data = await this.getInstance$(joinField.collectionSource, joinFieldItem).toPromise();
+          if (data && joinField.transformerGet instanceof Function) {
+            data = await self.applyTransformGetFn(data, joinField.transformerGet);
+          }
+        }
+        item[fieldDest] = data;
+        if (joinField.removeFieldId) {
+          delete item[joinField.fieldId];
         }
       }
-      if (observers.length > 0) {
-        merge(...observers).subscribe(
-          (result: { property: string, data: any }) => {
-            item[result.property] = result.data;
-          },
-          (error) => reject(error),
-          () => resolve(item)
-        );
-      } else {
-        resolve(item);
-      }
-    });
+    }
+    return item;
   }
 
   protected applyTransformGetFn(item: any, transformfn: TransformGetFn): Promise<any> {

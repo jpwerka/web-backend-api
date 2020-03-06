@@ -51,14 +51,21 @@ export interface IJoinField {
   collectionSource: string;
   /**
    * (Opcional) Campo destino que irá conter as propriedades do objeto recuperado
-   * @obs Caso não seja passado será utilizado o `fieldId`retirando o id do final
+   * @obs Caso não seja passado será utilizado o `fieldId` retirando o id do final
    */
   fieldDest?: string;
   /**
    * (Opcional) Lista de proprieadades a serem retornadas do item da coleção origem
    * ou uma instância de função que irá fazer esta transformação ao recuperar o item da coleção.
+   * @obs Caso não seja passado `true` será utilizado a função de transformação da coleção
+   * de origem dos dados, caso a mesma exista.
+   * @see addTransformGetByIdMap
    */
-  transformerGet?: string[] | TransformGetFn;
+  transformerGet?: string[] | TransformGetFn | boolean;
+  /**
+   * (Opcional) Indica se deve remover o campo utilizado como chave da busca do resultado a ser retornado
+   */
+  removeFieldId?: boolean;
 }
 
 export interface IBackendService {
