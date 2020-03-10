@@ -50,6 +50,11 @@ export interface IJoinField {
    */
   collectionSource: string;
   /**
+   * Nome do campo do tipo array ou objeto na coleção de origem que contém
+   * o campo a ser utilizado como id `fieldId` de busca para o JOIN.
+   */
+  collectionField?: string;
+  /**
    * (Opcional) Campo destino que irá conter as propriedades do objeto recuperado
    * @obs Caso não seja passado será utilizado o `fieldId` retirando o id do final
    */
@@ -60,12 +65,21 @@ export interface IJoinField {
    * @obs Caso não seja passado `true` será utilizado a função de transformação da coleção
    * de origem dos dados, caso a mesma exista.
    * @see addTransformGetByIdMap
+   * @see addTransformGetAllMap
    */
   transformerGet?: string[] | TransformGetFn | boolean;
   /**
    * (Opcional) Indica se deve remover o campo utilizado como chave da busca do resultado a ser retornado
    */
   removeFieldId?: boolean;
+  /**
+   * (Opcional) Lista de sub-joins a serem feitos sobre os itens recuperados da coleção origem.
+   * @obs Caso não seja passado `true` será utilizado a parametrização de JOIN da coleção
+   * de origem dos dados, caso a mesma exista.
+   * @see addJoinGetByIdMap
+   * @see addJoinGetAllMap
+   */
+  joinFields?: IJoinField[] | boolean;
 }
 
 export interface IBackendService {

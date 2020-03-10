@@ -109,7 +109,15 @@ export abstract class BackendService {
   }
 
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
-    this.normalizeJoinFieldTransformerGet(joinField);
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+    } else if (typeof joinField.transformerGet === 'boolean') {
+      joinField.transformerGet = joinField.transformerGet ?
+        this.transformGetAllMap.get(joinField.collectionSource) : undefined;
+    }
+    if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+      joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
+    }
     const joinGetAllMap = this.joinnersGetAllMap.get(collectionName);
     if (joinGetAllMap !== undefined) {
       joinGetAllMap.push(joinField);
@@ -119,7 +127,15 @@ export abstract class BackendService {
   }
 
   addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void {
-    this.normalizeJoinFieldTransformerGet(joinField);
+    if (joinField.transformerGet instanceof Array) {
+      joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+    } else if (typeof joinField.transformerGet === 'boolean') {
+      joinField.transformerGet = joinField.transformerGet ?
+        this.transformGetByIdMap.get(joinField.collectionSource) : undefined;
+    }
+    if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+      joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
+    }
     const joinGetByIdMap = this.joinnersGetByIdMap.get(collectionName);
     if (joinGetByIdMap !== undefined) {
       joinGetByIdMap.push(joinField);
@@ -129,18 +145,11 @@ export abstract class BackendService {
   }
 
   addJoinGetBothMap(collectionName: string, joinField: IJoinField): void {
-    this.normalizeJoinFieldTransformerGet(joinField);
-    this.addJoinGetAllMap(collectionName, joinField);
-    this.addJoinGetByIdMap(collectionName, joinField);
-  }
-
-  private normalizeJoinFieldTransformerGet(joinField: IJoinField) {
     if (joinField.transformerGet instanceof Array) {
       joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
-    } else if (typeof joinField.transformerGet === 'boolean') {
-      joinField.transformerGet = joinField.transformerGet ?
-        this.transformGetByIdMap.get(joinField.collectionSource) : undefined;
     }
+    this.addJoinGetAllMap(collectionName, joinField);
+    this.addJoinGetByIdMap(collectionName, joinField);
   }
 
   addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
@@ -440,31 +449,59 @@ export abstract class BackendService {
   protected async applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
     const self = this;
     for (const joinField of joinFields) {
-      const joinFieldItem = item[joinField.fieldId];
-      if (joinFieldItem) {
+      const isCollectionField = joinField.collectionField !== undefined && joinField.collectionField.trim().length > 0;
+      const joinFieldValue = isCollectionField ? item[joinField.collectionField] : item[joinField.fieldId];
+      if (joinFieldValue) {
         const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
         let data: any;
-        if (Array.isArray(joinFieldItem)) {
+        if (Array.isArray(joinFieldValue)) {
+          const ids = isCollectionField ? joinFieldValue.map(element => element[joinField.fieldId]) : joinFieldValue;
           const conditions: IQueryFilter[] = [{
             name: 'id',
-            fn: this.createFilterArrayFn('id', joinFieldItem)
+            fn: this.createFilterArrayFn('id', ids)
           }];
           data = await this.getAllByFilter$(joinField.collectionSource, conditions).toPromise();
-          if (data && data.length && joinField.transformerGet instanceof Function) {
-            let index = 0;
-            for (const element of data) {
-              data[index++] = await self.applyTransformGetFn(element, joinField.transformerGet);
+          // Reordena na mesma ordem existente dos ids de busca
+          const dataAux = [];
+          ids.forEach((id, index) => {
+            dataAux[index] = data.find(element => element.id === id);
+          });
+          if (joinField.transformerGet instanceof Function) {
+            for (let index = 0; index < dataAux.length; index++) {
+              dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
             }
           }
+          if (joinField.joinFields) {
+            for (let index = 0; index < dataAux.length; index++) {
+              dataAux[index] = await self.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
+            }
+          }
+          if (isCollectionField) {
+            joinFieldValue.forEach((element, index) => {
+              if (joinField.removeFieldId) {
+                delete element[joinField.fieldId];
+              }
+              element[fieldDest] = dataAux[index];
+            });
+          } else {
+            if (joinField.removeFieldId) {
+              delete item[joinField.fieldId];
+            }
+            item[fieldDest] = dataAux;
+          }
         } else {
-          data = await this.getInstance$(joinField.collectionSource, joinFieldItem).toPromise();
+          const id = isCollectionField ? joinFieldValue[joinField.fieldId] : joinFieldValue;
+          data = await this.getInstance$(joinField.collectionSource, id).toPromise();
           if (data && joinField.transformerGet instanceof Function) {
             data = await self.applyTransformGetFn(data, joinField.transformerGet);
           }
-        }
-        item[fieldDest] = data;
-        if (joinField.removeFieldId) {
-          delete item[joinField.fieldId];
+          if (joinField.joinFields) {
+            data = await self.applyJoinFields(data, joinField.joinFields as IJoinField[]);
+          }
+          if (joinField.removeFieldId) {
+            delete item[joinField.fieldId];
+          }
+          item[fieldDest] = data;
         }
       }
     }

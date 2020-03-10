@@ -19,6 +19,7 @@ dataService(collectionName, (dbService: IBackendService) => {
     fieldId: 'documentsId',
     collectionSource: collectionDocuments,
     transformerGet: true,
+    joinFields: true,
   });
 
   // add interceptor to generate a document identifier
