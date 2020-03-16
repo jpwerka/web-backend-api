@@ -468,20 +468,26 @@ export abstract class BackendService {
           });
           if (joinField.transformerGet instanceof Function) {
             for (let index = 0; index < dataAux.length; index++) {
-              dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
+              if (dataAux[index] !== undefined) {
+                dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
+              }
             }
           }
           if (joinField.joinFields) {
             for (let index = 0; index < dataAux.length; index++) {
-              dataAux[index] = await self.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
+              if (dataAux[index] !== undefined) {
+                dataAux[index] = await self.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
+              }
             }
           }
           if (isCollectionField) {
             joinFieldValue.forEach((element, index) => {
-              if (joinField.removeFieldId) {
-                delete element[joinField.fieldId];
+              if (dataAux[index] !== undefined) {
+                if (joinField.removeFieldId) {
+                  delete element[joinField.fieldId];
+                }
+                element[fieldDest] = dataAux[index];
               }
-              element[fieldDest] = dataAux[index];
             });
           } else {
             if (joinField.removeFieldId) {
@@ -495,13 +501,15 @@ export abstract class BackendService {
           if (data && joinField.transformerGet instanceof Function) {
             data = await self.applyTransformGetFn(data, joinField.transformerGet);
           }
-          if (joinField.joinFields) {
+          if (data && joinField.joinFields) {
             data = await self.applyJoinFields(data, joinField.joinFields as IJoinField[]);
           }
-          if (joinField.removeFieldId) {
-            delete item[joinField.fieldId];
+          if (data) {
+            if (joinField.removeFieldId) {
+              delete item[joinField.fieldId];
+            }
+            item[fieldDest] = data;
           }
-          item[fieldDest] = data;
         }
       }
     }
