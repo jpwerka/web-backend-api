@@ -62,7 +62,7 @@ export interface IJoinField {
   /**
    * (Opcional) Lista de proprieadades a serem retornadas do item da coleção origem
    * ou uma instância de função que irá fazer esta transformação ao recuperar o item da coleção.
-   * @obs Caso não seja passado `true` será utilizado a função de transformação da coleção
+   * @obs Caso seja passado `true` será utilizado a função de transformação da coleção
    * de origem dos dados, caso a mesma exista.
    * @see addTransformGetByIdMap
    * @see addTransformGetAllMap
@@ -74,7 +74,7 @@ export interface IJoinField {
   removeFieldId?: boolean;
   /**
    * (Opcional) Lista de sub-joins a serem feitos sobre os itens recuperados da coleção origem.
-   * @obs Caso não seja passado `true` será utilizado a parametrização de JOIN da coleção
+   * @obs Caso seja passado `true` será utilizado a parametrização de JOIN da coleção
    * de origem dos dados, caso a mesma exista.
    * @see addJoinGetByIdMap
    * @see addJoinGetAllMap

@@ -94,6 +94,12 @@ export abstract class BackendService {
       }
     }
     this.dbReadySubject = new BehaviorSubject(false);
+    let sub = this.dbReadySubject.subscribe(value => {
+      if (value) {
+        this.adjustJoinFields();
+        sub.unsubscribe();
+      }
+    });
   }
 
   backendUtils(value: IBackendUtils): void {
@@ -111,12 +117,6 @@ export abstract class BackendService {
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
     if (joinField.transformerGet instanceof Array) {
       joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
-    } else if (typeof joinField.transformerGet === 'boolean') {
-      joinField.transformerGet = joinField.transformerGet ?
-        this.transformGetAllMap.get(joinField.collectionSource) : undefined;
-    }
-    if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
-      joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
     }
     const joinGetAllMap = this.joinnersGetAllMap.get(collectionName);
     if (joinGetAllMap !== undefined) {
@@ -129,12 +129,6 @@ export abstract class BackendService {
   addJoinGetByIdMap(collectionName: string, joinField: IJoinField): void {
     if (joinField.transformerGet instanceof Array) {
       joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
-    } else if (typeof joinField.transformerGet === 'boolean') {
-      joinField.transformerGet = joinField.transformerGet ?
-        this.transformGetByIdMap.get(joinField.collectionSource) : undefined;
-    }
-    if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
-      joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
     }
     const joinGetByIdMap = this.joinnersGetByIdMap.get(collectionName);
     if (joinGetByIdMap !== undefined) {
@@ -282,6 +276,29 @@ export abstract class BackendService {
     }
 
     this.requestInterceptors.push(requestInterceptor);
+  }
+
+  private adjustJoinFields(): void {
+    this.joinnersGetAllMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+      joinFields.forEach((joinField: IJoinField) => {
+        if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+          joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
+        }
+        if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
+          joinField.transformerGet = this.transformGetAllMap.get(joinField.collectionSource);
+        }
+      });
+    });
+    this.joinnersGetByIdMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+      joinFields.forEach((joinField: IJoinField) => {
+        if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+          joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
+        }
+        if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
+          joinField.transformerGet = this.transformGetByIdMap.get(joinField.collectionSource);
+        }
+      });
+    });
   }
 
   private get dbReady(): Observable<boolean> {
@@ -466,17 +483,17 @@ export abstract class BackendService {
           ids.forEach((id, index) => {
             dataAux[index] = data.find(element => element.id === id);
           });
-          if (joinField.transformerGet instanceof Function) {
-            for (let index = 0; index < dataAux.length; index++) {
-              if (dataAux[index] !== undefined) {
-                dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
-              }
-            }
-          }
           if (joinField.joinFields) {
             for (let index = 0; index < dataAux.length; index++) {
               if (dataAux[index] !== undefined) {
                 dataAux[index] = await self.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
+              }
+            }
+          }
+          if (joinField.transformerGet instanceof Function) {
+            for (let index = 0; index < dataAux.length; index++) {
+              if (dataAux[index] !== undefined) {
+                dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
               }
             }
           }
@@ -498,11 +515,11 @@ export abstract class BackendService {
         } else {
           const id = isCollectionField ? joinFieldValue[joinField.fieldId] : joinFieldValue;
           data = await this.getInstance$(joinField.collectionSource, id).toPromise();
-          if (data && joinField.transformerGet instanceof Function) {
-            data = await self.applyTransformGetFn(data, joinField.transformerGet);
-          }
           if (data && joinField.joinFields) {
             data = await self.applyJoinFields(data, joinField.joinFields as IJoinField[]);
+          }
+          if (data && joinField.transformerGet instanceof Function) {
+            data = await self.applyTransformGetFn(data, joinField.transformerGet);
           }
           if (data) {
             if (joinField.removeFieldId) {
