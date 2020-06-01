@@ -55,6 +55,7 @@ export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArg
           });
         } else {
           console.warn('[WebBackendApi]', 'There is not collection in data service!');
+          dbService['dbReadySubject'].next(true);
           resolve(true);
         }
       }, error => {

@@ -51,7 +51,7 @@ export abstract class BackendConfigArgs {
    */
   host?: string;
   /**
-   * false (default) should pass unrecognized request URL through to original backend; true: 404
+   * false (default) return NOT FOUND (404) for unknown collection. false: should pass unrecognized request URL through to original backend;
    */
   passThruUnknownUrl?: boolean;
   /**
