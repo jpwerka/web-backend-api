@@ -218,6 +218,11 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.appendExistingPost) {
             item = Object.assign({}, objectStore[existingIx], item);
           }
+
+          if (!item.id) {
+            item['id'] = findId;
+          }
+
           objectStore[existingIx] = item;
 
           if (this.config.post204) {
@@ -267,6 +272,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           if (this.config.appendPut) {
             item = Object.assign({}, objectStore[existingIx], item);
+          }
+
+          if (!item.id) {
+            item['id'] = findId;
           }
 
           objectStore[existingIx] = item;

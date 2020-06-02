@@ -320,9 +320,6 @@ export class IndexedDbService extends BackendService implements IBackendService 
             });
           observer.error(response);
         } else { // if item already exists in collection
-          if (!item.id) {
-            item['id'] = findId;
-          }
 
           (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
@@ -333,6 +330,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
             if (self.config.appendExistingPost) {
               item = Object.assign({}, requestGet.result, item);
+            }
+
+            if (!item.id) {
+              item['id'] = findId;
             }
 
             const requestPut = objectStore.put(item);
@@ -415,6 +416,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
             if (self.config.appendPut) {
               item = Object.assign({}, requestGet.result, item);
+            }
+
+            if (!item['id']) {
+              item['id'] = findId;
             }
 
             const requestPut = objectStore.put(item);
