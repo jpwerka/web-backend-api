@@ -416,6 +416,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
             if (self.config.appendPut) {
               item = Object.assign({}, requestGet.result, item);
             }
+            
+            if (!item['id']) {
+              item['id'] = findId;
+            }
 
             const requestPut = objectStore.put(item);
             requestPut.onsuccess = () => {
