@@ -85,16 +85,16 @@ export abstract class BackendService {
   constructor(
     config: BackendConfigArgs = {}
   ) {
-    const loc = this.getLocation('/');
-    this.config.host = loc.host;     // default to app web server host
-    this.config.rootPath = loc.path; // default to path when app is served (e.g.'/')
     for (const prop in config) {
-      if (config[prop]) {
+      if (config.hasOwnProperty(prop)) {
         this.config[prop] = config[prop];
       }
     }
+    const loc = this.getLocation('/');
+    this.config.host = this.config.host ? this.config.host : loc.host;     // default to app web server host
+    this.config.rootPath = this.config.rootPath ? this.config.rootPath : loc.path; // default to path when app is served (e.g.'/')
     this.dbReadySubject = new BehaviorSubject(false);
-    let sub = this.dbReadySubject.subscribe(value => {
+    const sub = this.dbReadySubject.subscribe(value => {
       if (value) {
         this.adjustJoinFields();
         sub.unsubscribe();
