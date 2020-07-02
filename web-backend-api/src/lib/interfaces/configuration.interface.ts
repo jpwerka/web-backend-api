@@ -78,6 +78,10 @@ export abstract class BackendConfigArgs {
    * [] (default) POST method mappings for other methods
    */
   postsToOtherMethod?: IPostToOtherMethod[];
+  /**
+   * false (default) log request and response to console
+   */
+  log?: boolean;
 }
 
 /**

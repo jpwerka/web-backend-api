@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+import { IQueryFilter, FilterFn, FilterOp } from './query.interface';
 
 export interface IHeadersCore {
   set(name: string, value: string | string[]): void | any;
@@ -56,6 +57,15 @@ export interface IHttpErrorResponse extends IResponseBase {
 export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | any) => IHttpErrorResponse;
 
 export type ResponseFn = (url: string, status: number, body?: any) => IHttpResponse<any>;
+
+export interface IConditionsParam {
+  [key: string]: {
+    value: any,
+    filter?: FilterFn | FilterOp
+  };
+}
+
+export type ConditionsFn = (conditions: IConditionsParam) => IQueryFilter[];
 
 /**
  * Type for a response function that will be applied to a request interceptor.
@@ -189,6 +199,8 @@ export interface IInterceptorUtils {
     response: ResponseFn;
     /** Allows you to create a error response */
     errorResponse: ErrorResponseFn;
+    /** Allows you to create a conditions filter to apply on `getAllByFilter$` */
+    conditions: ConditionsFn;
   };
 }
 

@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 import { stringify } from 'json5';
-import camelCase from 'lodash-es/camelCase';
-import kebabCase from 'lodash-es/kebabCase';
-import upperFirst from 'lodash-es/upperFirst';
+import { camelCase, kebabCase, upperFirst } from 'lodash-es';
 import { Observable } from 'rxjs';
 import { getBackendService } from './data-service/backend-data.mapper';
 import { IBackendService } from './interfaces/backend.interface';

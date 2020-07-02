@@ -20,7 +20,8 @@ export class BackendConfig implements BackendConfigArgs {
       apiBase: undefined, // assumed to be the first path segment
       host: undefined,    // default value is actually set in InMemoryBackendService ctor
       rootPath: undefined, // default value is actually set in InMemoryBackendService ctor
-      postsToOtherMethod: undefined
+      postsToOtherMethod: undefined,
+      log: false,
     }, config);
   }
 }

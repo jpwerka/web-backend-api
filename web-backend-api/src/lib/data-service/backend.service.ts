@@ -1,9 +1,9 @@
 import { BehaviorSubject, Observable, throwError, of, from, merge } from 'rxjs';
-import { concatMap, first, map } from 'rxjs/operators';
+import { concatMap, first, map, tap } from 'rxjs/operators';
 import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 // tslint:disable-next-line: max-line-length
-import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod } from '../interfaces/interceptor.interface';
+import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod, ConditionsFn } from '../interfaces/interceptor.interface';
 // tslint:disable-next-line: max-line-length
 import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
@@ -305,9 +305,26 @@ export abstract class BackendService {
     return this.dbReadySubject.asObservable().pipe(first((r: boolean) => r));
   }
 
+  protected logRequest(request: IRequestCore<any>) {
+    if (this.config.log) {
+      console.log(request);
+    }
+  }
+
+  protected logResponse(response: IHttpResponse<any> | IHttpErrorResponse) {
+    if (this.config.log) {
+      console.log(response);
+    }
+  }
+
   handleRequest(req: IRequestCore<any>): Observable<any> {
     //  handle the request when there is an in-memory database
-    return this.dbReady.pipe(concatMap(() => this.handleRequest_(req)));
+    return this.dbReady.pipe(
+      map(() => this.logRequest(req)),
+      concatMap(() => this.handleRequest_(req).pipe(
+        tap(res => this.logResponse(res))
+      ))
+    );
   }
 
   private handleRequest_(req: IRequestCore<any>): Observable<any> {
@@ -723,7 +740,7 @@ export abstract class BackendService {
     };
   }
 
-  private createFilterArrayFn(field: string, value: string[]): FieldFn {
+  private createFilterArrayFn(field: string, value: Array<any>): FieldFn {
     return (item: any) => {
       return value.includes(item[field]);
     };
@@ -1089,6 +1106,27 @@ export abstract class BackendService {
       this.passThruBackend = this.utils.createPassThruBackend();
   }
 
+  private createFilterConditions(conditions: ConditionsFn): IQueryFilter[] {
+    const queryConditions = [];
+    for (const name in conditions) {
+      if (conditions.hasOwnProperty(name)) {
+        const condition: IQueryFilter = { name, or: false };
+        const param: { value: any, filter?: FilterFn | FilterOp } = conditions[name];
+        if (param.filter !== undefined && typeof param.filter === 'function') {
+          condition['fn'] = this.createFilterFn(param.value, param.filter);
+        } else if (param.filter !== undefined && typeof param.filter === 'string' && !Array.isArray(param.value)) {
+          condition['fn'] = this.createFilterOpFn(name, param.value, param.filter);
+        } else if (Array.isArray(param.value)) {
+          condition['fn'] = this.createFilterArrayFn(name, param.value);
+        } else {
+          condition['rx'] = new RegExp(param.value, this.config.caseSensitiveSearch ? undefined : 'i');
+        }
+        queryConditions.push(condition);
+      }
+    }
+    return queryConditions;
+  }
+
   private createInterceptorUtils(
     url: string, id?: string, interceptorIds?: string[], query?: Map<string, string[]>, body?: any
   ): IInterceptorUtils {
@@ -1100,7 +1138,8 @@ export abstract class BackendService {
       body,
       fn: {
         response: this.utils.createResponseOptions,
-        errorResponse: this.utils.createErrorResponseOptions
+        errorResponse: this.utils.createErrorResponseOptions,
+        conditions: this.createFilterConditions.bind(this)
       }
     };
   }
