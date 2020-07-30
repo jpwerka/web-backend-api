@@ -252,7 +252,6 @@ export class IndexedDbService extends BackendService implements IBackendService 
   post$(collectionName: string, id: string, item: any, url: string): Observable<any> {
     const self = this;
     return new Observable((observer) => {
-      const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
 
       if (item['id']) {
         item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
@@ -276,7 +275,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       if (!findId) {
         requestGet = { result: false, onsuccess: () => { }, onerror: () => { } };
       } else {
-        requestGet = objectStore.get(findId);
+        requestGet = self.db.transaction(collectionName, 'readonly').objectStore(collectionName).get(findId);
       }
 
       requestGet.onsuccess = () => {
@@ -288,7 +287,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               item = await this.applyTransformPost(item, transformfn);
             }
           })().then(() => {
-            const requestAdd = objectStore.add(item);
+            const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
                 item['id'] = requestAdd.result;
@@ -336,7 +335,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               item['id'] = findId;
             }
 
-            const requestPut = objectStore.put(item);
+            const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
               (async () => {
                 if (this.config.put204) {
@@ -401,8 +400,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
     const self = this;
     return new Observable((observer) => {
-      const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
-      const requestGet = objectStore.get(findId);
+      const requestGet = self.db.transaction(collectionName, 'readonly').objectStore(collectionName).get(findId);
 
       requestGet.onsuccess = () => {
         if (requestGet.result) {
@@ -422,7 +420,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               item['id'] = findId;
             }
 
-            const requestPut = objectStore.put(item);
+            const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
               (async () => {
                 if (this.config.put204) {
@@ -466,7 +464,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
             }
           })().then(() => {
 
-            const requestAdd = objectStore.add(item);
+            const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
                 item['id'] = requestAdd.result;
