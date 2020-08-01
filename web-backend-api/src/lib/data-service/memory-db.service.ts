@@ -51,7 +51,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         if (!data.id) {
           data['id'] = this.generateStrategyId(objectStore, collectionName);
         }
-        objectStore.push(data);
+        objectStore.splice(this.sortedIndex(objectStore, data.id), 0, data);
         resolve(data['id']);
       } catch (error) {
         reject(error);
@@ -193,7 +193,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
             item = await this.applyTransformPost(item, transformfn);
           }
 
-          objectStore.push(item);
+          objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           item = await this.applyTransformersGetById(collectionName, clone(item));
           return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
@@ -308,7 +308,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
             item = await this.applyTransformPost(item, transformfn);
           }
 
-          objectStore.push(item);
+          objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           item = await this.applyTransformersGetById(collectionName, clone(item));
           return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
@@ -379,6 +379,22 @@ export class MemoryDbService extends BackendService implements IBackendService {
       return true;
     }
     return false;
+  }
+
+  private sortedIndex<T extends { id: any }>(collection: T[], id: any) {
+    let low = 0;
+    let high = collection.length;
+
+    while (low < high) {
+      // tslint:disable-next-line: no-bitwise
+      const mid = (low + high) >>> 1;
+      if (collection[mid].id < id) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
   }
 
   createPassThruBackend(): IPassThruBackend {
