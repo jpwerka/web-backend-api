@@ -5,7 +5,7 @@ import { BackendConfigArgs, BackendTypeArgs } from '../interfaces/configuration.
 import { MemoryDbService } from './memory-db.service';
 import { IndexedDbService } from './indexed-db.service';
 
-const dataServiceFn: Map<string, LoadFn> = new Map();
+const dataServiceFn: Map<string, LoadFn[]> = new Map();
 
 const backendConfig: BackendConfigArgs = new BackendConfig();
 export function getBackendConfig(): BackendConfigArgs {
@@ -18,7 +18,11 @@ export function getBackendType(): BackendTypeArgs {
 }
 
 export function dataService(collectionName: string, loadFn: LoadFn): void {
-  dataServiceFn.set(collectionName, loadFn);
+  if (dataServiceFn.has(collectionName)) {
+    dataServiceFn.get(collectionName).push(loadFn);
+  } else {
+    dataServiceFn.set(collectionName, [loadFn]);
+  }
 }
 
 let dbService: IBackendService;

@@ -110,7 +110,7 @@ export interface IBackendService {
    * Quando passado uma instancia de função válida no valor do mapeamento irá disparar
    * esta função para a coleção ao final do processo de criação de todas as coleções.
    */
-  createObjectStore(dataServiceFn: Map<string, LoadFn>): Promise<boolean>;
+  createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean>;
 
   /**
    * Verifica se existe uma coleção com o nome passado no backend

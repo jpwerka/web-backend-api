@@ -31,12 +31,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  createObjectStore(dataServiceFn: Map<string, LoadFn>): Promise<boolean> {
+  createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
-      dataServiceFn.forEach((loadFn, name) => {
+      dataServiceFn.forEach((loadsFn, name) => {
         this.db.set(name, []);
-        if (loadFn && loadFn instanceof Function) {
-          loadFn.call(null, this);
+        if (loadsFn && Array.isArray(loadsFn)) {
+          this.loadsFn.push(...loadsFn.filter(loadFn => loadFn instanceof Function));
         }
       });
       this.dbReadySubject.next(true);

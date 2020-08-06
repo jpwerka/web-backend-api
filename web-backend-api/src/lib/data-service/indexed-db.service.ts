@@ -71,16 +71,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  createObjectStore(dataServiceFn: Map<string, LoadFn>): Promise<boolean> {
+  createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
     const self = this;
     return new Promise<boolean>((resolve, reject) => {
       let objectStore: IDBObjectStore;
 
-      dataServiceFn.forEach((loadFn, name) => {
+      dataServiceFn.forEach((loadsFn, name) => {
         console.log('[IndexedDbService]', `${name} => Mock defined`);
         objectStore = self.db.createObjectStore(name, { keyPath: 'id', autoIncrement: self.config.strategyId === 'autoincrement' });
-        if (loadFn && loadFn instanceof Function) {
-          self.loadsFn.push(loadFn);
+        if (loadsFn && Array.isArray(loadsFn)) {
+          self.loadsFn.push(...loadsFn.filter(loadFn => loadFn instanceof Function));
         }
       });
 
