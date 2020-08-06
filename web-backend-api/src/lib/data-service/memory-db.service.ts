@@ -36,7 +36,11 @@ export class MemoryDbService extends BackendService implements IBackendService {
       dataServiceFn.forEach((loadsFn, name) => {
         this.db.set(name, []);
         if (loadsFn && Array.isArray(loadsFn)) {
-          this.loadsFn.push(...loadsFn.filter(loadFn => loadFn instanceof Function));
+          loadsFn.forEach(loadFn => {
+            if (loadFn && loadFn instanceof Function) {
+              loadFn.call(null, this);
+            }
+          });
         }
       });
       this.dbReadySubject.next(true);
