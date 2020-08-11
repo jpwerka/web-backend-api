@@ -16,7 +16,7 @@ export function httpClientBackendServiceFactory(
 @NgModule({})
 export class WebBackendApiModule {
 
-  static forRoot(): ModuleWithProviders {
+  static forRoot(): ModuleWithProviders<WebBackendApiModule> {
     return {
       ngModule: WebBackendApiModule,
       providers: [
@@ -30,7 +30,7 @@ export class WebBackendApiModule {
     };
   }
 
-  static forFeature(): ModuleWithProviders {
+  static forFeature(): ModuleWithProviders<WebBackendApiModule> {
     return WebBackendApiModule.forRoot();
   }
 }
