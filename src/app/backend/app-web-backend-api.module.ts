@@ -3,11 +3,11 @@ import { WebBackendApiModule } from 'web-backend-api/src';
 
 @NgModule({})
 export class AppWebBackendApiModule {
-  static forRoot(): ModuleWithProviders {
+  static forRoot(): ModuleWithProviders<WebBackendApiModule> {
     return WebBackendApiModule.forRoot();
   }
 
-  static forFeature(): ModuleWithProviders {
+  static forFeature(): ModuleWithProviders<WebBackendApiModule> {
     return WebBackendApiModule.forFeature();
   }
 }
