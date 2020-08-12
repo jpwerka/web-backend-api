@@ -13,6 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
+            "aot": true,
             "outputPath": "dist",
             "index": "src/index.html",
             "main": "src/main.ts",
@@ -25,7 +26,10 @@
             "styles": [
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "uuid"
+            ]
           },
           "configurations": {
             "production": {
@@ -53,10 +57,20 @@
                   "type": "initial",
                   "maximumWarning": "2mb",
                   "maximumError": "5mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb"
                 }
               ]
             },
             "backend": {
+              "budgets": [
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb"
+                }
+              ],
               "main": "src/main-mem.ts",
               "tsConfig": "tsconfig.mem.json",
               "optimization": false,
@@ -151,6 +165,11 @@
           "options": {
             "tsConfig": "web-backend-api/tsconfig.lib.json",
             "project": "web-backend-api/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "web-backend-api/tsconfig.lib.prod.json"
+            }
           }
         },
         "test": {
@@ -176,5 +195,8 @@
       }
     }
   },
-  "defaultProject": "web-backend-api-sample"
+  "defaultProject": "web-backend-api-sample",
+  "cli": {
+    "analytics": false
+  }
 }
