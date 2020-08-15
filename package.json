@@ -34,7 +34,7 @@
     "test:coverage": "ng test --code-coverage",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "build:api": "ng build web-backend-api",
+    "build:api": "ng build web-backend-api --prod",
     "test:api": "ng test web-backend-api",
     "lint:api": "ng lint web-backend-api"
   },
@@ -52,7 +52,8 @@
     "core-js": "2.6.10",
     "rxjs": "6.6.2",
     "tslib": "^2.0.0",
-    "zone.js": "~0.10.2"
+    "zone.js": "~0.10.2",
+    "json.date-extensions": "^1.2.2"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~0.1000.5",

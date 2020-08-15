@@ -22,6 +22,7 @@ export class BackendConfig implements BackendConfigArgs {
       rootPath: undefined, // default value is actually set in InMemoryBackendService ctor
       postsToOtherMethod: undefined,
       log: false,
+      jsonParseWithDate: false,
     }, config);
   }
 }
