@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, throwError, of, from, merge } from 'rxjs';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { concatMap, first, map, tap } from 'rxjs/operators';
 import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
@@ -10,6 +10,9 @@ import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
+
+declare const require: any;
+require('json.date-extensions');
 
 interface IRequestInfo {
   req: IRequestCore<any>;
@@ -317,12 +320,24 @@ export abstract class BackendService {
     }
   }
 
+  protected convertResponse(response: IHttpResponse<any> | IHttpErrorResponse): IHttpResponse<any> | IHttpErrorResponse {
+    if (this.config.jsonParseWithDate && response) {
+      const contentType = response.headers ? response.headers.get('Content-Type') : undefined;
+      const body = (response as IHttpResponse<any>).body;
+      if (contentType === 'application/json' && body) {
+        (response as IHttpResponse<any>).body = JSON.parse(JSON.stringify(body), (JSON as any).dateParser);
+      }
+    }
+    return response;
+  }
+
   handleRequest(req: IRequestCore<any>): Observable<any> {
     //  handle the request when there is an in-memory database
     return this.dbReady.pipe(
       map(() => this.logRequest(req)),
       concatMap(() => this.handleRequest_(req).pipe(
-        tap(res => this.logResponse(res))
+        tap(res => this.logResponse(res)),
+        map(res => this.convertResponse(res)),
       ))
     );
   }
