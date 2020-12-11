@@ -304,7 +304,7 @@ export abstract class BackendService {
     });
   }
 
-  private get dbReady(): Observable<boolean> {
+  private dbReady(): Observable<boolean> {
     return this.dbReadySubject.asObservable().pipe(first((r: boolean) => r));
   }
 
@@ -333,7 +333,7 @@ export abstract class BackendService {
 
   handleRequest(req: IRequestCore<any>): Observable<any> {
     //  handle the request when there is an in-memory database
-    return this.dbReady.pipe(
+    return this.dbReady().pipe(
       map(() => this.logRequest(req)),
       concatMap(() => this.handleRequest_(req).pipe(
         tap(res => this.logResponse(res)),
@@ -554,10 +554,17 @@ export abstract class BackendService {
             data = await self.applyTransformGetFn(data, joinField.transformerGet);
           }
           if (data) {
-            if (joinField.removeFieldId) {
-              delete item[joinField.fieldId];
+            if (isCollectionField) {
+              if (joinField.removeFieldId) {
+                delete  item[joinField.collectionField][joinField.fieldId];
+              }
+              item[joinField.collectionField][fieldDest] = data;
+            } else {
+              if (joinField.removeFieldId) {
+                delete item[joinField.fieldId];
+              }
+              item[fieldDest] = data;
             }
-            item[fieldDest] = data;
           }
         }
       }
