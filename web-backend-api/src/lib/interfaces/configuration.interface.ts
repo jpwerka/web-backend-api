@@ -82,6 +82,10 @@ export abstract class BackendConfigArgs {
    * false (default) log request and response to console
    */
   log?: boolean;
+  /**
+   * false (default) apply `JSON.parse()` with transform String dates in Date objetcs
+   */
+  jsonParseWithDate?: boolean;
 }
 
 /**
