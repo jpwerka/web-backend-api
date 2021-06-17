@@ -157,9 +157,9 @@ export interface IRequestInterceptor {
    * The response that must be returned when the interceptor is activated.
    * It can be a JSON in the format `IHttpResponse` or `IHttpErrorResponse` or else a function with the
    * signature `ResponseInterceptorFn` that will process the request and respond dynamically to it.
-   * @see IHttpResponse
-   * @see IHttpErrorResponse
-   * @see ResponseInterceptorFn
+   * @alias IHttpResponse
+   * @alias IHttpErrorResponse
+   * @alias ResponseInterceptorFn
    */
   response: ResponseInterceptorFn | IHttpResponse<any> | IHttpErrorResponse;
 }

@@ -46,7 +46,6 @@
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,
-              "extractCss": true,
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
@@ -76,7 +75,6 @@
               "optimization": false,
               "outputHashing": "all",
               "sourceMap": true,
-              "extractCss": true,
               "namedChunks": false,
               "aot": false,
               "extractLicenses": true,
@@ -161,7 +159,7 @@
       "prefix": "lib",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-ng-packagr:build",
+          "builder": "@angular-devkit/build-angular:ng-packagr",
           "options": {
             "tsConfig": "web-backend-api/tsconfig.lib.json",
             "project": "web-backend-api/ng-package.json"

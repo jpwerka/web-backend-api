@@ -64,8 +64,8 @@ export interface IJoinField {
    * ou uma instância de função que irá fazer esta transformação ao recuperar o item da coleção.
    * @obs Caso seja passado `true` será utilizado a função de transformação da coleção
    * de origem dos dados, caso a mesma exista.
-   * @see addTransformGetByIdMap
-   * @see addTransformGetAllMap
+   * @alias addTransformGetByIdMap
+   * @alias addTransformGetAllMap
    */
   transformerGet?: string[] | TransformGetFn | boolean;
   /**
@@ -76,8 +76,8 @@ export interface IJoinField {
    * (Opcional) Lista de sub-joins a serem feitos sobre os itens recuperados da coleção origem.
    * @obs Caso seja passado `true` será utilizado a parametrização de JOIN da coleção
    * de origem dos dados, caso a mesma exista.
-   * @see addJoinGetByIdMap
-   * @see addJoinGetAllMap
+   * @alias addJoinGetByIdMap
+   * @alias addJoinGetAllMap
    */
   joinFields?: IJoinField[] | boolean;
 }
@@ -196,8 +196,8 @@ export interface IBackendService {
    * Junção das funções `addJoinGetAllMap` e `addJoinGetByIdMap`.
    * Quando chamado esta função elá ira chamar as duas funções adicionando
    * o JOIN em ambos os endpoints (GetAll e GetById) com a mesma configuração
-   * @see addJoinGetAllMap
-   * @see addJoinGetByIdMap
+   * @alias addJoinGetAllMap
+   * @alias addJoinGetByIdMap
    */
   addJoinGetBothMap(collectionName: string, joinField: IJoinField): void;
 
@@ -286,7 +286,7 @@ export interface IBackendService {
    * `config.postsToOtherMethod`
    * @param collectionName - Nome da coleção a qual se deseja adicionar o mapeamento de/para
    * @param postToOtherMethod - Configurações do mapeamento de/para do método POST
-   * @see IPostToOtherMethod
+   * @alias IPostToOtherMethod
    * @example
    *   // URL => http://myhost/api/produtos/123/excluir
    *   service.addPostToOtherMethodMap('produtos', {
@@ -309,7 +309,7 @@ export interface IBackendService {
    * determinada requisição com base no método, url e parâmetros fornecendo uma
    * resposta customizada conforme a necessidade.
    * @param requestInterceptor - Objeto que representa interface de um interceptor
-   * @see IRequestInterceptor
+   * @alias IRequestInterceptor
    * @example
    *  // add interceptor to generate a document identifier in backend
    *  // intercept the url: http://myhost.com/api/documents/identifier
@@ -332,8 +332,8 @@ export interface IBackendService {
    * resposta customizada conforme a necessidade.
    * Nesta variação a propriedade `response` não aceita intância de função
    * @param value - Objeto que deve conter a estrtura mínima da interface de um interceptor
-   * @see IRequestInterceptor
-   * @see addRequestInterceptor
+   * @alias IRequestInterceptor
+   * @alias addRequestInterceptor
    */
   addRequestInterceptorByValue(value: any): void;
 
@@ -392,7 +392,7 @@ export interface IBackendService {
    * @param item Conteúdo do corpo da requisição HTTP
    * @param url URl a ser utilizada na resposta
    * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
-   * @see BackendConfigArgs
+   * @alias BackendConfigArgs
    */
   post$(collectionName: string, id: string, item: any, url: string): Observable<any>;
 
@@ -407,7 +407,7 @@ export interface IBackendService {
    * @param item Conteúdo do corpo da requisição HTTP
    * @param url URl a ser utilizada na resposta
    * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
-   * @see BackendConfigArgs
+   * @alias BackendConfigArgs
    */
   put$(collectionName: string, id: string, item: any, url: string): Observable<any>;
 
