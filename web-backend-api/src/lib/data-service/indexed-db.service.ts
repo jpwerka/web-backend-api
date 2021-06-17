@@ -220,9 +220,14 @@ export class IndexedDbService extends BackendService implements IBackendService 
             }
             return item;
           })(request.result).then(item => {
-            response = self.utils.createResponseOptions(url, item ? STATUS.OK : STATUS.NOT_FOUND, item);
-            observer.next(response);
-            observer.complete();
+            if (item) {
+              response = self.utils.createResponseOptions(url, STATUS.OK, item);
+              observer.next(response);
+              observer.complete();
+            } else {
+              response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
+              observer.error(response);
+            }
           },
             (error) => observer.error(error));
         } else {

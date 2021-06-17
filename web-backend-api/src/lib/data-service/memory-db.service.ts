@@ -132,9 +132,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
           }
           return itemAsync;
         })(item).then(itemAsync => {
-          const response = this.utils.createResponseOptions(url, itemAsync ? STATUS.OK : STATUS.NOT_FOUND, this.bodify(itemAsync));
-          observer.next(response);
-          observer.complete();
+          if (itemAsync) {
+            const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
+            observer.next(response);
+            observer.complete();
+          } else {
+            const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
+            observer.error(response);
+          }
         },
           (error) => observer.error(error));
       } else {
