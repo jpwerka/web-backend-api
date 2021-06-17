@@ -47,7 +47,7 @@ export function removeLeftSlash(path: string) {
 }
 
 export function paramParser(rawParams: string): Map<string, string[]> {
-  const map = new Map<string, string[]>();
+  const mapParam = new Map<string, string[]>();
   if (rawParams.length > 0) {
     const params: string[] = rawParams.split('&');
     params.forEach((param: string) => {
@@ -55,12 +55,12 @@ export function paramParser(rawParams: string): Map<string, string[]> {
       const [key, val]: string[] = eqIdx === -1 ?
         [decodeURI(param), ''] :
         [decodeURI(param.slice(0, eqIdx)), decodeURI(param.slice(eqIdx + 1))];
-      const list = map.get(key) || [];
+      const list = mapParam.get(key) || [];
       list.push(val);
-      map.set(key, list);
+      mapParam.set(key, list);
     });
   }
-  return map;
+  return mapParam;
 }
 
 export abstract class BackendService {
