@@ -1,10 +1,11 @@
-// tslint:disable-next-line: max-line-length
-import { HttpBackend, HttpEvent, HttpRequest, HttpXhrBackend, XhrFactory, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
-import { Inject, Injectable, Optional, InjectionToken } from '@angular/core';
+
+import { XhrFactory } from '@angular/common';
+import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
+import { Inject, Injectable, InjectionToken, Optional } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { IPassThruBackend, IErrorMessage } from './interfaces/interceptor.interface';
+import { IErrorMessage, IPassThruBackend } from './interfaces/interceptor.interface';
 import { IBackendService } from './interfaces/interface.index';
-import { STATUS, getStatusText } from './utils/http-status-codes';
+import { getStatusText, STATUS } from './utils/http-status-codes';
 
 export const BACKEND_SERVICE = new InjectionToken<IBackendService>('backend.service');
 

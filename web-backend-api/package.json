@@ -1,6 +1,6 @@
 {
   "name": "web-backend-api",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": false,
   "description": "API para simular um backend em memoria para ser usado em aplicações angular",
   "readmeFilename": "README.md" ,
@@ -27,8 +27,8 @@
   },
   "main": "public-api.ts",
   "peerDependencies": {
-    "@angular/common": "^11.2.0",
-    "@angular/core": "^11.2.0",
+    "@angular/common": "^12.0.0",
+    "@angular/core": "^12.0.0",
     "lodash-es": "^4.17.3",
     "json5": "^2.1.0",
     "uuid": "^3.3.3",
