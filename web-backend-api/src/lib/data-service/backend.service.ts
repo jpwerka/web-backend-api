@@ -282,25 +282,41 @@ export abstract class BackendService {
   }
 
   private adjustJoinFields(): void {
-    this.joinnersGetAllMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+    const adjustJoinFieldsGetAll = (joinFields: IJoinField[]) => {
       joinFields.forEach((joinField: IJoinField) => {
         if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
           joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
         }
         if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
           joinField.transformerGet = this.transformGetAllMap.get(joinField.collectionSource);
+        } else if (Array.isArray(joinField.transformerGet)) {
+          joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+        }
+        if (Array.isArray(joinField.joinFields)) {
+          adjustJoinFieldsGetAll(joinField.joinFields);
         }
       });
-    });
-    this.joinnersGetByIdMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+    };
+    const adjustJoinFieldsGetById = (joinFields: IJoinField[]) => {
       joinFields.forEach((joinField: IJoinField) => {
         if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
           joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
         }
         if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
           joinField.transformerGet = this.transformGetByIdMap.get(joinField.collectionSource);
+        } else if (Array.isArray(joinField.transformerGet)) {
+          joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+        }
+        if (Array.isArray(joinField.joinFields)) {
+          adjustJoinFieldsGetById(joinField.joinFields);
         }
       });
+    };
+    this.joinnersGetAllMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+      adjustJoinFieldsGetAll(joinFields);
+    });
+    this.joinnersGetByIdMap.forEach((joinFields: IJoinField[], collectionName: string) => {
+      adjustJoinFieldsGetById(joinFields);
     });
   }
 
