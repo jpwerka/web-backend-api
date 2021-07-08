@@ -1,6 +1,6 @@
 {
   "name": "web-backend-api",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "private": false,
   "description": "API para simular um backend em memoria para ser usado em aplicações angular",
   "readmeFilename": "README.md" ,
