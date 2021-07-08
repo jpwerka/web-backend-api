@@ -14,7 +14,7 @@ export interface IRequestCore<T> {
   url: string;
   urlWithParams?: string;
   headers?: IHeadersCore;
-  body?: any;
+  body?: T;
 }
 
 export interface IResponseBase {
@@ -51,16 +51,16 @@ export interface IErrorMessage {
 }
 
 export interface IHttpErrorResponse extends IResponseBase {
-  error?: IErrorMessage | any;
+  error?: IErrorMessage | unknown;
 }
 
-export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | any) => IHttpErrorResponse;
+export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | unknown) => IHttpErrorResponse;
 
-export type ResponseFn = (url: string, status: number, body?: any) => IHttpResponse<any>;
+export type ResponseFn = (url: string, status: number, body?: unknown) => IHttpResponse<unknown>;
 
 export interface IConditionsParam {
   [key: string]: {
-    value: any,
+    value: unknown,
     filter?: FilterFn | FilterOp
   };
 }
@@ -190,7 +190,7 @@ export interface IInterceptorUtils {
   /**
    * Request body, when exists
    */
-  body?: any;
+  body?: unknown;
   /**
    * Utility to assemble responses in the standard format expected by the library.
    */

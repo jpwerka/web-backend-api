@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
+import { IBackendService, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
+import { IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, clone } from './backend.service';
 
@@ -12,7 +13,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
   private dbName: string;
   private db: IDBDatabase;
 
-  constructor(config: BackendConfigArgs, dbName: string = 'web-backend-api-db') {
+  constructor(config: BackendConfigArgs, dbName = 'web-backend-api-db') {
     super(config);
     this.dbName = dbName;
   }
@@ -23,7 +24,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return new Promise<boolean>((resolve, reject) => {
       const request = window.indexedDB.open(self.dbName, 1);
 
-      request.onsuccess = (event: Event) => {
+      request.onsuccess = () => {
         self.db = request.result;
         console.log('[IndexedDbService] Database created!');
       };
@@ -33,7 +34,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         reject((event.target as any).errorCode);
       };
 
-      request.onupgradeneeded = (event: Event) => {
+      request.onupgradeneeded = () => {
         self.db = request.result;
         console.log('[IndexedDbService] Database upgrade nedded!');
         resolve(true);
@@ -84,7 +85,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         }
       });
 
-      objectStore.transaction.oncomplete = (event: Event) => {
+      objectStore.transaction.oncomplete = () => {
         self.loadsFn.forEach(fn => {
           fn.call(null, self);
         });
@@ -107,7 +108,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         }
 
         const request = objectStore.add(data);
-        request.onsuccess = (event: Event) => {
+        request.onsuccess = () => {
           resolve((request.result !== undefined) ? request.result['id'] : null);
         };
         request.onerror = (event: Event) => {
@@ -124,7 +125,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return new Promise<boolean>((resolve, reject) => {
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const request = objectStore.clear();
-      request.onsuccess = (event: Event) => {
+      request.onsuccess = () => {
         resolve(true);
       };
       request.onerror = (event: Event) => {
@@ -148,12 +149,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
   getInstance$(collectionName: string, id: any): Observable<any> {
     return new Observable((observer) => {
-      let request: IDBRequest<any>;
+      let request: IDBRequest<unknown>;
       const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       if (id !== undefined && id !== '') {
-        id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
+        id = (this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id) as number;
         request = objectStore.get(id);
-        request.onsuccess = (event) => {
+        request.onsuccess = () => {
           observer.next(request.result);
           observer.complete();
         };
@@ -175,7 +176,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       const queryResults: IQueryResult = { hasNext: false, items: [] };
 
       request.onsuccess = (event) => {
-        const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
+        const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
         if (self.getAllItems(cursor, queryResults, queryParams)) {
           observer.next(queryResults.items);
           observer.complete();
@@ -193,7 +194,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     const self = this;
     return new Observable((observer) => {
       let response: any;
-      let request: IDBRequest<any>;
+      let request: IDBRequest<unknown>;
       let isCursor = false;
       let queryParams: IQueryParams = { count: 0 };
       const queryResults: IQueryResult = { hasNext: false, items: [] };
@@ -214,7 +215,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         if (!isCursor) {
-          (async (item: any) => {
+          (async (item: unknown) => {
             if (item) {
               item = await self.applyTransformersGetById(collectionName, item);
             }
@@ -231,7 +232,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           },
             (error) => observer.error(error));
         } else {
-          const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
+          const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
           if (self.getAllItems(cursor, queryResults, queryParams)) {
             (async () => {
               if (queryResults.items.length) {
@@ -254,15 +255,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  post$(collectionName: string, id: string, item: any, url: string): Observable<any> {
+  post$(collectionName: string, id: string, item: unknown, url: string): Observable<any> {
     const self = this;
     return new Observable((observer) => {
 
-      if (item['id']) {
-        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      if (item.id) {
+        item.id = (this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ?
+          parseInt(item.id, 10) : item.id) as number;
       } else {
         if (self.config.strategyId !== 'autoincrement') {
-          item['id'] = self.generateStrategyId();
+          item.id = self.generateStrategyId();
         } else if (item.hasOwnProperty('id')) {
           delete item.id;
         }
@@ -276,9 +278,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
       } else {
         findId = item.id;
       }
-      let requestGet: any;
+      let requestGet: IDBRequest<unknown>;
       if (!findId) {
-        requestGet = { result: false, onsuccess: () => { }, onerror: () => { } };
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        requestGet = { result: false, onsuccess: () => true, onerror: () => false } as any;
       } else {
         requestGet = self.db.transaction(collectionName, 'readonly').objectStore(collectionName).get(findId);
       }
@@ -286,7 +289,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       requestGet.onsuccess = () => {
         if (!requestGet.result) {
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPost(item, transformfn);
@@ -325,7 +328,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           observer.error(response);
         } else { // if item already exists in collection
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPut(requestGet.result, item, transformfn);
@@ -342,7 +345,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
             const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
-              (async () => {
+              void (async () => {
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
@@ -379,13 +382,13 @@ export class IndexedDbService extends BackendService implements IBackendService 
       };
 
       if (!findId) { // fake request
-        requestGet.onsuccess();
+        requestGet.onsuccess({} as any);
       }
     });
   }
 
   put$(collectionName: string, id: string, item: any, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }
@@ -410,7 +413,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       requestGet.onsuccess = () => {
         if (requestGet.result) {
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPut(requestGet.result, item, transformfn);
@@ -427,7 +430,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
             const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
-              (async () => {
+              void (async () => {
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
@@ -462,7 +465,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
             item['id'] = findId;
           }
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPost(item, transformfn);
@@ -507,7 +510,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
   }
 
   delete$(collectionName: string, id: string, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }

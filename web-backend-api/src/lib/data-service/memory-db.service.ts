@@ -249,7 +249,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   put$(collectionName: string, id: string, item: any, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }
@@ -330,7 +330,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   delete$(collectionName: string, id: string, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }
@@ -395,7 +395,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     let high = collection.length;
 
     while (low < high) {
-      // tslint:disable-next-line: no-bitwise
+      // eslint-disable-next-line no-bitwise
       const mid = (low + high) >>> 1;
       if (collection[mid].id < id) {
         low = mid + 1;

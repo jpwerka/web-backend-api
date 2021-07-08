@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-// tslint:disable-next-line: max-line-length
+// eslint-disable-next-line max-len
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IPassThruBackend, IRequestCore, IRequestInterceptor, IPostToOtherMethod } from './interceptor.interface';
 import { FilterFn, FilterOp, IQuickFilter, IQueryFilter } from './query.interface';
 
@@ -17,7 +17,7 @@ export type LoadFn = (dbService: IBackendService) => void;
  * @param item - Instância do item da coleção conforme está `persistido` no backend
  * @param dbService - Instância do serviço de backend
  */
-export type TransformGetFn = (item: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformGetFn = (item: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
@@ -25,7 +25,7 @@ export type TransformGetFn = (item: any, dbService: IBackendService) => any|Obse
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
  */
-export type TransformPostFn = (body: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformPostFn = (body: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
@@ -34,7 +34,7 @@ export type TransformPostFn = (body: any, dbService: IBackendService) => any|Obs
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
  */
-export type TransformPutFn = (item: any, body: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformPutFn = (item: unknown, body: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
 
 /**
  * Interface que permite o mapeamento dos JOINs a serem feitos ao recuperar um item da coleção
@@ -89,7 +89,7 @@ export interface IBackendService {
    * @param req Requisição HTTP a ser processada
    * @returns Um observable com uma resposta HTTP indicando sucesso ou erro na operação.
    */
-  handleRequest(req: IRequestCore<any>): Observable<any>;
+  handleRequest(req: IRequestCore<unknown>): Observable<unknown>;
 
   /* set */ backendUtils(value: IBackendUtils): void;
 
@@ -130,7 +130,7 @@ export interface IBackendService {
    * @param data - Dado (objeto) que se deseja adicionar a coleção
    * @return Uma Promisse que devolve o id da entidade armazenada.
    */
-  storeData(collectionName: string, data: any): Promise<string | number>;
+  storeData(collectionName: string, data: unknown): Promise<string | number>;
 
   /**
    * Limpa todos os registro de uma determinada coleção
@@ -354,7 +354,7 @@ export interface IBackendService {
    *       ))
    *   }
    */
-  getInstance$(collectionName: string, id: any): Observable<any>;
+  getInstance$(collectionName: string, id: string | number): Observable<unknown>;
 
   /**
    * Permite buscar itens diretamente da coleção através de condições. Pode ser utilizado para complementar informações
@@ -364,7 +364,7 @@ export interface IBackendService {
    * @param conditions - Lista de condições a serem aplicadas para filtar os itens
    * @returns Um observable que retorna a listagem dos itens quando completo.
    */
-  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
+  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<unknown[]>;
 
   /**
    * Permite recuperar um ou mais itens de uma coleação retonando um resposta HTTP.
@@ -379,7 +379,7 @@ export interface IBackendService {
    * @param caseSensitiveSearch Indica se a pesquisa deve ser case sensitive.
    * @returns Um observable que retorna uma resposta HTTP contendo o item ou os itens no corpo da mesma
    */
-  get$(collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string): Observable<any>;
+  get$(collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string): Observable<unknown>;
 
   /**
    * Permite criar ou atualizar um item na coleção
@@ -394,7 +394,7 @@ export interface IBackendService {
    * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
    * @alias BackendConfigArgs
    */
-  post$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  post$(collectionName: string, id: string, item: any, url: string): Observable<unknown>;
 
   /**
    * Permite atualizar ou criar um item na coleção
@@ -409,7 +409,7 @@ export interface IBackendService {
    * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
    * @alias BackendConfigArgs
    */
-  put$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  put$(collectionName: string, id: string, item: any, url: string): Observable<unknown>;
 
   /**
    * Permite excluir um item de uma determinada coleção.
@@ -420,12 +420,12 @@ export interface IBackendService {
    * @param url URl a ser utilizada na resposta
    * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
    */
-  delete$(collectionName: string, id: string, url: string): Observable<any>;
+  delete$(collectionName: string, id: string, url: string): Observable<unknown>;
 
 }
 
 export interface IBackendUtils {
   createPassThruBackend(): IPassThruBackend;
   createResponseOptions<T>(url: string, status: number, body?: T): IHttpResponse<T>;
-  createErrorResponseOptions(url: string, status: number, error?: IErrorMessage | any): IHttpErrorResponse;
+  createErrorResponseOptions(url: string, status: number, error?: IErrorMessage | unknown): IHttpErrorResponse;
 }

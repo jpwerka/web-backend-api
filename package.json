@@ -35,7 +35,8 @@
     "lint": "ng lint",
     "e2e": "ng e2e",
     "build:api": "ng build web-backend-api --configuration production",
-    "lint:api": "ng lint web-backend-api"
+    "lint:api": "ng lint web-backend-api",
+    "eslint:api": "ng eslint web-backend-api"
   },
   "dependencies": {
     "@angular/animations": "12.0.5",
@@ -57,13 +58,21 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "~12.0.4",
     "@angular-devkit/core": "^12.0.4",
+    "@angular-eslint/builder": "12.1.0",
+    "@angular-eslint/eslint-plugin": "12.1.0",
+    "@angular-eslint/eslint-plugin-template": "12.1.0",
+    "@angular-eslint/schematics": "12.1.0",
+    "@angular-eslint/template-parser": "12.1.0",
     "@angular/cli": "~12.0.4",
     "@angular/compiler-cli": "~12.0.5",
     "@angular/language-service": "~12.0.5",
     "@types/jasmine": "~3.6.0",
     "@types/jasminewd2": "~2.0.3",
     "@types/node": "^12.11.1",
+    "@typescript-eslint/eslint-plugin": "4.23.0",
+    "@typescript-eslint/parser": "4.23.0",
     "codelyzer": "^6.0.0",
+    "eslint": "^7.26.0",
     "fs-jetpack": "^2.2.2",
     "inline-css": "^2.4.2",
     "json5": "^2.1.1",

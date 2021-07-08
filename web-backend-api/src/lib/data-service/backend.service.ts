@@ -2,9 +2,7 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { concatMap, first, map, tap } from 'rxjs/operators';
 import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-// tslint:disable-next-line: max-line-length
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod, ConditionsFn } from '../interfaces/interceptor.interface';
-// tslint:disable-next-line: max-line-length
 import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
@@ -12,10 +10,11 @@ import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
 declare const require: any;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 require('json.date-extensions');
 
-interface IRequestInfo {
-  req: IRequestCore<any>;
+interface IRequestInfo<T> {
+  req: IRequestCore<T>;
   method: string;
   url: string;
   apiBase: string;
@@ -24,7 +23,7 @@ interface IRequestInfo {
   query: Map<string, string[]>;
   extras?: string;
   resourceUrl: string;
-  body?: any;
+  body?: T;
   interceptor?: IRequestInterceptor;
   interceptorIds?: string[];
 }
@@ -34,15 +33,15 @@ interface IInterceptorInfo {
   interceptorIds?: string[];
 }
 
-export function clone(data: any) {
-  return JSON.parse(JSON.stringify(data));
+export function clone(data: any): any {
+  return JSON.parse(JSON.stringify(data)) as any;
 }
 
-export function removeRightSlash(path: string) {
+export function removeRightSlash(path: string): string {
   return path.replace(/\/$/, '');
 }
 
-export function removeLeftSlash(path: string) {
+export function removeLeftSlash(path: string): string {
   return path.replace(/^\//, '');
 }
 
@@ -66,16 +65,16 @@ export function paramParser(rawParams: string): Map<string, string[]> {
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
-  protected replaceMap: Map<string, Array<string[]>> = new Map();
-  protected postToOtherMethodMap: Map<string, IPostToOtherMethod[]> = new Map();
-  protected transformGetAllMap: Map<string, TransformGetFn> = new Map();
-  protected transformGetByIdMap: Map<string, TransformGetFn> = new Map();
-  protected joinnersGetAllMap: Map<string, IJoinField[]> = new Map();
-  protected joinnersGetByIdMap: Map<string, IJoinField[]> = new Map();
-  protected transformPostMap: Map<string, TransformPostFn> = new Map();
-  protected transformPutMap: Map<string, TransformPutFn> = new Map();
-  protected fieldsFilterMap: Map<string, Map<string, FilterFn | FilterOp>> = new Map();
-  protected quickFilterMap: Map<string, IQuickFilter> = new Map();
+  protected replaceMap = new Map<string, Array<string[]>>();
+  protected postToOtherMethodMap = new Map<string, IPostToOtherMethod[]>();
+  protected transformGetAllMap = new Map<string, TransformGetFn>();
+  protected transformGetByIdMap = new Map<string, TransformGetFn>();
+  protected joinnersGetAllMap = new Map<string, IJoinField[]>();
+  protected joinnersGetByIdMap = new Map<string, IJoinField[]>();
+  protected transformPostMap = new Map<string, TransformPostFn>();
+  protected transformPutMap = new Map<string, TransformPutFn>();
+  protected fieldsFilterMap = new Map<string, Map<string, FilterFn | FilterOp>>();
+  protected quickFilterMap = new Map<string, IQuickFilter>();
 
   private requestInterceptors: Array<IRequestInterceptor> = [];
 
@@ -90,7 +89,7 @@ export abstract class BackendService {
   ) {
     for (const prop in config) {
       if (config.hasOwnProperty(prop)) {
-        this.config[prop] = config[prop];
+        this.config[prop] = config[prop] as unknown;
       }
     }
     const loc = this.getLocation('/');
@@ -109,11 +108,11 @@ export abstract class BackendService {
     this.utils = value;
   }
 
-  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetAllMap.set(collectionName, transformfn);
   }
 
-  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetByIdMap.set(collectionName, transformfn);
   }
 
@@ -149,19 +148,19 @@ export abstract class BackendService {
     this.addJoinGetByIdMap(collectionName, joinField);
   }
 
-  addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
+  addTransformPostMap(collectionName: string, transformfn: TransformPostFn): void {
     this.transformPostMap.set(collectionName, transformfn);
   }
 
-  addTransformPutMap(collectionName: string, transformfn: TransformPutFn) {
+  addTransformPutMap(collectionName: string, transformfn: TransformPutFn): void {
     this.transformPutMap.set(collectionName, transformfn);
   }
 
-  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter) {
+  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter): void {
     this.quickFilterMap.set(collectionName, quickFilter);
   }
 
-  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp) {
+  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp): void {
     let fieldsFilterMap = this.fieldsFilterMap.get(collectionName);
     if (fieldsFilterMap !== undefined) {
       fieldsFilterMap.set(field, filterfn);
@@ -172,7 +171,7 @@ export abstract class BackendService {
     }
   }
 
-  addReplaceUrl(collectionName: string, replace: string | string[]) {
+  addReplaceUrl(collectionName: string, replace: string | string[]): void {
     let replaceAdd = [];
     if (typeof replace === 'string') {
       replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
@@ -187,7 +186,7 @@ export abstract class BackendService {
     }
   }
 
-  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod) {
+  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod): void {
     const postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod !== undefined) {
       postsToOtherMethod.push(postToOtherMethod);
@@ -196,7 +195,7 @@ export abstract class BackendService {
     }
   }
 
-  addRequestInterceptor(requestInterceptor: IRequestInterceptor) {
+  addRequestInterceptor(requestInterceptor: IRequestInterceptor): void {
     if (!requestInterceptor.method) {
       requestInterceptor['method'] = 'GET';
     }
@@ -556,7 +555,7 @@ export abstract class BackendService {
           if (data) {
             if (isCollectionField) {
               if (joinField.removeFieldId) {
-                delete  item[joinField.collectionField][joinField.fieldId];
+                delete item[joinField.collectionField][joinField.fieldId];
               }
               item[joinField.collectionField][fieldDest] = data;
             } else {
@@ -665,7 +664,7 @@ export abstract class BackendService {
         { data: queryResults.items } : queryResults.items;
   }
 
-  protected bodify(data: any) {
+  protected bodify(data: unknown): { data: unknown } | unknown {
     return this.config.dataEncapsulation ? { data } : data;
   }
 
@@ -743,10 +742,10 @@ export abstract class BackendService {
     return (item: any) => {
       switch (filterOp) {
         case 'eq':
-          // tslint:disable-next-line: triple-equals
+          // eslint-disable-next-line eqeqeq
           return item[field] == value;
         case 'ne':
-          // tslint:disable-next-line: triple-equals
+          // eslint-disable-next-line eqeqeq
           return item[field] != value;
         case 'gt':
           return item[field] > value;
@@ -1041,7 +1040,7 @@ export abstract class BackendService {
       // Assumes first path segment if no config.apiBase
       // else ignores as many path segments as are in config.apiBase
       // Does NOT care what the api base chars actually are.
-      // tslint:disable-next-line:triple-equals
+      // eslint-disable-next-line eqeqeq
       if (this.config.apiBase == undefined) {
         parsed.apiBase = pathSegments[segmentIx++];
       } else {
