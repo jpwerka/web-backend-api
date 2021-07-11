@@ -17,7 +17,7 @@ export type LoadFn = (dbService: IBackendService) => void;
  * @param item - Instância do item da coleção conforme está `persistido` no backend
  * @param dbService - Instância do serviço de backend
  */
-export type TransformGetFn = (item: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformGetFn = (item: any, dbService: IBackendService) => any | Observable<any>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
@@ -25,7 +25,7 @@ export type TransformGetFn = (item: any, dbService: IBackendService) => any|Obse
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
  */
-export type TransformPostFn = (body: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformPostFn = (body: any, dbService: IBackendService) => any | Observable<any>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
@@ -34,7 +34,7 @@ export type TransformPostFn = (body: any, dbService: IBackendService) => any|Obs
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
  */
-export type TransformPutFn = (item: any, body: any, dbService: IBackendService) => any|Observable<any>;
+export type TransformPutFn = (item: any, body: any, dbService: IBackendService) => any | Observable<any>;
 
 /**
  * Interface que permite o mapeamento dos JOINs a serem feitos ao recuperar um item da coleção
@@ -62,16 +62,22 @@ export interface IJoinField {
   /**
    * (Opcional) Lista de proprieadades a serem retornadas do item da coleção origem
    * ou uma instância de função que irá fazer esta transformação ao recuperar o item da coleção.
+   * Caso na lista seja passado o par: `field` e `property` o campo será retornado com o nome
+   * especificado na propriedade.
    * @obs Caso seja passado `true` será utilizado a função de transformação da coleção
    * de origem dos dados, caso a mesma exista.
    * @alias addTransformGetByIdMap
    * @alias addTransformGetAllMap
    */
-  transformerGet?: string[] | TransformGetFn | boolean;
+  transformerGet?: (string | { field: string, property: string })[] | TransformGetFn | boolean;
   /**
    * (Opcional) Indica se deve remover o campo utilizado como chave da busca do resultado a ser retornado
    */
   removeFieldId?: boolean;
+  /**
+   * (Opcional) Indica se deve mesclar as propriedades do campo no resultado o qual foi feito o JOIN
+   */
+  unwrapField?: boolean;
   /**
    * (Opcional) Lista de sub-joins a serem feitos sobre os itens recuperados da coleção origem.
    * @obs Caso seja passado `true` será utilizado a parametrização de JOIN da coleção
@@ -367,19 +373,29 @@ export interface IBackendService {
   getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
 
   /**
-   * Permite recuperar um ou mais itens de uma coleação retonando um resposta HTTP.
+   * Permite recuperar um ou mais itens de uma coleção retonando um resposta HTTP.
    * Esta função é acionada pela biblioteca quando feita uma requsição GET padrão,
    * porém, é externalizada para ser utilizada nos interceptors caso necessário.
    * Todas as transformações são aplicadas aos registros retornados (GetById e GetAll).
    * Para registros de consulta é possível retornar os mesmos de forma paginada.
+   * Quando passado o `getJoinFields`, estes serão aplicados no lugar das configurações
+   * de JOIN padrão da coleção, caso elas existam.
    * @param collectionName Nome da coleação a qual se deseja buscar o/os item/itens
    * @param id Identificador do item que se deseja buscar (GetById)
    * @param query Parâmetros a serem aplicados quando buscar mais de um item da coleção (GetAll)
    * @param url URl a ser utilizada na resposta
+   * @param getJoinFields Configuração de JOIN para ser utilizada ao recuperar os itens da coleção
    * @param caseSensitiveSearch Indica se a pesquisa deve ser case sensitive.
    * @returns Um observable que retorna uma resposta HTTP contendo o item ou os itens no corpo da mesma
    */
-  get$(collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string): Observable<any>;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
+  ): Observable<any>;
 
   /**
    * Permite criar ou atualizar um item na coleção

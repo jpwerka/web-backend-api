@@ -188,7 +188,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
   }
 
   get$(
-    collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
   ): Observable<any> {
     const self = this;
     return new Observable((observer) => {
@@ -196,7 +201,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let request: IDBRequest<any>;
       let isCursor = false;
       let queryParams: IQueryParams = { count: 0 };
-      const queryResults: IQueryResult = { hasNext: false, items: [] };
+      let queriesParams: { root: IQueryParams, children: IQueryParams };
+      let queryResults: IQueryResult = { hasNext: false, items: [] };
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
@@ -207,16 +213,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
         request = objectStore.openCursor();
         isCursor = true;
         if (query) {
-          queryParams = self.getQueryParams(collectionName,
-            query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = self.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
+        queriesParams = this.getQueryParamsRootAndChild(queryParams);
       }
 
       request.onsuccess = (event) => {
         if (!isCursor) {
           (async (item: any) => {
             if (item) {
-              item = await self.applyTransformersGetById(collectionName, item);
+              item = await self.applyTransformersGetById(collectionName, item, getJoinFields);
             }
             return item;
           })(request.result).then(item => {
@@ -232,10 +238,13 @@ export class IndexedDbService extends BackendService implements IBackendService 
             (error) => observer.error(error));
         } else {
           const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-          if (self.getAllItems(cursor, queryResults, queryParams)) {
+          if (self.getAllItems(cursor, queryResults, queriesParams.root)) {
             (async () => {
               if (queryResults.items.length) {
-                await self.applyTransformersGetAll(collectionName, queryResults.items);
+                await self.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
+                if (queriesParams.children) {
+                  queryResults = self.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
+                }
               }
             })().then(() => {
               response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));

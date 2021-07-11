@@ -115,7 +115,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   get$(
-    collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
   ): Observable<any> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
@@ -128,7 +133,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
         (async (itemAsync: any) => {
           if (itemAsync) {
-            itemAsync = await this.applyTransformersGetById(collectionName, itemAsync);
+            itemAsync = await this.applyTransformersGetById(collectionName, itemAsync, getJoinFields);
           }
           return itemAsync;
         })(item).then(itemAsync => {
@@ -144,11 +149,11 @@ export class MemoryDbService extends BackendService implements IBackendService {
           (error) => observer.error(error));
       } else {
         let queryParams: IQueryParams = { count: 0 };
-        const queryResults: IQueryResult = { hasNext: false, items: [] };
+        let queryResults: IQueryResult = { hasNext: false, items: [] };
         if (query) {
-          queryParams = this.getQueryParams(collectionName,
-            query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = this.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
+        const queriesParams = this.getQueryParamsRootAndChild(queryParams);
         const cursor = {
           index: 0,
           value: null,
@@ -156,13 +161,16 @@ export class MemoryDbService extends BackendService implements IBackendService {
         };
         while (cursor.index <= objectStore.length) {
           cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
+          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queriesParams.root)) {
             break;
           }
         }
         (async () => {
           if (queryResults.items.length) {
-            await this.applyTransformersGetAll(collectionName, queryResults.items);
+            await this.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
+            if (queriesParams.children) {
+              queryResults = this.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
+            }
           }
         })().then(() => {
           const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
