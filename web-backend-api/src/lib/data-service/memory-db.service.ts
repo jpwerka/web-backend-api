@@ -378,7 +378,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   private isCollectionIdNumeric<T extends { id: any }>(collection: T[]): boolean {
     // so that it could know the type of the `id` even when the collection is empty.
-    return !!(collection && collection[0]) && typeof collection[0].id === 'number';
+    return (!!(collection && collection[0]) && typeof collection[0].id === 'number') || (!!collection);
   }
 
   private findById<T extends { id: any }>(collection: T[], id: any): T {
