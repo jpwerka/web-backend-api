@@ -9,12 +9,12 @@ export interface IHeadersCore {
   getAll?(name: string): string | string[] | null;
 }
 
-export interface IRequestCore {
+export interface IRequestCore<T> {
   method: string;
   url: string;
   urlWithParams?: string;
   headers?: IHeadersCore;
-  body?: unknown;
+  body?: T;
 }
 
 export interface IResponseBase {
@@ -40,8 +40,8 @@ export interface IResponseBase {
   url?: string;
 }
 
-export interface IHttpResponse extends IResponseBase {
-  body?: unknown;
+export interface IHttpResponse<T> extends IResponseBase {
+  body?: T | null;
 }
 
 
@@ -56,11 +56,11 @@ export interface IHttpErrorResponse extends IResponseBase {
 
 export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | unknown) => IHttpErrorResponse;
 
-export type ResponseFn = (url: string, status: number, body?: unknown) => IHttpResponse;
+export type ResponseFn = (url: string, status: number, body?: unknown) => IHttpResponse<unknown>;
 
 export interface IConditionsParam {
   [key: string]: {
-    value: unknown,
+    value: string | string[],
     filter?: FilterFn | FilterOp
   };
 }
@@ -100,7 +100,7 @@ export type ConditionsFn = (conditions: IConditionsParam) => IQueryFilter[];
  *   });
  */
 export type ResponseInterceptorFn = (utils: IInterceptorUtils) =>
-  IHttpResponse | IHttpErrorResponse | Observable<IHttpResponse | IHttpErrorResponse>;
+  IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
 
 /**
  * Mapping interface for requests interceptions
@@ -162,7 +162,7 @@ export interface IRequestInterceptor {
    * @alias IHttpErrorResponse
    * @alias ResponseInterceptorFn
    */
-  response: ResponseInterceptorFn | IHttpResponse | IHttpErrorResponse;
+  response: ResponseInterceptorFn | IHttpResponse<unknown> | IHttpErrorResponse;
 }
 
 /**
@@ -239,5 +239,5 @@ export interface IPassThruBackend {
    * Handle an HTTP request and return an Observable of HTTP response
    * Both the request type and the response type are determined by the supporting HTTP library.
    */
-  handle(req: IRequestCore): Observable<IHttpResponse | IHttpErrorResponse>;
+  handle(req: IRequestCore<unknown>): Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
 }

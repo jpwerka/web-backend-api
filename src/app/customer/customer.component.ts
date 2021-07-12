@@ -2,13 +2,13 @@ import { Component, ViewChild, OnInit } from '@angular/core';
 import { ICustomer } from '../entities/customer/customer.interface';
 import { CustomerService } from '../services/customer/customer-service';
 import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
 
 @Component({
   selector: 'app-customer',
   templateUrl: './customer.component.html',
   styleUrls: ['./customer.component.css'],
-  providers: [ CustomerService ]
+  providers: [CustomerService]
 })
 export class CustomerComponent implements OnInit {
 
@@ -32,14 +32,14 @@ export class CustomerComponent implements OnInit {
     action: () => this.modalQuestion.close()
   };
 
-  @ViewChild('modalForm', {static: true}) modalForm: ModalComponent;
-  @ViewChild('modalQuestion', {static: true}) modalQuestion: ModalComponent;
+  @ViewChild('modalForm', { static: true }) modalForm: ModalComponent;
+  @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
 
   customerForm: FormGroup;
 
-  get id() { return this.customerForm.get('id'); }
+  get id(): AbstractControl { return this.customerForm.get('id'); }
 
-  get name() { return this.customerForm.get('name'); }
+  get name(): AbstractControl { return this.customerForm.get('name'); }
 
   constructor(private customerService: CustomerService) {
   }
@@ -60,28 +60,28 @@ export class CustomerComponent implements OnInit {
     this.customerService.getAll().subscribe(customers => this.customers = customers);
   }
 
-  add(event: Event) {
+  add(event: Event): void {
     event.preventDefault();
     this.customerForm.reset();
-    this.customerForm.get('active').setValue(true, {emitModelToViewChange: false});
+    this.customerForm.get('active').setValue(true, { emitModelToViewChange: false });
     this.modalTitle = 'Add customer';
     this.modalForm.open();
   }
 
-  edit(event: Event, customer: ICustomer) {
+  edit(event: Event, customer: ICustomer): void {
     event.preventDefault();
     this.customerForm.setValue(customer);
     this.modalTitle = 'Edit customer';
     this.modalForm.open();
   }
 
-  delete(event: Event, customer: ICustomer) {
+  delete(event: Event, customer: ICustomer): void {
     event.preventDefault();
     this.customerForm.setValue(customer);
     this.modalQuestion.open();
   }
 
-  active(event: Event, customer: ICustomer) {
+  active(event: Event, customer: ICustomer): void {
     event.preventDefault();
     this.customerService.active(customer.id).subscribe(() => {
       const index = this.customers.findIndex(item => item.id === customer.id);
@@ -91,7 +91,7 @@ export class CustomerComponent implements OnInit {
     });
   }
 
-  inactive(event: Event, customer: ICustomer) {
+  inactive(event: Event, customer: ICustomer): void {
     event.preventDefault();
     this.customerService.inactive(customer.id).subscribe(() => {
       const index = this.customers.findIndex(item => item.id === customer.id);
@@ -101,8 +101,8 @@ export class CustomerComponent implements OnInit {
     });
   }
 
-  confirmForm() {
-    this.name.markAsDirty({onlySelf: true});
+  confirmForm(): void {
+    this.name.markAsDirty({ onlySelf: true });
     if (this.customerForm.valid) {
       if (!this.id.value) {
         this.customerService.create(this.customerForm.value).subscribe(customer => {
@@ -121,7 +121,7 @@ export class CustomerComponent implements OnInit {
     }
   }
 
-  deleteCustomer() {
+  deleteCustomer(): void {
     this.customerService.delete(this.customerForm.value).subscribe(() => {
       const index = this.customers.findIndex(item => item.id === this.id.value);
       if (index >= 0) {

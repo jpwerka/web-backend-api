@@ -8,9 +8,9 @@ import { ICustomer } from '../entities/customer/customer.interface';
 import { ProductService } from '../services/product/product-service';
 import { IProduct } from '../entities/product/product.interface';
 
-function nonZero(control: AbstractControl): { [key: string]: any; } {
+function nonZero(control: AbstractControl): { [key: string]: unknown; } {
   if (Number(control.value) <= 0) {
-    return {nonZero: true};
+    return { nonZero: true };
   } else {
     return null;
   }
@@ -56,11 +56,11 @@ export class OutboundDocumentComponent implements OnInit {
 
   outboundDocumentForm: FormGroup;
 
-  get id() { return this.outboundDocumentForm.get('id'); }
+  get id(): AbstractControl { return this.outboundDocumentForm.get('id'); }
 
-  get identifier() { return this.outboundDocumentForm.get('identifier'); }
+  get identifier(): AbstractControl { return this.outboundDocumentForm.get('identifier'); }
 
-  get customerId() { return this.outboundDocumentForm.get('customerId'); }
+  get customerId(): AbstractControl { return this.outboundDocumentForm.get('customerId'); }
 
   constructor(
     private fb: FormBuilder,
@@ -79,40 +79,40 @@ export class OutboundDocumentComponent implements OnInit {
     });
 
     this.outboundDocumentService.getAll().subscribe(outboundDocuments => this.outboundDocuments = outboundDocuments);
-    this.customerService.getAll({active: 'true'}).subscribe(customers => this.customers = customers);
-    this.productService.getAll({active: 'true'}).subscribe(products => this.products = products);
+    this.customerService.getAll({ active: 'true' }).subscribe(customers => this.customers = customers);
+    this.productService.getAll({ active: 'true' }).subscribe(products => this.products = products);
   }
 
   get items(): FormArray {
     return this.outboundDocumentForm.get('items') as FormArray;
   }
 
-  productId(index: number) {
+  productId(index: number): AbstractControl {
     return this.items.at(index).get('productId');
   }
 
-  quantity(index: number) {
+  quantity(index: number): AbstractControl {
     return this.items.at(index).get('quantity');
   }
 
   newItem(item: IOutboundDocumentItems): FormGroup {
     return this.fb.group({
       productId: [item.productId, Validators.required],
-      quantity: [item.quantity, Validators.compose([ Validators.required, nonZero ])],
+      quantity: [item.quantity, Validators.compose([Validators.required, nonZero])],
     });
   }
 
-  addItem(event: Event) {
+  addItem(event: Event): void {
     event.preventDefault();
-    this.items.push(this.newItem({productId: null, quantity: null}));
+    this.items.push(this.newItem({ productId: null, quantity: null }));
   }
 
-  removeItem(event: Event, index: number) {
+  removeItem(event: Event, index: number): void {
     event.preventDefault();
     this.items.removeAt(index);
   }
 
-  add(event: Event) {
+  add(event: Event): void {
     event.preventDefault();
     this.outboundDocumentService.getIdentifier().subscribe(result => {
       this.items.clear();
@@ -123,11 +123,11 @@ export class OutboundDocumentComponent implements OnInit {
     });
   }
 
-  alert() {
+  alert(): void {
     window.alert('This document is loaded. To modify remove it from load.');
   }
 
-  edit(event: Event, outboundDocument: IOutboundDocument) {
+  edit(event: Event, outboundDocument: IOutboundDocument): void {
     event.preventDefault();
     this.items.clear();
     outboundDocument.items.forEach(item => {
@@ -143,21 +143,21 @@ export class OutboundDocumentComponent implements OnInit {
     this.modalForm.open();
   }
 
-  delete(event: Event, outboundDocument: IOutboundDocument) {
+  delete(event: Event, outboundDocument: IOutboundDocument): void {
     event.preventDefault();
     this.outboundDocumentId = outboundDocument.id;
     this.modalQuestion.open();
   }
 
-  confirmForm() {
+  confirmForm(): void {
     this.customerId.markAsDirty({ onlySelf: true });
     if (this.items.controls.length > 0) {
       this.items.controls.forEach((form: FormGroup) => {
         form.get('productId').markAsDirty({ onlySelf: true });
         form.get('quantity').markAsDirty({ onlySelf: true });
-       });
+      });
     } else {
-      this.items.setErrors({required: true});
+      this.items.setErrors({ required: true });
       this.items.markAsTouched();
     }
     if (this.outboundDocumentForm.valid) {
@@ -178,7 +178,7 @@ export class OutboundDocumentComponent implements OnInit {
     }
   }
 
-  deleteOutboundDocument() {
+  deleteOutboundDocument(): void {
     this.outboundDocumentService.delete(this.outboundDocumentId).subscribe(() => {
       const index = this.outboundDocuments.findIndex(item => item.id === this.outboundDocumentId);
       if (index >= 0) {

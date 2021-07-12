@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-
 import { XhrFactory } from '@angular/common';
 import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
 import { Inject, Injectable, InjectionToken, Optional } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { IErrorMessage, IPassThruBackend } from './interfaces/interceptor.interface';
+import { ErrorResponseFn, IErrorMessage, IPassThruBackend, ResponseFn } from './interfaces/interceptor.interface';
 import { IBackendService } from './interfaces/interface.index';
 import { getStatusText, STATUS } from './utils/http-status-codes';
 
@@ -20,17 +17,18 @@ export class HttpClientBackendService implements HttpBackend {
     private xhrFactory: XhrFactory
   ) {
     this.dbService.backendUtils({
-      createPassThruBackend: this.createPassThruBackend.bind(this),
-      createResponseOptions: this.createResponseOptions.bind(this),
-      createErrorResponseOptions: this.createErrorResponseOptions.bind(this)
+      createPassThruBackend: this.createPassThruBackend.bind(this) as () => IPassThruBackend,
+      createResponseOptions: this.createResponseOptions.bind(this) as ResponseFn,
+      createErrorResponseOptions: this.createErrorResponseOptions.bind(this) as ErrorResponseFn
     });
   }
 
-  handle(req: HttpRequest<any>): Observable<HttpEvent<any>> {
+  handle(req: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {
     try {
-      return this.dbService.handleRequest(req);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.dbService.handleRequest(req) as any;
     } catch (error) {
-      const err = error.message || error;
+      const err: unknown = (error as Error).message || error;
       const resOptions = this.createErrorResponseOptions(req.url, STATUS.INTERNAL_SERVER_ERROR, err);
       return throwError(resOptions);
     }
@@ -38,14 +36,15 @@ export class HttpClientBackendService implements HttpBackend {
 
   private createPassThruBackend(): IPassThruBackend {
     try {
-      return new HttpXhrBackend(this.xhrFactory);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return new HttpXhrBackend(this.xhrFactory) as any;
     } catch (ex) {
-      ex.message = `Cannot create passThru404 backend; ${ex.message || ''}`;
+      (ex as Error).message = `Cannot create passThru404 backend; ${(ex as Error).message || ''}`;
       throw ex;
     }
   }
 
-  private createErrorResponseOptions(url: string, status: number, error?: IErrorMessage | any): HttpErrorResponse {
+  private createErrorResponseOptions(url: string, status: number, error?: IErrorMessage | unknown): HttpErrorResponse {
     return new HttpErrorResponse({
       error,
       url,
@@ -57,12 +56,12 @@ export class HttpClientBackendService implements HttpBackend {
     });
   }
 
-  private createResponseOptions(url: string, status: number, body?: any): HttpResponse<any> {
+  private createResponseOptions(url: string, status: number, body?: unknown): HttpResponse<unknown> {
     let headers = (typeof body === 'string') ?
       new HttpHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) :
       new HttpHeaders({ 'Content-Type': 'application/json' });
-    if (status === STATUS.CREATED && !! body.id) {
-      headers = headers.set('Location', `${url}/${body.id}`);
+    if (status === STATUS.CREATED && !!body['id']) {
+      headers = headers.set('Location', `${url}/${body['id']}`);
     }
     return new HttpResponse({
       body,

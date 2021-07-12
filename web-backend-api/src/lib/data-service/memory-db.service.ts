@@ -1,11 +1,11 @@
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, IJoinField, LoadFn, ObservableResponse } from '../interfaces/backend.interface';
+import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IExtendEntity, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
+import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
+import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, clone } from './backend.service';
+import { BackendService, clone, IExtendEntity } from './backend.service';
 
 declare const v4: () => string;
 
@@ -54,14 +54,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  storeData(collectionName: string, data: IExtendEntity): Promise<string | number> {
+  storeData(collectionName: string, data: unknown): Promise<string | number> {
     return new Promise<string | number>((resolve, reject) => {
       try {
         const objectStore = this.db.get(collectionName);
-        if (!data.id) {
+        if (!data['id']) {
           data['id'] = this.generateStrategyId(objectStore, collectionName);
         }
-        objectStore.splice(this.sortedIndex(objectStore, data.id), 0, data);
+        objectStore.splice(this.sortedIndex(objectStore, data['id']), 0, data as IExtendEntity);
         resolve(data['id']);
       } catch (error) {
         reject(error);
@@ -84,7 +84,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return Array.from(this.db.keys());
   }
 
-  getInstance$(collectionName: string, id: string | number): Observable<IExtendEntity> {
+  getInstance$(collectionName: string, id: string | number): Observable<unknown> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== '') {
@@ -97,13 +97,13 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<IExtendEntity[]> {
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       const queryParams: IQueryParams = { count: 0, conditions };
-      const queryResults: IQueryResult = { hasNext: false, items: [] };
+      const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
 
-      const cursor: IQueryCursor = {
+      const cursor: IQueryCursor<IExtendEntity> = {
         index: 0,
         value: null,
         continue: (): void => null
@@ -126,7 +126,13 @@ export class MemoryDbService extends BackendService implements IBackendService {
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: string
-  ): ObservableResponse {
+  ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  > {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
@@ -141,25 +147,28 @@ export class MemoryDbService extends BackendService implements IBackendService {
             itemAsync = await this.applyTransformersGetById(collectionName, itemAsync, getJoinFields);
           }
           return itemAsync;
-        })(item).then(itemAsync => {
-          if (itemAsync) {
-            const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
-            observer.next(response);
-            observer.complete();
-          } else {
-            const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
-            observer.error(response);
-          }
-        },
-          (error) => observer.error(error));
+        })(item).then(
+          itemAsync => {
+            if (itemAsync) {
+              const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
+              observer.next(response as (IHttpResponse<unknown> | IHttpResponse<{ data: unknown }>));
+              observer.complete();
+            } else {
+              // eslint-disable-next-line max-len
+              const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
+              observer.error(response);
+            }
+          },
+          (error) => observer.error(error)
+        );
       } else {
         let queryParams: IQueryParams = { count: 0 };
-        let queryResults: IQueryResult = { hasNext: false, items: [] };
+        let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
         if (query) {
           queryParams = this.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
         const queriesParams = this.getQueryParamsRootAndChild(queryParams);
-        const cursor: IQueryCursor = {
+        const cursor: IQueryCursor<IExtendEntity> = {
           index: 0,
           value: null,
           continue: (): void => null
@@ -177,17 +186,19 @@ export class MemoryDbService extends BackendService implements IBackendService {
               queryResults = this.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
             }
           }
-        })().then(() => {
-          const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
-          observer.next(response);
-          observer.complete();
-        },
+        })().then(
+          () => {
+            const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
+            // eslint-disable-next-line max-len
+            observer.next(response as (IHttpResponse<unknown[]> | IHttpResponse<{ data: unknown[] }> | IHttpResponse<IQueryResult<unknown>>));
+            observer.complete();
+          },
           (error) => observer.error(error));
       }
     });
   }
 
-  post$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse {
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
@@ -261,7 +272,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  put$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse {
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
@@ -342,7 +353,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  delete$(collectionName: string, id: string, url: string): ObservableResponse {
+  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
@@ -352,7 +363,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
       if (this.removeById(objectStore, findId) || !this.config.delete404) {
         const response = this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-        observer.next(response);
+        observer.next(response as IHttpResponse<null>);
         observer.complete();
       } else {
         const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,

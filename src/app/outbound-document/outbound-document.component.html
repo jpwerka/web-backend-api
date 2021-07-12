@@ -103,7 +103,7 @@
           </div>
         </div>
       </div>
-      <div *ngIf="this.items.controls.length == 0 && items.invalid && (items.dirty || items.touched)" class="form-control-error">
+      <div *ngIf="this.items.controls.length === 0 && items.invalid && (items.dirty || items.touched)" class="form-control-error">
 
         <div *ngIf="items.errors.required">
           At least one item is required.

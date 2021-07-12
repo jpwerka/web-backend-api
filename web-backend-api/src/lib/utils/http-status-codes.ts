@@ -440,7 +440,7 @@ export const STATUS_CODE_INFO = {
   507: {
     code: 507,
     text: 'Insufficient Storage',
-    description: '\The method could not be performed on the resource because the server is unable to store the representation needed to successfully complete the request."',
+    description: '"The method could not be performed on the resource because the server is unable to store the representation needed to successfully complete the request."',
     spec_title: 'RFC5218#10.6',
     spec_href: 'http://tools.ietf.org/html/rfc2518#section-10.6'
   },

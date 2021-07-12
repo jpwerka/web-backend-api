@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { dataService, IBackendService, ResponseInterceptorFn, IInterceptorUtils } from 'web-backend-api/src';
 import { collectionName, customers } from './customers.mock';
 
@@ -28,6 +29,6 @@ dataService(collectionName, (dbService: IBackendService) => {
   });
 
   customers.forEach((customer) => {
-    dbService.storeData(collectionName, customer);
+    void dbService.storeData(collectionName, customer).then(() => null);
   });
 });
