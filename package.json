@@ -36,6 +36,7 @@
     "e2e": "ng e2e",
     "build:lib": "ng build web-backend-api --configuration production",
     "test:lib": "ng test web-backend-api",
+    "test:lib:coverage": "ng test web-backend-api --code-coverage",
     "lint:lib": "ng lint web-backend-api"
   },
   "dependencies": {
@@ -79,7 +80,7 @@
     "json5": "^2.1.1",
     "karma": "^6.3.4",
     "karma-chrome-launcher": "^3.1.0",
-    "karma-coverage-istanbul-reporter": "^3.0.3",
+    "karma-coverage": "^2.0.3",
     "karma-jasmine": "^4.0.1",
     "karma-jasmine-html-reporter": "^1.7.0",
     "lodash-es": "^4.17.15",
