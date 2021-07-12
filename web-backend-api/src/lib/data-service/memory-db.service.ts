@@ -1,15 +1,17 @@
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformPostFn, TransformPutFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
+import { IBackendService, IJoinField, LoadFn, ObservableResponse } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
+import { IExtendEntity, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, clone } from './backend.service';
 
+declare const v4: () => string;
+
 export class MemoryDbService extends BackendService implements IBackendService {
 
-  private db: Map<string, Array<any>>;
+  private db: Map<string, IExtendEntity[]>;
 
   constructor(config: BackendConfigArgs) {
     super(config);
@@ -17,38 +19,42 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   createDatabase(): Promise<boolean> {
     this.dbReadySubject.next(false);
-    return new Promise<boolean>((resolve, reject) => {
-      this.db = new Map<string, Array<any>>();
+    return new Promise<boolean>((resolve) => {
+      this.db = new Map<string, IExtendEntity[]>();
       resolve(true);
     });
   }
 
   deleteDatabase(): Promise<boolean> {
     this.dbReadySubject.next(false);
-    return new Promise<boolean>((resolve, reject) => {
+    return new Promise<boolean>((resolve) => {
       this.db = undefined;
       resolve(true);
     });
   }
 
   createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      dataServiceFn.forEach((loadsFn, name) => {
-        this.db.set(name, []);
-        if (loadsFn && Array.isArray(loadsFn)) {
-          loadsFn.forEach(loadFn => {
-            if (loadFn && loadFn instanceof Function) {
-              loadFn.call(null, this);
-            }
-          });
-        }
-      });
+    return new Promise<boolean>((resolve) => {
+      if (dataServiceFn && dataServiceFn.size > 0) {
+        dataServiceFn.forEach((loadsFn, name) => {
+          this.db.set(name, []);
+          if (loadsFn && Array.isArray(loadsFn)) {
+            loadsFn.forEach(loadFn => {
+              if (loadFn && loadFn instanceof Function) {
+                loadFn.call(null, this);
+              }
+            });
+          }
+        });
+      } else {
+        console.warn('[WebBackendApi]', 'There is not collection in data service!');
+      }
       this.dbReadySubject.next(true);
       resolve(true);
     });
   }
 
-  storeData(collectionName: string, data: any): Promise<string | number> {
+  storeData(collectionName: string, data: IExtendEntity): Promise<string | number> {
     return new Promise<string | number>((resolve, reject) => {
       try {
         const objectStore = this.db.get(collectionName);
@@ -64,7 +70,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   clearData(collectionName: string): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
+    return new Promise<boolean>((resolve) => {
       this.db.set(collectionName, []);
       resolve(true);
     });
@@ -78,7 +84,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return Array.from(this.db.keys());
   }
 
-  getInstance$(collectionName: string, id: any): Observable<any> {
+  getInstance$(collectionName: string, id: string | number): Observable<IExtendEntity> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== '') {
@@ -91,17 +97,16 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any> {
-    const self = this;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<IExtendEntity[]> {
     return new Observable((observer) => {
-      const objectStore = self.db.get(collectionName);
+      const objectStore = this.db.get(collectionName);
       const queryParams: IQueryParams = { count: 0, conditions };
       const queryResults: IQueryResult = { hasNext: false, items: [] };
 
-      const cursor = {
+      const cursor: IQueryCursor = {
         index: 0,
         value: null,
-        continue: (): any => { }
+        continue: (): void => null
       };
       while (cursor.index <= objectStore.length) {
         cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
@@ -121,7 +126,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: string
-  ): Observable<any> {
+  ): ObservableResponse {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
@@ -131,7 +136,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
         item = item ? clone(item) : item;
 
-        (async (itemAsync: any) => {
+        (async (itemAsync: IExtendEntity) => {
           if (itemAsync) {
             itemAsync = await this.applyTransformersGetById(collectionName, itemAsync, getJoinFields);
           }
@@ -154,10 +159,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
           queryParams = this.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
         const queriesParams = this.getQueryParamsRootAndChild(queryParams);
-        const cursor = {
+        const cursor: IQueryCursor = {
           index: 0,
           value: null,
-          continue: (): any => { }
+          continue: (): void => null
         };
         while (cursor.index <= objectStore.length) {
           cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
@@ -182,14 +187,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  post$(collectionName: string, id: string, item: any, url: string): Observable<any> {
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
       if (item.id) {
-        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+        item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
       } else {
-        item['id'] = this.generateStrategyId(objectStore, collectionName);
+        item.id = this.generateStrategyId(objectStore, collectionName);
       }
 
       let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -256,14 +261,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  put$(collectionName: string, id: string, item: any, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }
 
     if (item.id) {
-      item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
@@ -281,7 +286,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
       if (existingIx >= 0) {
 
-        (async () => {
+        void (async () => {
           const transformfn = this.transformPutMap.get(collectionName);
           if (transformfn !== undefined) {
             item = await this.applyTransformPut(objectStore[existingIx], item, transformfn);
@@ -319,7 +324,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           item['id'] = findId;
         }
 
-        (async () => {
+        void (async () => {
           const transformfn = this.transformPostMap.get(collectionName);
           if (transformfn !== undefined) {
             item = await this.applyTransformPost(item, transformfn);
@@ -337,8 +342,8 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  delete$(collectionName: string, id: string, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  delete$(collectionName: string, id: string, url: string): ObservableResponse {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
     }
@@ -357,7 +362,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  private generateStrategyId<T extends { id: any }>(collection: T[], collectionName: string): string | number {
+  private generateStrategyId(collection: IExtendEntity[], collectionName: string): string | number {
     if (this.config.strategyId === 'provided') {
       throw new Error('Id strategy is set as `provided` and id not provided.');
     }
@@ -369,27 +374,27 @@ export class MemoryDbService extends BackendService implements IBackendService {
           `Collection '${collectionName}' id type is non-numeric or unknown. Can only generate numeric ids.`);
       }
       let maxId = 0;
-      collection.reduce((prev: any, item: any) => {
+      collection.forEach((item: IExtendEntity) => {
         maxId = Math.max(maxId, typeof item.id === 'number' ? item.id : maxId);
-      }, undefined);
+      });
       return maxId + 1;
     }
   }
 
-  private isCollectionIdNumeric<T extends { id: any }>(collection: T[]): boolean {
+  private isCollectionIdNumeric(collection: IExtendEntity[]): boolean {
     // so that it could know the type of the `id` even when the collection is empty.
     return (!!(collection && collection[0]) && typeof collection[0].id === 'number') || (!!collection);
   }
 
-  private findById<T extends { id: any }>(collection: T[], id: any): T {
-    return collection.find((item: T) => item.id === id);
+  private findById(collection: IExtendEntity[], id: string | number): IExtendEntity {
+    return collection.find(item => item.id === id);
   }
 
-  private indexOf(collection: any[], id: any) {
-    return collection.findIndex((item: any) => item.id === id);
+  private indexOf(collection: IExtendEntity[], id: string | number) {
+    return collection.findIndex(item => item.id === id);
   }
 
-  private removeById(collection: any[], id: any) {
+  private removeById(collection: IExtendEntity[], id: string | number) {
     const ix = this.indexOf(collection, id);
     if (ix > -1) {
       collection.splice(ix, 1);
@@ -398,12 +403,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return false;
   }
 
-  private sortedIndex<T extends { id: any }>(collection: T[], id: any) {
+  private sortedIndex(collection: IExtendEntity[], id: string | number) {
     let low = 0;
     let high = collection.length;
 
     while (low < high) {
-      // tslint:disable-next-line: no-bitwise
+      // eslint-disable-next-line no-bitwise
       const mid = (low + high) >>> 1;
       if (collection[mid].id < id) {
         low = mid + 1;

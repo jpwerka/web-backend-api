@@ -1,4 +1,4 @@
-export type FilterFn = (value: string|string[], item: any) => boolean;
+export type FilterFn = (value: string|string[], item: unknown) => boolean;
 
 export type FilterOp =
   | 'eq' // Equal
@@ -9,7 +9,15 @@ export type FilterOp =
   | 'le' // Less than or equal
   ;
 
-export type FieldFn = (item: any) => boolean;
+export type FieldFn = (item: unknown) => boolean;
+
+export interface IEntity {
+  id?: string | number;
+}
+
+export interface IExtendEntity extends IEntity {
+  [key: string]: unknown;
+}
 
 export interface IQuickFilter {
   term: string;
@@ -27,15 +35,16 @@ export interface IQueryParams {
   count: number;
   page?: number;
   pageSize?: number;
-  conditions?: Array<IQueryFilter>;
+  conditions?: IQueryFilter[];
 }
 
 export interface IQueryResult {
   hasNext: boolean;
-  items: Array<any>;
+  items: IExtendEntity[];
 }
 
 export interface IQueryCursor {
-  value: any;
+  index: number;
+  value: IExtendEntity;
   continue(): void;
 }

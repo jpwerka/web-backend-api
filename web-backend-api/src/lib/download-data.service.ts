@@ -38,7 +38,7 @@ export class DownloadDataService {
     return this.getOrDownloadData(collectionName, getDataType, false, tsInfo);
   }
 
-  // tslint:disable-next-line: max-line-length
+  // eslint-disable-next-line max-len
   private getOrDownloadData(collectionName: string, getDataType: GetDataType, isDownload: boolean, tsInfo?: ITypescriptInfo): Observable<any> {
     return new Observable(observer => {
 

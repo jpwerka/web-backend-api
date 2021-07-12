@@ -5,7 +5,7 @@ import { BackendConfigArgs, BackendTypeArgs } from '../interfaces/configuration.
 import { MemoryDbService } from './memory-db.service';
 import { IndexedDbService } from './indexed-db.service';
 
-const dataServiceFn: Map<string, LoadFn[]> = new Map();
+const dataServiceFn = new Map<string, LoadFn[]>();
 
 const backendConfig: BackendConfigArgs = new BackendConfig();
 export function getBackendConfig(): BackendConfigArgs {
@@ -49,19 +49,13 @@ export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArg
   const result$ = new Promise<boolean>((resolve, reject) => {
     dbService.deleteDatabase().then(() => {
       dbService.createDatabase().then(() => {
-        if (dataServiceFn && dataServiceFn.size > 0) {
-          dbService.createObjectStore(dataServiceFn).then(() => {
-            console.log('[WebBackendApi]', 'Database data created!');
-            resolve(true);
-          }, error => {
-            console.error('[WebBackendApi]', error);
-            reject(error);
-          });
-        } else {
-          console.warn('[WebBackendApi]', 'There is not collection in data service!');
-          dbService['dbReadySubject'].next(true);
+        dbService.createObjectStore(dataServiceFn).then(() => {
+          console.log('[WebBackendApi]', 'Database data created!');
           resolve(true);
-        }
+        }, error => {
+          console.error('[WebBackendApi]', error);
+          reject(error);
+        });
       }, error => {
         console.error('[WebBackendApi]', error);
         reject(error);

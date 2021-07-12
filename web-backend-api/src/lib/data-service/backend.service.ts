@@ -1,21 +1,21 @@
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { concatMap, first, map, tap } from 'rxjs/operators';
-import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
+import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField, TransformResult, ObservableResponse } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-// tslint:disable-next-line: max-line-length
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod, ConditionsFn } from '../interfaces/interceptor.interface';
-// tslint:disable-next-line: max-line-length
-import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
+import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn, IExtendEntity } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const require: any;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 require('json.date-extensions');
 
 interface IRequestInfo {
-  req: IRequestCore<any>;
+  req: IRequestCore;
   method: string;
   url: string;
   apiBase: string;
@@ -24,7 +24,7 @@ interface IRequestInfo {
   query: Map<string, string[]>;
   extras?: string;
   resourceUrl: string;
-  body?: any;
+  body?: IExtendEntity;
   interceptor?: IRequestInterceptor;
   interceptorIds?: string[];
 }
@@ -34,15 +34,15 @@ interface IInterceptorInfo {
   interceptorIds?: string[];
 }
 
-export function clone(data: any) {
-  return JSON.parse(JSON.stringify(data));
+export function clone<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data)) as T;
 }
 
-export function removeRightSlash(path: string) {
+export function removeRightSlash(path: string): string {
   return path.replace(/\/$/, '');
 }
 
-export function removeLeftSlash(path: string) {
+export function removeLeftSlash(path: string): string {
   return path.replace(/^\//, '');
 }
 
@@ -66,16 +66,16 @@ export function paramParser(rawParams: string): Map<string, string[]> {
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
-  protected replaceMap: Map<string, Array<string[]>> = new Map();
-  protected postToOtherMethodMap: Map<string, IPostToOtherMethod[]> = new Map();
-  protected transformGetAllMap: Map<string, TransformGetFn> = new Map();
-  protected transformGetByIdMap: Map<string, TransformGetFn> = new Map();
-  protected joinnersGetAllMap: Map<string, IJoinField[]> = new Map();
-  protected joinnersGetByIdMap: Map<string, IJoinField[]> = new Map();
-  protected transformPostMap: Map<string, TransformPostFn> = new Map();
-  protected transformPutMap: Map<string, TransformPutFn> = new Map();
-  protected fieldsFilterMap: Map<string, Map<string, FilterFn | FilterOp>> = new Map();
-  protected quickFilterMap: Map<string, IQuickFilter> = new Map();
+  protected replaceMap = new Map<string, Array<string[]>>();
+  protected postToOtherMethodMap = new Map<string, IPostToOtherMethod[]>();
+  protected transformGetAllMap = new Map<string, TransformGetFn>();
+  protected transformGetByIdMap = new Map<string, TransformGetFn>();
+  protected joinnersGetAllMap = new Map<string, IJoinField[]>();
+  protected joinnersGetByIdMap = new Map<string, IJoinField[]>();
+  protected transformPostMap = new Map<string, TransformPostFn>();
+  protected transformPutMap = new Map<string, TransformPutFn>();
+  protected fieldsFilterMap = new Map<string, Map<string, FilterFn | FilterOp>>();
+  protected quickFilterMap = new Map<string, IQuickFilter>();
 
   private requestInterceptors: Array<IRequestInterceptor> = [];
 
@@ -90,7 +90,7 @@ export abstract class BackendService {
   ) {
     for (const prop in config) {
       if (config.hasOwnProperty(prop)) {
-        this.config[prop] = config[prop];
+        this.config[prop] = config[prop] as unknown;
       }
     }
     const loc = this.getLocation('/');
@@ -109,11 +109,11 @@ export abstract class BackendService {
     this.utils = value;
   }
 
-  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetAllMap.set(collectionName, transformfn);
   }
 
-  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetByIdMap.set(collectionName, transformfn);
   }
 
@@ -149,30 +149,30 @@ export abstract class BackendService {
     this.addJoinGetByIdMap(collectionName, joinField);
   }
 
-  addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
+  addTransformPostMap(collectionName: string, transformfn: TransformPostFn): void {
     this.transformPostMap.set(collectionName, transformfn);
   }
 
-  addTransformPutMap(collectionName: string, transformfn: TransformPutFn) {
+  addTransformPutMap(collectionName: string, transformfn: TransformPutFn): void {
     this.transformPutMap.set(collectionName, transformfn);
   }
 
-  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter) {
+  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter): void {
     this.quickFilterMap.set(collectionName, quickFilter);
   }
 
-  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp) {
+  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp): void {
     let fieldsFilterMap = this.fieldsFilterMap.get(collectionName);
     if (fieldsFilterMap !== undefined) {
       fieldsFilterMap.set(field, filterfn);
     } else {
-      fieldsFilterMap = new Map();
+      fieldsFilterMap = new Map<string, FilterFn | FilterOp>();
       fieldsFilterMap.set(field, filterfn);
       this.fieldsFilterMap.set(collectionName, fieldsFilterMap);
     }
   }
 
-  addReplaceUrl(collectionName: string, replace: string | string[]) {
+  addReplaceUrl(collectionName: string, replace: string | string[]): void {
     let replaceAdd = [];
     if (typeof replace === 'string') {
       replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
@@ -187,7 +187,7 @@ export abstract class BackendService {
     }
   }
 
-  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod) {
+  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod): void {
     const postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod !== undefined) {
       postsToOtherMethod.push(postToOtherMethod);
@@ -196,7 +196,7 @@ export abstract class BackendService {
     }
   }
 
-  addRequestInterceptor(requestInterceptor: IRequestInterceptor) {
+  addRequestInterceptor(requestInterceptor: IRequestInterceptor): void {
     if (!requestInterceptor.method) {
       requestInterceptor['method'] = 'GET';
     }
@@ -212,9 +212,9 @@ export abstract class BackendService {
       if (typeof query === 'string') {
         params = paramParser(query);
       } else if (query instanceof Map) {
-        params = new Map(clone(Array.from(query)));
+        // params = new Map(clone(Array.from(query)) as unknown);
       } else {
-        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, query[key]]))));
+        // params = new Map(clone(Array.from(Object.keys(query).map(key => [key, query[key]]))));
       }
       if (params && params.keys.length > 0) {
         requestInterceptor['query'] = params;
@@ -226,7 +226,7 @@ export abstract class BackendService {
 
   addRequestInterceptorByValue(value: any): void {
     let obj: any;
-    let response: IHttpResponse<any> | IHttpErrorResponse;
+    let response: IHttpResponse | IHttpErrorResponse;
     if (typeof value === 'string') {
       try {
         obj = JSON.parse(value);
@@ -326,30 +326,30 @@ export abstract class BackendService {
     return this.dbReadySubject.asObservable().pipe(first((r: boolean) => r));
   }
 
-  protected logRequest(request: IRequestCore<any>) {
+  protected logRequest(request: IRequestCore): void {
     if (this.config.log) {
       console.log(request);
     }
   }
 
-  protected logResponse(response: IHttpResponse<any> | IHttpErrorResponse) {
+  protected logResponse(response: IHttpResponse | IHttpErrorResponse): void {
     if (this.config.log) {
       console.log(response);
     }
   }
 
-  protected convertResponse(response: IHttpResponse<any> | IHttpErrorResponse): IHttpResponse<any> | IHttpErrorResponse {
+  protected convertResponse(response: IHttpResponse | IHttpErrorResponse): IHttpResponse | IHttpErrorResponse {
     if (this.config.jsonParseWithDate && response) {
       const contentType = response.headers ? response.headers.get('Content-Type') : undefined;
-      const body = (response as IHttpResponse<any>).body;
+      const body = (response as IHttpResponse).body;
       if (contentType === 'application/json' && body) {
-        (response as IHttpResponse<any>).body = JSON.parse(JSON.stringify(body), (JSON as any).dateParser);
+        (response as IHttpResponse).body = JSON.parse(JSON.stringify(body), (JSON.dateParser));
       }
     }
     return response;
   }
 
-  handleRequest(req: IRequestCore<any>): Observable<any> {
+  handleRequest(req: IRequestCore): Observable<IHttpResponse | IHttpErrorResponse> {
     //  handle the request when there is an in-memory database
     return this.dbReady().pipe(
       map(() => this.logRequest(req)),
@@ -360,7 +360,7 @@ export abstract class BackendService {
     );
   }
 
-  private handleRequest_(req: IRequestCore<any>): Observable<any> {
+  private handleRequest_(req: IRequestCore): Observable<IHttpResponse | IHttpErrorResponse> {
 
     const url = req.urlWithParams ? req.urlWithParams : req.url;
     let method = req.method || 'GET';
@@ -368,7 +368,7 @@ export abstract class BackendService {
     const intInfo: IInterceptorInfo = {};
 
     const parsed: IParsedRequestUrl = this.parseRequestUrl(method, url, intInfo);
-    let response$: Observable<any>;
+    let response$: Observable<IHttpResponse | IHttpErrorResponse>;
 
     if (intInfo.interceptor && intInfo.interceptor.applyToPath === 'complete') {
       const intUtils = this.createInterceptorUtils(url, undefined, undefined, parsed.query, req.body);
@@ -422,8 +422,8 @@ export abstract class BackendService {
 
   abstract hasCollection(collectionName: string): boolean;
 
-  private collectionHandler(reqInfo: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private collectionHandler(reqInfo: IRequestInfo): Observable<IHttpResponse | IHttpErrorResponse> {
+    let response$: Observable<IHttpResponse | IHttpErrorResponse>;
     switch (reqInfo.method.toLocaleLowerCase()) {
       case 'get':
         response$ = this.get(reqInfo);
@@ -448,8 +448,8 @@ export abstract class BackendService {
     return response$;
   }
 
-  abstract getInstance$(collectionName: string, id: any): Observable<any>;
-  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
+  abstract getInstance$(collectionName: string, id: string | number): Observable<IExtendEntity>;
+  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<IExtendEntity[]>;
 
   abstract get$(
     collectionName: string,
@@ -458,10 +458,12 @@ export abstract class BackendService {
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: string
-  ): Observable<any>;
+  ): Observable<IHttpResponse | IHttpErrorResponse>;
 
-  private get({ collectionName, id, query, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private get(
+    { collectionName, id, query, url, interceptor, interceptorIds }: IRequestInfo
+  ): Observable<IHttpResponse | IHttpErrorResponse> {
+    let response$: Observable<IHttpResponse | IHttpErrorResponse>;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -494,7 +496,9 @@ export abstract class BackendService {
     };
   }
 
-  protected async applyTransformersGetById(collectionName: string, item: any, getJoinFields?: IJoinField[]): Promise<any> {
+  protected async applyTransformersGetById(
+    collectionName: string, item: IExtendEntity, getJoinFields?: IJoinField[]
+  ): Promise<IExtendEntity> {
     let _getJoinFields: IJoinField[];
     const transformGetFn = this.transformGetByIdMap.get(collectionName);
 
@@ -639,9 +643,9 @@ export abstract class BackendService {
     return item;
   }
 
-  protected applyTransformGetFn(item: any, transformfn: TransformGetFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, this);
+  protected applyTransformGetFn(item: IExtendEntity, transformfn: TransformGetFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, this) as TransformResult;
       if (retorno instanceof Observable) {
         retorno.subscribe(itemObs => resolve(itemObs), error => reject(error));
       } else {
@@ -650,10 +654,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract post$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  abstract post$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse;
 
-  private post({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private post({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): ObservableResponse {
+    let response$: ObservableResponse;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -668,9 +672,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPost(body: any, transformfn: TransformPostFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, body, this);
+  protected applyTransformPost(body: IExtendEntity, transformfn: TransformPostFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, body, this) as TransformResult;
       if (retorno instanceof Observable) {
         retorno.subscribe(item => resolve(item), error => reject(error));
       } else {
@@ -679,10 +683,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract put$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  abstract put$(collectionName: string, id: string, item: IExtendEntity, url: string): ObservableResponse;
 
-  private put({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private put({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): ObservableResponse {
+    let response$: ObservableResponse;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -697,9 +701,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPut(item: any, body: any, transformfn: TransformPutFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, body, this);
+  protected applyTransformPut(item: IExtendEntity, body: IExtendEntity, transformfn: TransformPutFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, body, this) as TransformResult;
       if (retorno instanceof Observable) {
         retorno.subscribe(itemObs => resolve(itemObs), error => reject(error));
       } else {
@@ -708,10 +712,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract delete$(collectionName: string, id: string, url: string): Observable<any>;
+  abstract delete$(collectionName: string, id: string, url: string): ObservableResponse;
 
-  private delete({ collectionName, id, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private delete({ collectionName, id, url, interceptor, interceptorIds }: IRequestInfo): ObservableResponse {
+    let response$: ObservableResponse;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -732,11 +736,11 @@ export abstract class BackendService {
         { data: queryResults.items } : queryResults.items;
   }
 
-  protected bodify(data: any) {
+  protected bodify(data: unknown): { data: unknown } | unknown {
     return this.config.dataEncapsulation ? { data } : data;
   }
 
-  private addDelay(response$: Observable<{}>, delay: number): Observable<any> {
+  private addDelay(response$: Observable<{}>, delay: number): Observable<IHttpResponse | IHttpErrorResponse> {
     return delay === 0 ? response$ : delayResponse(response$, (Math.floor((Math.random() * delay) + 1)) || 500);
   }
 
@@ -757,17 +761,17 @@ export abstract class BackendService {
     return useFilterOr ? this.filterItemOr(item, conditions) : this.filterItemAnd(item, conditions);
   }
 
-  private getFieldValue(item: any, name: string): any {
+  private getFieldValue(item: IExtendEntity, name: string): IExtendEntity | unknown {
     if (name.includes('.')) {
       const root = name.substring(0, name.indexOf('.'));
       const child = name.substring(name.indexOf('.') + 1);
-      return this.getFieldValue(item[root], child);
+      return this.getFieldValue(item[root] as IExtendEntity, child);
     } else {
       return item[name];
     }
   }
 
-  private filterItemAnd(item: any, conditions: Array<IQueryFilter>): boolean {
+  private filterItemAnd(item: IExtendEntity, conditions: Array<IQueryFilter>): boolean {
     let ok = true;
     let i = conditions.length;
     let cond: IQueryFilter;
@@ -775,16 +779,16 @@ export abstract class BackendService {
       i -= 1;
       cond = conditions[i];
       if (cond.fn) {
-        ok = cond.fn.call(this, item);
+        ok = cond.fn.call(this, item) as boolean;
       } else {
         const fieldValue = this.getFieldValue(item, cond.name);
-        ok = cond.rx.test(fieldValue);
+        ok = cond.rx.test(fieldValue as string);
       }
     }
     return ok;
   }
 
-  private filterItemOr(item: any, conditions: Array<IQueryFilter>): boolean {
+  private filterItemOr(item: IExtendEntity, conditions: Array<IQueryFilter>): boolean {
     let okOr = false;
     let okAnd = true;
     let i = conditions.length;
@@ -795,18 +799,18 @@ export abstract class BackendService {
       if (cond.or) {
         if (!okOr) {
           if (cond.fn) {
-            okOr = cond.fn.call(this, item);
+            okOr = cond.fn.call(this, item) as boolean;
           } else {
             const fieldValue = this.getFieldValue(item, cond.name);
-            okOr = cond.rx.test(fieldValue);
+            okOr = cond.rx.test(fieldValue as string);
           }
         }
       } else {
         if (cond.fn) {
-          okAnd = cond.fn.call(this, item);
+          okAnd = cond.fn.call(this, item) as boolean;
         } else {
           const fieldValue = this.getFieldValue(item, cond.name);
-          okAnd = cond.rx.test(fieldValue);
+          okAnd = cond.rx.test(fieldValue as string);
         }
       }
     }
@@ -814,20 +818,20 @@ export abstract class BackendService {
   }
 
   private createFilterFn(value: string | string[], filterFn: FilterFn): FieldFn {
-    return (item: any) => {
-      return filterFn.call(this, value, item);
+    return (item: IExtendEntity): boolean => {
+      return filterFn.call(this, value, item) as boolean;
     };
   }
 
   private createFilterOpFn(field: string, value: string, filterOp: FilterOp): FieldFn {
-    return (item: any) => {
+    return (item: IExtendEntity): boolean => {
       const fieldValue = this.getFieldValue(item, field);
       switch (filterOp) {
         case 'eq':
-          // tslint:disable-next-line: triple-equals
+          // eslint-disable-next-line eqeqeq
           return fieldValue == value;
         case 'ne':
-          // tslint:disable-next-line: triple-equals
+          // eslint-disable-next-line eqeqeq
           return fieldValue != value;
         case 'gt':
           return fieldValue > value;
@@ -844,7 +848,7 @@ export abstract class BackendService {
   }
 
   private createFilterArrayFn(field: string, value: Array<any>): FieldFn {
-    return (item: any) => {
+    return (item: IExtendEntity) => {
       const fieldValue = this.getFieldValue(item, field);
       return value.includes(fieldValue);
     };
@@ -953,7 +957,7 @@ export abstract class BackendService {
     return retorna;
   }
 
-  protected getAllItemsFilterByChildren(items: any[], queryParams: IQueryParams): IQueryResult {
+  protected getAllItemsFilterByChildren(items: IExtendEntity[], queryParams: IQueryParams): IQueryResult {
     const cursor = {
       index: 0,
       value: null,
@@ -1049,7 +1053,9 @@ export abstract class BackendService {
     return interceptorPathOk && interceptorQueryOk;
   }
 
-  private processInterceptResponse(interceptor: IRequestInterceptor, utils: IInterceptorUtils): Observable<any> {
+  private processInterceptResponse(
+    interceptor: IRequestInterceptor, utils: IInterceptorUtils
+  ): Observable<IHttpResponse | IHttpErrorResponse> {
     const response = this.interceptResponse(interceptor, utils);
     if (response instanceof Observable) {
       return response;
@@ -1068,11 +1074,11 @@ export abstract class BackendService {
   }
 
   private interceptResponse(interceptor: IRequestInterceptor, utils: IInterceptorUtils):
-    IHttpResponse<any> | IHttpErrorResponse | Observable<any> | undefined {
-    let response: IHttpResponse<any> | IHttpErrorResponse;
+    IHttpResponse | IHttpErrorResponse | Observable<IHttpResponse | IHttpErrorResponse> | undefined {
+    let response: IHttpResponse | IHttpErrorResponse;
     if (interceptor.response) {
       if (interceptor.response instanceof Function) {
-        response = interceptor.response.call(this, utils);
+        response = interceptor.response.call(this, utils) as (IHttpResponse | IHttpErrorResponse);
       } else {
         response = clone(interceptor.response);
       }
@@ -1170,7 +1176,7 @@ export abstract class BackendService {
       // Assumes first path segment if no config.apiBase
       // else ignores as many path segments as are in config.apiBase
       // Does NOT care what the api base chars actually are.
-      // tslint:disable-next-line:triple-equals
+      // eslint-disable-next-line eqeqeq
       if (this.config.apiBase == undefined) {
         parsed.apiBase = pathSegments[segmentIx++];
       } else {
@@ -1216,7 +1222,7 @@ export abstract class BackendService {
     }
   }
 
-  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: any): string {
+  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: IExtendEntity): string {
     let method = 'POST';
     let postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod === undefined) {
@@ -1279,7 +1285,7 @@ export abstract class BackendService {
   }
 
   private createInterceptorUtils(
-    url: string, id?: string, interceptorIds?: string[], query?: Map<string, string[]>, body?: any
+    url: string, id?: string, interceptorIds?: string[], query?: Map<string, string[]>, body?: unknown
   ): IInterceptorUtils {
     return {
       url,

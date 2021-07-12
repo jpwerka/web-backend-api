@@ -2,19 +2,19 @@ import { Observable } from 'rxjs';
 import { IQueryFilter, FilterFn, FilterOp } from './query.interface';
 
 export interface IHeadersCore {
-  set(name: string, value: string | string[]): void | any;
-  append(name: string, value: string | string[]): void | any;
+  set(name: string, value: string | string[]): void | unknown;
+  append(name: string, value: string | string[]): void | unknown;
   keys(): string[] | Iterator<string>;
   get(name: string): string | string[] | null;
   getAll?(name: string): string | string[] | null;
 }
 
-export interface IRequestCore<T> {
+export interface IRequestCore {
   method: string;
   url: string;
   urlWithParams?: string;
   headers?: IHeadersCore;
-  body?: any;
+  body?: unknown;
 }
 
 export interface IResponseBase {
@@ -40,8 +40,8 @@ export interface IResponseBase {
   url?: string;
 }
 
-export interface IHttpResponse<T> extends IResponseBase {
-  body?: T;
+export interface IHttpResponse extends IResponseBase {
+  body?: unknown;
 }
 
 
@@ -51,16 +51,16 @@ export interface IErrorMessage {
 }
 
 export interface IHttpErrorResponse extends IResponseBase {
-  error?: IErrorMessage | any;
+  error?: IErrorMessage | unknown;
 }
 
-export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | any) => IHttpErrorResponse;
+export type ErrorResponseFn = (url: string, status: number, error?: IErrorMessage | unknown) => IHttpErrorResponse;
 
-export type ResponseFn = (url: string, status: number, body?: any) => IHttpResponse<any>;
+export type ResponseFn = (url: string, status: number, body?: unknown) => IHttpResponse;
 
 export interface IConditionsParam {
   [key: string]: {
-    value: any,
+    value: unknown,
     filter?: FilterFn | FilterOp
   };
 }
@@ -99,7 +99,8 @@ export type ConditionsFn = (conditions: IConditionsParam) => IQueryFilter[];
  *    response: responseDocuments
  *   });
  */
-export type ResponseInterceptorFn = (utils: IInterceptorUtils) => IHttpResponse<any> | IHttpErrorResponse | Observable<any>;
+export type ResponseInterceptorFn = (utils: IInterceptorUtils) =>
+  IHttpResponse | IHttpErrorResponse | Observable<IHttpResponse | IHttpErrorResponse>;
 
 /**
  * Mapping interface for requests interceptions
@@ -161,7 +162,7 @@ export interface IRequestInterceptor {
    * @alias IHttpErrorResponse
    * @alias ResponseInterceptorFn
    */
-  response: ResponseInterceptorFn | IHttpResponse<any> | IHttpErrorResponse;
+  response: ResponseInterceptorFn | IHttpResponse | IHttpErrorResponse;
 }
 
 /**
@@ -190,7 +191,7 @@ export interface IInterceptorUtils {
   /**
    * Request body, when exists
    */
-  body?: any;
+  body?: unknown;
   /**
    * Utility to assemble responses in the standard format expected by the library.
    */
@@ -238,5 +239,5 @@ export interface IPassThruBackend {
    * Handle an HTTP request and return an Observable of HTTP response
    * Both the request type and the response type are determined by the supporting HTTP library.
    */
-  handle(req: IRequestCore<any>): Observable<any>;
+  handle(req: IRequestCore): Observable<IHttpResponse | IHttpErrorResponse>;
 }

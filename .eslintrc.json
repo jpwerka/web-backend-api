@@ -1,0 +1,73 @@
+{
+  "root": true,
+  "ignorePatterns": [
+    "projects/**/*"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "*.ts"
+      ],
+      "parserOptions": {
+        "project": [
+          "tsconfig.json",
+          "web-backend-api/tsconfig.lib.json"
+        ],
+        "createDefaultProgram": true
+      },
+      "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@angular-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:@angular-eslint/template/process-inline-templates",
+        "plugin:prettier/recommended"
+      ],
+      "rules": {
+        "indent": [
+          "warn",
+          2,
+          {
+            "SwitchCase": 1,
+            "MemberExpression": 1,
+            "ignoredNodes": ["ConditionalExpression"],
+            "ignoreComments": true
+          }],
+        "max-len": [
+          "error",
+          {
+            "code": 140,
+            "ignorePattern": "^import|^export|^\\s+it\\('.+',|^\\s*describe\\('.+',"
+           }
+        ],
+        // note you must disable the base rule as it can report incorrect errors
+        "quotes": "off",
+        "@angular-eslint/component-selector": [
+          "error",
+          {
+            "prefix": "lib",
+            "style": "kebab-case",
+            "type": "element"
+          }
+        ],
+        "@angular-eslint/directive-selector": [
+          "error",
+          {
+            "prefix": "lib",
+            "style": "camelCase",
+            "type": "attribute"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "*.html"
+      ],
+      "extends": [
+        "plugin:@angular-eslint/template/recommended"
+      ],
+      "rules": {}
+    }
+  ]
+}

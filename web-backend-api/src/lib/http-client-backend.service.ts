@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { XhrFactory } from '@angular/common';
 import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
@@ -37,7 +40,7 @@ export class HttpClientBackendService implements HttpBackend {
     try {
       return new HttpXhrBackend(this.xhrFactory);
     } catch (ex) {
-      ex.message = 'Cannot create passThru404 backend; ' + (ex.message || '');
+      ex.message = `Cannot create passThru404 backend; ${ex.message || ''}`;
       throw ex;
     }
   }
@@ -59,7 +62,7 @@ export class HttpClientBackendService implements HttpBackend {
       new HttpHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) :
       new HttpHeaders({ 'Content-Type': 'application/json' });
     if (status === STATUS.CREATED && !! body.id) {
-      headers = headers.set('Location', url + '/' + body.id);
+      headers = headers.set('Location', `${url}/${body.id}`);
     }
     return new HttpResponse({
       body,
