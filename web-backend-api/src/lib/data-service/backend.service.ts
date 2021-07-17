@@ -167,6 +167,10 @@ export abstract class BackendService {
     this.quickFilterMap.set(collectionName, quickFilter);
   }
 
+  clearQuickFilterMap(collectionName: string): void {
+    this.quickFilterMap.delete(collectionName);
+  }
+
   addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp): void {
     let fieldsFilterMap = this.fieldsFilterMap.get(collectionName);
     if (fieldsFilterMap !== undefined) {
@@ -176,6 +180,10 @@ export abstract class BackendService {
       fieldsFilterMap.set(field, filterfn);
       this.fieldsFilterMap.set(collectionName, fieldsFilterMap);
     }
+  }
+
+  clearFieldFilterMap(collectionName: string): void {
+    this.fieldsFilterMap.delete(collectionName);
   }
 
   addReplaceUrl(collectionName: string, replace: string | string[]): void {
@@ -787,7 +795,11 @@ export abstract class BackendService {
     if (name.includes('.')) {
       const root = name.substring(0, name.indexOf('.'));
       const child = name.substring(name.indexOf('.') + 1);
-      return this.getFieldValue(item[root] as IExtendEntity, child);
+      if (item && item.hasOwnProperty(root)) {
+        return this.getFieldValue(item[root] as IExtendEntity, child);
+      } else {
+        return undefined;
+      }
     } else {
       return item[name];
     }

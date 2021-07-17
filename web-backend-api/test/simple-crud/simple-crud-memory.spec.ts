@@ -1,4 +1,5 @@
 import { BackendConfigArgs, dataService, getBackendService, IBackendService, IHttpResponse, setupBackend } from '../../src/public-api';
+import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
 
 describe('Testes para um aplicação CRUD pura e simples em ARRAY de memória', () => {
@@ -16,11 +17,7 @@ describe('Testes para um aplicação CRUD pura e simples em ARRAY de memória', 
     };
     setupBackend(config, { dbtype: 'memory' }).then(() => {
       dbService = getBackendService();
-      dbService.backendUtils({
-        createResponseOptions: (url, status, body) => ({ url, status, body }),
-        createErrorResponseOptions: (url, status, error) => ({ url, status, error }),
-        createPassThruBackend: () => ({ handle: () => { throw new Error('Method not implemented.'); } })
-      });
+      configureBackendUtils(dbService);
       done();
     }).catch(err => done.fail(err));
 

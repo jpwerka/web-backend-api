@@ -15,6 +15,8 @@ export interface IOutboundDocument {
   isLoaded?: boolean;
 }
 
+export const collectionDocuments = 'outbound_document';
+
 export const outboundDocuments: IOutboundDocument[] = [
   {
     id: 1,
@@ -61,7 +63,7 @@ export const outboundDocuments: IOutboundDocument[] = [
   },
   {
     id: 3,
-    identifier: '4279187362',
+    identifier: '2345187362',
     customerId: 2,
     customer: {
       id: 2,
