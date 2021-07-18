@@ -79,6 +79,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
+  closeDatabase(): void {
+    this.db.close();
+  }
+
   createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
     const self = this;
     return new Promise<boolean>((resolve, reject) => {

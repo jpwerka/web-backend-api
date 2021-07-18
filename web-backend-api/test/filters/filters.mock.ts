@@ -17,7 +17,7 @@ export interface IOutboundDocument {
 
 export const collectionDocuments = 'outbound_document';
 
-export const outboundDocuments: IOutboundDocument[] = [
+export const documents: IOutboundDocument[] = [
   {
     id: 1,
     identifier: '4167161881',

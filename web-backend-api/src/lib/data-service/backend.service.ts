@@ -155,6 +155,11 @@ export abstract class BackendService {
     this.addJoinGetByIdMap(collectionName, joinField);
   }
 
+  clearJoinGetBothMap(collectionName: string): void {
+    this.joinnersGetByIdMap.delete(collectionName);
+    this.joinnersGetAllMap.delete(collectionName);
+  }
+
   addTransformPostMap(collectionName: string, transformfn: TransformPostFn): void {
     this.transformPostMap.set(collectionName, transformfn);
   }
