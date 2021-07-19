@@ -611,13 +611,13 @@ export abstract class BackendService {
               // eslint-disable-next-line max-len
               console.warn(`Don't use field destination '${joinField.collectionField}[i].${joinField.fieldDest}', because field '${joinField.collectionField}[i].${joinField.fieldId}' is unwrapped.`);
             }
-            joinFieldValues.forEach((element, index) => {
+            joinFieldValues.forEach((element: IExtendEntity, index: number, self: IExtendEntity[]) => {
               if (dataAux[index] !== undefined) {
                 if (joinField.removeFieldId) {
                   delete element[joinField.fieldId];
                 }
                 if (joinField.unwrapField) {
-                  element[fieldDest] = Object.assign(element[fieldDest], dataAux[index]);
+                  self[index] = Object.assign(element, dataAux[index]) as IExtendEntity;
                 } else {
                   element[fieldDest] = dataAux[index];
                 }
