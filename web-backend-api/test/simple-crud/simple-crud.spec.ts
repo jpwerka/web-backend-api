@@ -4,9 +4,10 @@ import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
 
 describe('Testes para uma aplicação CRUD pura e simples', () => {
-  let dbService: IBackendService;
 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
+
+    let dbService: IBackendService
 
     beforeAll((done: DoneFn) => {
 
@@ -19,6 +20,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         pageEncapsulation: false,
         delay: 0
       };
+
       setupBackend(config, dbType).then(() => {
         dbService = getBackendService();
         configureBackendUtils(dbService);
@@ -28,8 +30,8 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
     });
 
     afterAll((done: DoneFn) => {
-      if (dbType.dbtype === 'indexdb') {
-        (dbService as IndexedDbService).closeDatabase();
+      if (dbService instanceof IndexedDbService) {
+        dbService.closeDatabase();
       }
       dbService.deleteDatabase().then(
         () => done(),

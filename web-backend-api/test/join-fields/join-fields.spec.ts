@@ -1,14 +1,23 @@
 import { TestCase } from 'jasmine-data-provider-ts';
 import { BackendConfig } from '../../src/lib/data-service/backend-config';
+import { clone } from '../../src/lib/data-service/backend.service';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../src/public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
-import { collectionCustomers, collectionDocuments, collectionProducts, customers, documents, ICustomer, IOutboundDocument, IProduct, products } from './join-fields.mock';
+import { collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, ICustomer, IOutboundDocument, IOutboundLoad, IProduct, loads, products } from './join-fields.mock';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
+
+dataServiceFn.set(collectionLoads, [(dbService: IBackendService) => {
+
+  loads.forEach(load => {
+    void dbService.storeData(collectionLoads, clone(load)).then(() => null);
+  });
+}]);
+
 dataServiceFn.set(collectionDocuments, [(dbService: IBackendService) => {
 
   documents.forEach(document => {
-    void dbService.storeData(collectionDocuments, document).then(() => null);
+    void dbService.storeData(collectionDocuments, clone(document)).then(() => null);
   })
 }]);
 
@@ -27,9 +36,9 @@ dataServiceFn.set(collectionProducts, [(dbService: IBackendService) => {
 }]);
 
 describe('Testes para JOIN de várias coleções', () => {
-  let dbService: MemoryDbService | IndexedDbService;
 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
+    let dbService: MemoryDbService | IndexedDbService;
 
     beforeAll((done: DoneFn) => {
       if (dbType.dbtype === 'memory') {
@@ -66,7 +75,7 @@ describe('Testes para JOIN de várias coleções', () => {
       // given
       const expectedDocument = Object.assign(
         {},
-        documents[0],
+        clone(documents[0]),
         { customer: customers.find(item => item.id === documents[0].customerId) }
       );
       expectedDocument.items = expectedDocument.items.map(item => Object.assign(
@@ -98,7 +107,7 @@ describe('Testes para JOIN de várias coleções', () => {
       // given
       const expectedDocuments = documents.map(document => Object.assign(
         {},
-        document,
+        clone(document),
         { customer: customers.find(item => item.id === document.customerId) }
       ));
       expectedDocuments.forEach(document => {
@@ -135,7 +144,7 @@ describe('Testes para JOIN de várias coleções', () => {
       // given
       const expectedDocument = Object.assign(
         {},
-        documents[0],
+        clone(documents[0]),
         { documentCustomer: customers.find(item => item.id === documents[0].customerId) }
       );
       delete expectedDocument.customerId;
@@ -177,7 +186,7 @@ describe('Testes para JOIN de várias coleções', () => {
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const expectedDocument = Object.assign(
         {},
-        documents[0],
+        clone(documents[0]),
         { customer: mapCustomer(customers.find(item => item.id === documents[0].customerId)) }
       );
       delete expectedDocument.customerId;
@@ -191,13 +200,14 @@ describe('Testes para JOIN de várias coleções', () => {
         delete result.productId;
         return result
       });
-      dbService.addJoinGetByIdMap(collectionDocuments, {
+      // To test addJoinGetByIdMap by both method
+      dbService.addJoinGetBothMap(collectionDocuments, {
         fieldId: 'customerId',
         collectionSource: collectionCustomers,
         removeFieldId: true,
         transformerGet: ['id', 'name']
       });
-      dbService.addJoinGetByIdMap(collectionDocuments, {
+      dbService.addJoinGetBothMap(collectionDocuments, {
         fieldId: 'productId',
         collectionSource: collectionProducts,
         collectionField: 'items',
@@ -221,7 +231,7 @@ describe('Testes para JOIN de várias coleções', () => {
         const customer = customers.find(item => item.id === document.customerId);
         const result = Object.assign(
           {},
-          document,
+          clone(document),
           { customerName: customer.name }
         );
         result.items = result.items.map(item => {
@@ -235,14 +245,15 @@ describe('Testes para JOIN de várias coleções', () => {
         });
         return result;
       });
-      dbService.addJoinGetAllMap(collectionDocuments, {
+      // To test addJoinGetAllMap by both method
+      dbService.addJoinGetBothMap(collectionDocuments, {
         fieldId: 'customerId',
         collectionSource: collectionCustomers,
         transformerGet: [{ field: 'name', property: 'customerName' }],
         unwrapField: true,
         fieldDest: 'customer' // to forçe warning message
       });
-      dbService.addJoinGetAllMap(collectionDocuments, {
+      dbService.addJoinGetBothMap(collectionDocuments, {
         fieldId: 'productId',
         collectionSource: collectionProducts,
         collectionField: 'items',
@@ -259,6 +270,32 @@ describe('Testes para JOIN de várias coleções', () => {
           // then
           expect(response.body).toEqual(expectedDocuments);
           expect(console.warn).toHaveBeenCalledTimes(documents.length);
+          done();
+        },
+        error => done.fail(error)
+      );
+    });
+
+    it(`Deve fazer a junção em uma colection de array de ids. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const expectedLoad = clone(loads[0]);
+      expectedLoad.documents = expectedLoad.documentsId.map(id => clone(documents.find(doc => doc.id === id)));
+      // expectedLoad.createdAt = new Date(expectedLoad.createdAt);
+      delete expectedLoad.documentsId;
+      // To test addJoinGetAllMap by both method
+      dbService.addJoinGetByIdMap(collectionLoads, {
+        fieldId: 'documentsId',
+        collectionSource: collectionDocuments,
+        unwrapField: true, // to forçe warning message
+        removeFieldId: true,
+      });
+      spyOn(console, 'warn').and.callThrough();
+      // when
+      dbService.get$(collectionLoads, expectedLoad.id, undefined, collectionLoads).subscribe(
+        (response: IHttpResponse<IOutboundLoad>) => {
+          // then
+          expect(response.body).toEqual(expectedLoad);
+          expect(console.warn).toHaveBeenCalledTimes(1);
           done();
         },
         error => done.fail(error)

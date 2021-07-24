@@ -20,7 +20,8 @@ module.exports = function (config) {
     },
     coverageReporter: {
       type : 'html',
-      dir : require('path').join(__dirname, './../coverage/web-backend-api')
+      dir : require('path').join(__dirname, './../coverage'),
+      subdir: 'web-backend-api'
     },
     reporters: ['progress', 'kjhtml', 'coverage'],
     port: 9876,

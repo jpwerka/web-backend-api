@@ -7,12 +7,12 @@ import { IndexedDbService } from './indexed-db.service';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
-const backendConfig: BackendConfigArgs = new BackendConfig();
+let backendConfig: BackendConfigArgs = new BackendConfig();
 export function getBackendConfig(): BackendConfigArgs {
   return backendConfig;
 }
 
-const backendType: BackendTypeArgs = new BackendType();
+let backendType: BackendTypeArgs = new BackendType();
 export function getBackendType(): BackendTypeArgs {
   return backendType;
 }
@@ -33,13 +33,14 @@ export function getBackendService(): IBackendService {
 export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArgs): Promise<boolean> {
 
   if (config) {
-    Object.assign(backendConfig, config);
+    backendConfig = Object.assign(backendConfig, config);
   }
 
   if (dbtype) {
-    Object.assign(backendType, dbtype);
+    backendType = Object.assign(backendType, dbtype);
   }
 
+  console.log(backendType);
   if (backendType.dbtype === 'memory') {
     dbService = new MemoryDbService(backendConfig);
   } else {

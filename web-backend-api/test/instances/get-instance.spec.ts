@@ -4,9 +4,9 @@ import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './get-instance.mock';
 
 describe('Testes para busca diretamente de instâncias', () => {
-  let dbService: IBackendService;
 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
+    let dbService: IBackendService;
 
     beforeAll((done: DoneFn) => {
 
@@ -28,8 +28,8 @@ describe('Testes para busca diretamente de instâncias', () => {
     });
 
     afterAll((done: DoneFn) => {
-      if (dbType.dbtype === 'indexdb') {
-        (dbService as IndexedDbService).closeDatabase();
+      if (dbService instanceof IndexedDbService) {
+        dbService.closeDatabase();
       }
       dbService.deleteDatabase().then(
         () => done(),

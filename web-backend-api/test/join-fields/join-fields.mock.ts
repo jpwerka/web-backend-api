@@ -176,3 +176,35 @@ export const documents: IOutboundDocument[] = [
     isLoaded: false,
   }
 ];
+
+export interface IOutboundLoad {
+  id?: string;
+  identifier: string;
+  documentsId: string[]; // ids of outbound documents
+  documents?: IOutboundDocument[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export const collectionLoads = 'outbound_loads';
+
+export const loads: IOutboundLoad[] = [
+  {
+    id: '13225124-85bb-4462-8d2a-5d15a22b2050',
+    identifier: '5310652224',
+    createdAt: new Date('2019-10-28T17:17:17Z'),
+    documentsId: [
+      '68c7dd19-81f0-4d9e-a1b1-68c5b6392b6c',
+      '4135b691-09c4-440a-98e8-b6b685ab920b'
+    ]
+  },
+  {
+    id: 'c9fe397a-7bac-4b1d-aabf-344cd0b63a3d',
+    identifier: '6817751546',
+    createdAt: new Date('2019-09-18T11:30:25Z'),
+    updatedAt: new Date('2019-09-26T06:18:52Z'),
+    documentsId: [
+      '1468f139-f707-4bed-9328-05e98db47ab5'
+    ]
+  }
+];
