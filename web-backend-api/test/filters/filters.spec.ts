@@ -1,5 +1,5 @@
+import { cloneDeep } from 'lodash-es';
 import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { clone } from '../../src/lib/data-service/backend.service';
 import { IBackendService, IHttpResponse, LoadFn, MemoryDbService } from '../../src/public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionDocuments, documents, IOutboundDocument } from './filters.mock';
@@ -35,7 +35,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar o filtro básico por id', (done: DoneFn) => {
     // given
-    const expectedDocument = clone(documents[0])
+    const expectedDocument = cloneDeep(documents[0])
     // when
     dbService.get$(collectionDocuments, '1', undefined, collectionDocuments).subscribe(
       (response: IHttpResponse<IOutboundDocument>) => {
@@ -49,7 +49,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar o filtro básico por identificador', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.identifier === '978342308'));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.identifier === '978342308'));
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
@@ -65,7 +65,7 @@ describe('Testes para cenários de filtros', () => {
   it('Deve aplicar o filtro de igualdade por identificador', (done: DoneFn) => {
     // given
     dbService.addFieldFilterMap(collectionDocuments, 'identifier', 'eq');
-    const expectedDocuments = clone(documents.filter(doc => doc.identifier === '978342308'));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.identifier === '978342308'));
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
@@ -81,7 +81,7 @@ describe('Testes para cenários de filtros', () => {
   it('Deve aplicar o filtro de desigualdade por identificador', (done: DoneFn) => {
     // given
     dbService.addFieldFilterMap(collectionDocuments, 'identifier', 'ne');
-    const expectedDocuments = clone(documents.filter(doc => doc.identifier !== '978342308'));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.identifier !== '978342308'));
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
@@ -99,7 +99,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', (value: string, item: IOutboundDocument): boolean => {
       return item.customer.id === parseInt(value);
     });
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId === 2));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId === 2));
     const query = new Map<string, string[]>([['customerId', ['2']]]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
@@ -120,7 +120,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'isLoaded', (value: string, item: IOutboundDocument): boolean => {
       return item.isLoaded === ((value === 'true' ? true : false));
     });
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId === 2 && !doc.isLoaded));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId === 2 && !doc.isLoaded));
     const query = new Map<string, string[]>([
       ['customerId', ['2']],
       ['isLoaded', ['false']]
@@ -139,7 +139,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar um filtro em um sub-item da coleção', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId === 2));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId === 2));
     const query = new Map<string, string[]>([['customer.id', ['2']]]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
@@ -173,7 +173,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar um filtro na coleção principal e em um sub-item da coleção retornando resultados', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId === 2 && doc.isLoaded));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId === 2 && doc.isLoaded));
     const query = new Map<string, string[]>([
       ['isLoaded', ['true']],
       ['customer.id', ['2']],
@@ -192,7 +192,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar um filtro para o filtro rapido', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
+    const expectedDocuments = cloneDeep(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
     const query = new Map<string, string[]>([['searchTerm', ['23451']]]);
     dbService.addQuickFilterMap(collectionDocuments, {
       term: 'searchTerm',
@@ -212,7 +212,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar um filtro para o filtro rapido mais um filtro customizado', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
+    const expectedDocuments = cloneDeep(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
     const query = new Map<string, string[]>([
       ['searchTerm', ['23451']],
       ['customerId', ['2']]
@@ -236,7 +236,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Deve aplicar um filtro para o filtro rapido customizado mais um filtro padrão', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
+    const expectedDocuments = cloneDeep(documents.filter(doc => /23451/.test(doc.identifier) && /23451/.test(doc.customer.name)));
     const query = new Map<string, string[]>([
       ['searchTerm', ['23451']],
       ['customerId', ['2']]
@@ -295,7 +295,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('Ao aplicar um filtro com array deve retornar os resultados', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.identifier === '4167161881' || doc.identifier === '2226863794'));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.identifier === '4167161881' || doc.identifier === '2226863794'));
     const query = new Map<string, string[]>([
       ['identifier', ['4167161881', '2226863794']]
     ]);
@@ -312,7 +312,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('deve aplicar um filtro com condição de maior que `>`', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId > 3));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId > 3));
     const query = new Map<string, string[]>([
       ['customerId', ['3']]
     ]);
@@ -330,7 +330,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('deve aplicar um filtro com condição de maior ou igual a `>=`', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId >= 3));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId >= 3));
     const query = new Map<string, string[]>([
       ['customerId', ['3']]
     ]);
@@ -348,7 +348,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('deve aplicar um filtro com condição de menor que `<`', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId < 3));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId < 3));
     const query = new Map<string, string[]>([
       ['customerId', ['3']]
     ]);
@@ -366,7 +366,7 @@ describe('Testes para cenários de filtros', () => {
 
   it('deve aplicar um filtro com condição de menor ou igual a `<=`', (done: DoneFn) => {
     // given
-    const expectedDocuments = clone(documents.filter(doc => doc.customerId <= 3));
+    const expectedDocuments = cloneDeep(documents.filter(doc => doc.customerId <= 3));
     const query = new Map<string, string[]>([
       ['customerId', ['3']]
     ]);

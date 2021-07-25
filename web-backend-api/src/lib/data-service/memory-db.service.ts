@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
@@ -5,7 +6,7 @@ import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, clone, IExtendEntity } from './backend.service';
+import { BackendService, IExtendEntity } from './backend.service';
 
 declare const v4: () => string;
 
@@ -89,7 +90,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        observer.next(this.findById(objectStore, id));
+        observer.next(cloneDeep(this.findById(objectStore, id)));
         observer.complete();
       } else {
         observer.error('Não foi passado o id');
@@ -109,7 +110,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         continue: (): void => null
       };
       while (cursor.index <= objectStore.length) {
-        cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+        cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
         if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
           observer.next(queryResults.items);
           observer.complete();
@@ -140,7 +141,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
-        item = item ? clone(item) : item;
+        item = item ? cloneDeep(item) : item;
 
         (async (itemAsync: IExtendEntity) => {
           if (itemAsync) {
@@ -174,7 +175,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           continue: (): void => null
         };
         while (cursor.index <= objectStore.length) {
-          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+          cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
           if (this.getAllItems((cursor.value ? cursor : null), queryResults, queriesParams.root)) {
             break;
           }
@@ -228,7 +229,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, clone(item));
+          item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
           return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
         })().then(response => {
           observer.next(response);
@@ -261,7 +262,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.post204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, clone(item));
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
@@ -315,7 +316,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, clone(item));
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
@@ -343,7 +344,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, clone(item));
+          item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
           return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
         })().then(response => {
           observer.next(response);

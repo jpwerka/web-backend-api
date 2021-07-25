@@ -35,7 +35,7 @@ dataServiceFn.set(collectionProducts, [(dbService: IBackendService) => {
   });
 }]);
 
-describe('Testes para JOIN de várias coleções', () => {
+describe('Testes para JOIN de várias coleções com a configuração através da coleção', () => {
 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
@@ -59,6 +59,8 @@ describe('Testes para JOIN de várias coleções', () => {
     beforeEach(() => {
       dbService.clearJoinGetBothMap(collectionDocuments);
       dbService.clearFieldFilterMap(collectionDocuments);
+      dbService.clearJoinGetBothMap(collectionLoads);
+      dbService.clearFieldFilterMap(collectionLoads);
     });
 
     afterAll((done: DoneFn) => {
@@ -296,6 +298,110 @@ describe('Testes para JOIN de várias coleções', () => {
           // then
           expect(response.body).toEqual(expectedLoad);
           expect(console.warn).toHaveBeenCalledTimes(1);
+          done();
+        },
+        error => done.fail(error)
+      );
+    });
+
+    it(`Deve fazer a junção com a configuração da sub-coleção para o GetById. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
+      const expectedLoad = clone(loads[0]);
+      expectedLoad.documents = expectedLoad.documentsId.map(id => {
+        let document = clone(documents.find(doc => doc.id === id));
+        document = Object.assign(
+          {},
+          document,
+          { customer: customers.find(item => item.id === document.customerId) }
+        );
+        document.items = document.items.map(item => Object.assign(
+          {},
+          item,
+          { product: mapProduct(products.find(prod => prod.id === item.productId)) }
+        ));
+        return document;
+      });
+      delete expectedLoad.documentsId;
+      dbService.addJoinGetByIdMap(collectionDocuments, {
+        fieldId: 'customerId',
+        collectionSource: collectionCustomers
+      });
+      dbService.addJoinGetByIdMap(collectionDocuments, {
+        fieldId: 'productId',
+        collectionSource: collectionProducts,
+        collectionField: 'items',
+        transformerGet: true
+      });
+      dbService.addTransformGetByIdMap(collectionProducts, mapProduct);
+      // To test addJoinGetAllMap by both method
+      dbService.addJoinGetByIdMap(collectionLoads, {
+        fieldId: 'documentsId',
+        collectionSource: collectionDocuments,
+        removeFieldId: true,
+        joinFields: true
+      });
+      // To forçe ajust JOIN fields
+      dbService.adjustJoinFields();
+      // when
+      dbService.get$(collectionLoads, expectedLoad.id, undefined, collectionLoads).subscribe(
+        (response: IHttpResponse<IOutboundLoad>) => {
+          // then
+          expect(response.body).toEqual(expectedLoad);
+          done();
+        },
+        error => done.fail(error)
+      );
+    });
+
+    it(`Deve fazer a junção com a configuração da sub-coleção para o GetAll. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
+      const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
+      const expectedLoads = clone(loads);
+      expectedLoads.forEach(load => {
+        load.documents = load.documentsId.map(id => {
+          let document = clone(documents.find(doc => doc.id === id));
+          document = Object.assign(
+            {},
+            document,
+            { customer: mapCustomer(customers.find(item => item.id === document.customerId)) }
+          );
+          document.items = document.items.map(item => Object.assign(
+            {},
+            item,
+            { product: mapProduct(products.find(prod => prod.id === item.productId)) }
+          ));
+          return document;
+        });
+        delete load.documentsId;
+      });
+      dbService.addJoinGetAllMap(collectionDocuments, {
+        fieldId: 'customerId',
+        collectionSource: collectionCustomers,
+        transformerGet: ['id', 'name']
+      });
+      dbService.addJoinGetAllMap(collectionDocuments, {
+        fieldId: 'productId',
+        collectionSource: collectionProducts,
+        collectionField: 'items',
+        transformerGet: true
+      });
+      dbService.addTransformGetAllMap(collectionProducts, mapProduct);
+      // To test addJoinGetAllMap by both method
+      dbService.addJoinGetAllMap(collectionLoads, {
+        fieldId: 'documentsId',
+        collectionSource: collectionDocuments,
+        removeFieldId: true,
+        joinFields: true
+      });
+      // To forçe ajust JOIN fields
+      dbService.adjustJoinFields();
+      // when
+      dbService.get$(collectionLoads, undefined, undefined, collectionLoads).subscribe(
+        (response: IHttpResponse<IOutboundLoad[]>) => {
+          // then
+          expect(response.body).toEqual(expectedLoads);
           done();
         },
         error => done.fail(error)

@@ -12,13 +12,7 @@ import { parseUri } from '../utils/parse-uri';
 declare const require: (file: string) => void;
 require('json.date-extensions');
 
-interface IEntity {
-  id?: string | number;
-}
-
-export interface IExtendEntity extends IEntity {
-  [key: string]: unknown;
-}
+export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
 
 interface IRequestInfo {
   req: IRequestCore<IExtendEntity>;
@@ -123,6 +117,11 @@ export abstract class BackendService {
     this.transformGetByIdMap.set(collectionName, transformfn);
   }
 
+  clearTransformGetBothMap(collectionName: string): void {
+    this.transformGetAllMap.delete(collectionName);
+    this.transformGetByIdMap.delete(collectionName);
+  }
+
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
     if (joinField.transformerGet instanceof Array) {
       joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
@@ -164,8 +163,16 @@ export abstract class BackendService {
     this.transformPostMap.set(collectionName, transformfn);
   }
 
+  clearTransformPostMap(collectionName: string): void {
+    this.transformPostMap.delete(collectionName);
+  }
+
   addTransformPutMap(collectionName: string, transformfn: TransformPutFn): void {
     this.transformPutMap.set(collectionName, transformfn);
+  }
+
+  clearTransformPutMap(collectionName: string): void {
+    this.transformPostMap.delete(collectionName);
   }
 
   addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter): void {
@@ -335,7 +342,7 @@ export abstract class BackendService {
     });
   }
 
-  private adjustJoinFields(): void {
+  adjustJoinFields(): void {
     this.joinnersGetAllMap.forEach((joinFields: IJoinField[]) => {
       this.adjustJoinFieldsGetAll(joinFields);
     });

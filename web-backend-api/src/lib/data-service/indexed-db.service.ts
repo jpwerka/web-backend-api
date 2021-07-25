@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
+import { cloneDeep } from 'lodash-es';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
@@ -6,7 +7,7 @@ import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, clone, IExtendEntity } from './backend.service';
+import { BackendService, IExtendEntity } from './backend.service';
 
 declare const v4: () => string;
 
@@ -251,7 +252,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           })(request.result as IExtendEntity).then(
             item => {
               if (item) {
-                const response = self.utils.createResponseOptions(url, STATUS.OK, item);
+                const response = self.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 observer.next(response);
                 observer.complete();
               } else {
@@ -336,8 +337,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
@@ -385,7 +386,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
@@ -470,7 +471,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
@@ -513,8 +514,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
