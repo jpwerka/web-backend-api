@@ -11,7 +11,7 @@ import { BackendService, IExtendEntity } from './backend.service';
 
 declare const v4: () => string;
 
-interface IEventEventTargetError extends EventTarget {
+interface IEventTargetError extends EventTarget {
   error: unknown;
   errorCode: number;
 }
@@ -38,8 +38,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
       };
 
       request.onerror = (event: Event) => {
-        console.error('[IndexedDbService] Database error: ', (event.target as IEventEventTargetError).errorCode);
-        reject((event.target as IEventEventTargetError).errorCode);
+        console.error('[IndexedDbService] Database error: ', (event.target as IEventTargetError).errorCode);
+        reject((event.target as IEventTargetError).errorCode);
       };
 
       request.onupgradeneeded = () => {
@@ -61,7 +61,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           'Verifique se você está com outra aba aberta com a aplicação.\n' +
           'Este comportamento é necessário para ter a garantia de sempre recriar o banco de dados.';
         alert(mensagem);
-        reject((event.target as IEventEventTargetError).errorCode);
+        reject((event.target as IEventTargetError).errorCode);
       };
 
       request.onblocked = (event: Event) => {
@@ -169,7 +169,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return new Observable((observer) => {
       let request: IDBRequest<unknown>;
       const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
-      if (id !== undefined && id !== '') {
+      if (id !== undefined && id !== null && id !== '') {
         id = (this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id) as number;
         request = objectStore.get(id);
         request.onsuccess = () => {
@@ -177,7 +177,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           observer.complete();
         };
         request.onerror = (event) => {
-          observer.error((event.target as IEventEventTargetError).error);
+          observer.error((event.target as IEventTargetError).error);
         };
       } else {
         observer.error('Não foi passado o id');
@@ -201,7 +201,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         }
       };
       request.onerror = (event) => {
-        observer.error((event.target as IEventEventTargetError).error);
+        observer.error((event.target as IEventTargetError).error);
       };
     });
   }
@@ -261,7 +261,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 observer.error(response);
               }
             },
-            (error) => observer.error(error)
+            (error) => this.dispatchErrorToResponse(observer, url, error)
           );
         } else {
           const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
@@ -279,7 +279,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 observer.next(response);
                 observer.complete();
               },
-              (error) => observer.error(error)
+              (error) => this.dispatchErrorToResponse(observer, url, error)
             );
           }
         }
@@ -287,7 +287,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onerror = (event) => {
         // eslint-disable-next-line max-len
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as IEventEventTargetError).error);
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as IEventTargetError).error);
         observer.error(response);
       };
     });
@@ -297,24 +297,25 @@ export class IndexedDbService extends BackendService implements IBackendService 
     const self = this;
     return new Observable((observer) => {
 
+      let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
       if (item.id) {
         item.id = (this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ?
           parseInt(item.id, 10) : item.id) as number;
       } else {
         if (self.config.strategyId !== 'autoincrement') {
-          item.id = self.generateStrategyId();
+          item.id = findId ? findId : self.generateStrategyId(url);
         } else if (item.hasOwnProperty('id')) {
           delete item.id;
         }
       }
 
-      let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
-      if (findId && findId !== item.id) {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Request id does not match item.id`);
+      if (findId && item.id && findId !== item.id) {
+        const error = `Request id (${findId}) does not match item.id (${item.id})`;
+        const response = self.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
         observer.error(response);
         return;
       } else {
-        findId = item.id;
+        findId = item.id ? item.id : findId;
       }
       let requestGet: IDBRequest<unknown>;
       if (!findId) {
@@ -337,31 +338,37 @@ export class IndexedDbService extends BackendService implements IBackendService 
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  if (this.config.returnBodyIn201) {
+                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  } else {
+                    const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+                    delete response.body;
+                    return response;
+                  }
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
-                }, error => observer.error(error));
+                }, error => this.dispatchErrorToResponse(observer, url, error));
               }
             };
 
             requestAdd.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to add '${collectionName}' with id='${item.id}'`,
-                  detailedMessage: (event.target as IEventEventTargetError).error
-                });
+              const error = {
+                message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
 
         } else if (self.config.post409) {
-          const response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
-            {
-              message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
-              detailedMessage: 'Use PUT instead.'
-            });
+          const error = {
+            message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
+            detailedMessage: 'Use PUT instead.'
+          };
+          const response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
           observer.error(response);
         } else { // if item already exists in collection
 
@@ -397,24 +404,24 @@ export class IndexedDbService extends BackendService implements IBackendService 
             };
 
             requestPut.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to update '${collectionName}' with id='${id}'`,
-                  detailedMessage: (event.target as IEventEventTargetError).error
-                });
+              const error = {
+                message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
 
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
         }
       };
 
       requestGet.onerror = (event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to find '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as IEventEventTargetError).error
-          });
+        const error = {
+          message: `Error to find '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
 
@@ -427,7 +434,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
   put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
 
     if (item.id) {
@@ -436,11 +443,11 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
     if (item.id && item.id !== findId) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST,
-        {
-          message: `Request for '${collectionName}' id does not match item.id`,
-          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-        }));
+      const error = {
+        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+      };
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
     }
 
     const self = this;
@@ -481,66 +488,67 @@ export class IndexedDbService extends BackendService implements IBackendService 
             };
 
             requestPut.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to update '${collectionName}' with id='${id}'`,
-                  detailedMessage: (event.target as IEventEventTargetError).error
-                });
+              const error = {
+                message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
 
         } else if (self.config.put404) {
-          const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-            {
-              message: `'${collectionName}' item with id='${id}' not found and may not be created with PUT.`,
-              detailedMessage: 'Use POST instead.'
-            });
+          const error = {
+            message: `${collectionName} item with id (${id}) not found and may not be created with PUT.`,
+            detailedMessage: 'Use POST instead.'
+          };
+          const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
           observer.error(response);
         } else {
-          if (!item.id) {
-            item['id'] = findId;
-          }
-
           void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPost(item, transformfn);
             }
           })().then(() => {
-
             const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  if (this.config.returnBodyIn201) {
+                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  } else {
+                    const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+                    delete response.body;
+                    return response;
+                  }
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
-                }, error => observer.error(error));
+                }, error => this.dispatchErrorToResponse(observer, url, error));
               }
             };
 
             requestAdd.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to add '${collectionName}' with id='${item.id}'`,
-                  detailedMessage: (event.target as IEventEventTargetError).error
-                });
+              const error = {
+                message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
         }
       };
 
       requestGet.onerror = (event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to find '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as IEventEventTargetError).error
-          });
+        const error = {
+          message: `Error to find '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
     });
@@ -549,7 +557,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
   delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
     const self = this;
     return new Observable((observer) => {
@@ -563,11 +571,11 @@ export class IndexedDbService extends BackendService implements IBackendService 
       };
 
       const onerror = (event: Event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to delete '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as IEventEventTargetError).error
-          });
+        const error = {
+          message: `Error to delete '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
 
@@ -580,8 +588,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
             request.onsuccess = onsuccess;
             request.onerror = onerror;
           } else {
-            const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-              { message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.' });
+            const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
+            const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
             observer.error(response);
           }
         };
@@ -595,9 +603,14 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  private generateStrategyId(): string | number {
+  private generateStrategyId(url?: string): string | number {
     if (this.config.strategyId === 'provided') {
-      throw new Error('Id strategy is set as `provided` and id not provided.');
+      const error = url ? this.utils.createErrorResponseOptions(
+        url,
+        STATUS.BAD_REQUEST,
+        'Id strategy is set as `provided` and id not provided.'
+      ) : new Error('Id strategy is set as `provided` and id not provided.');
+      throw error;
     } else {
       return v4();
     }

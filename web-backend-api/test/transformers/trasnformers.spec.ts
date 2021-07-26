@@ -4,12 +4,8 @@ import { defer, of } from 'rxjs';
 import { BackendConfig } from '../../src/lib/data-service/backend-config';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../src/public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
+import { getDateWithoutSeconds } from '../utils/date-utils';
 import { collectionProducts, IProduct, products } from './transformers.mock';
-
-function getDateWithoutSeconds(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0);
-}
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
@@ -44,6 +40,7 @@ describe('Testes para as funções de trasnformação', () => {
     const backendConfig = new BackendConfig({
       pageEncapsulation: false,
       dataEncapsulation: true,
+      returnBodyIn201: true,
       put204: false,
       strategyId: 'provided'
     })

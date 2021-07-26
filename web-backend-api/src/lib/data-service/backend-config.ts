@@ -13,7 +13,7 @@ export class BackendConfig implements BackendConfigArgs {
       delay: 500, // simulate latency by delaying response
       delete404: false, // don't complain if can't find entity to delete
       passThruUnknownUrl: false, // 404 if can't process URL
-      post204: true, // don't return the item after a POST
+      returnBodyIn201: false, // don't return the item in a body after created
       post409: false, // don't update existing item with that ID
       put204: true,  // don't return the item after a PUT
       put404: false, // create new item if PUT item with that ID not found

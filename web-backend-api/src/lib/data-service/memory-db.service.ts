@@ -88,7 +88,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   getInstance$(collectionName: string, id: string | number): Observable<unknown> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
-      if (id !== undefined && id !== '') {
+      if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
         observer.next(cloneDeep(this.findById(objectStore, id)));
         observer.complete();
@@ -160,7 +160,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
               observer.error(response);
             }
           },
-          (error) => observer.error(error)
+          (error) => this.dispatchErrorToResponse(observer, url, error)
         );
       } else {
         let queryParams: IQueryParams = { count: 0 };
@@ -194,7 +194,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
             observer.next(response as (IHttpResponse<unknown[]> | IHttpResponse<{ data: unknown[] }> | IHttpResponse<IQueryResult<unknown>>));
             observer.complete();
           },
-          (error) => observer.error(error));
+          (error) => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
@@ -203,19 +203,20 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
+      let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
       if (item.id) {
         item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
       } else {
-        item.id = this.generateStrategyId(objectStore, collectionName);
+        item.id = findId ? findId : this.generateStrategyId(objectStore, collectionName, url);
       }
 
-      let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
-      if (findId && findId !== item.id) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Request id does not match item.id`);
+      if (findId && item.id && findId !== item.id) {
+        const error = `Request id (${findId}) does not match item.id (${item.id})`;
+        const response = this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
         observer.error(response);
         return;
       } else {
-        findId = item.id;
+        findId = item.id ? item.id : findId;
       }
 
       const existingIx = this.indexOf(objectStore, findId);
@@ -229,18 +230,24 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
-          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          if (this.config.returnBodyIn201) {
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          } else {
+            const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+            delete response.body;
+            return response;
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        }, error => observer.error(error));
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       } else if (this.config.post409) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
-          {
-            message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
-            detailedMessage: 'Use PUT instead.'
-          });
+        const error = {
+          message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
+          detailedMessage: 'Use PUT instead.'
+        };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
         observer.error(response);
       } else {
         (async () => {
@@ -253,13 +260,9 @@ export class MemoryDbService extends BackendService implements IBackendService {
             item = Object.assign({}, objectStore[existingIx], item);
           }
 
-          if (!item.id) {
-            item['id'] = findId;
-          }
-
           objectStore[existingIx] = item;
 
-          if (this.config.post204) {
+          if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
             item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
@@ -268,7 +271,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         })().then(response => {
           observer.next(response);
           observer.complete();
-        }, error => observer.error(error));
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
@@ -276,7 +279,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
 
     if (item.id) {
@@ -285,11 +288,11 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
     if (item.id && item.id !== findId) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST,
-        {
-          message: `Request for '${collectionName}' id does not match item.id`,
-          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-        }));
+      const error = {
+        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+      };
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
     }
 
     return new Observable((observer) => {
@@ -322,14 +325,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
         })().then(response => {
           observer.next(response);
           observer.complete();
-        });
+        }, error => this.dispatchErrorToResponse(observer, url, error));
 
       } else if (this.config.put404) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          {
-            message: `'${collectionName}' item with id='${id} not found and may not be created with PUT.`,
-            detailedMessage: 'Use POST instead.'
-          });
+        const error = {
+          message: `${collectionName} item with id (${id}) not found and may not be created with PUT.`,
+          detailedMessage: 'Use POST instead.'
+        };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
         observer.error(response);
       } else {
         if (!item.id) {
@@ -344,12 +347,18 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
-          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          if (this.config.returnBodyIn201) {
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          } else {
+            const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+            delete response.body;
+            return response;
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        });
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
@@ -357,7 +366,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
     // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
@@ -367,23 +376,33 @@ export class MemoryDbService extends BackendService implements IBackendService {
         observer.next(response as IHttpResponse<null>);
         observer.complete();
       } else {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          { message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.' });
+        const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
         observer.error(response);
       }
     });
   }
 
-  private generateStrategyId(collection: IExtendEntity[], collectionName: string): string | number {
+  private generateStrategyId(collection: IExtendEntity[], collectionName: string, url?: string): string | number {
     if (this.config.strategyId === 'provided') {
-      throw new Error('Id strategy is set as `provided` and id not provided.');
+      const error = url ? this.utils.createErrorResponseOptions(
+        url,
+        STATUS.BAD_REQUEST,
+        'Id strategy is set as `provided` and id not provided.'
+      ) : new Error('Id strategy is set as `provided` and id not provided.');
+      throw error;
     }
     if (this.config.strategyId === 'uuid') {
       return v4();
     } else {
       if (!this.isCollectionIdNumeric(collection)) {
-        throw new Error(
-          `Collection '${collectionName}' id type is non-numeric or unknown. Can only generate numeric ids.`);
+        const message = `Collection ${collectionName} id type is non-numeric or unknown. Can only generate numeric ids.`;
+        const error = url ? this.utils.createErrorResponseOptions(
+          url,
+          STATUS.BAD_REQUEST,
+          message
+        ) : new Error(message);
+        throw error;
       }
       let maxId = 0;
       collection.forEach((item: IExtendEntity) => {
@@ -395,7 +414,10 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   private isCollectionIdNumeric(collection: IExtendEntity[]): boolean {
     // so that it could know the type of the `id` even when the collection is empty.
-    return (!!(collection && collection[0]) && typeof collection[0].id === 'number') || (!!collection);
+    if (Array.isArray(collection) && collection.length > 0) {
+      return typeof collection[0].id === 'number';
+    }
+    return true;
   }
 
   private findById(collection: IExtendEntity[], id: string | number): IExtendEntity {

@@ -35,7 +35,7 @@
           "error",
           {
             "code": 140,
-            "ignorePattern": "^import|^export|^\\s+it\\('.+',|^\\s*describe\\('.+',"
+            "ignorePattern": "^import|^export|^\\s+it\\(|^\\s*describe\\("
           }
         ],
         "no-prototype-builtins": "off",

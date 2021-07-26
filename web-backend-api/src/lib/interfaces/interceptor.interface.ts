@@ -47,7 +47,7 @@ export interface IHttpResponse<T> extends IResponseBase {
 
 export interface IErrorMessage {
   message: string;
-  detailedMessage?: string;
+  detailedMessage?: string | unknown;
 }
 
 export interface IHttpErrorResponse extends IResponseBase {

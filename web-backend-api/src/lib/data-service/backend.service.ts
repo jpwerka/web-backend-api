@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subscriber, throwError } from 'rxjs';
 import { concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
@@ -468,7 +468,7 @@ export abstract class BackendService {
         break;
       default: {
         const error: IErrorMessage = {
-          message: `Method '${reqInfo.method.toUpperCase()}' not allowed`,
+          message: `Method ${reqInfo.method.toUpperCase()} not allowed`,
           detailedMessage: 'Only methods GET, POST, PUT and DELETE are allowed'
         };
         response$ = throwError(this.utils.createErrorResponseOptions(reqInfo.url, STATUS.METHOD_NOT_ALLOWED, error));
@@ -1289,9 +1289,13 @@ export abstract class BackendService {
             found = queryParam && queryParam.length > 0 && queryParam[0] === postToOtherMethod.value;
             break;
           }
-          case 'bodyParam':
+          case 'bodyParam': {
             found = body && body[postToOtherMethod.param] && body[postToOtherMethod.param] === postToOtherMethod.value;
+            if (found) {
+              delete body[postToOtherMethod.param];
+            }
             break;
+          }
         }
         if (found) {
           method = postToOtherMethod.otherMethod;
@@ -1350,6 +1354,31 @@ export abstract class BackendService {
         conditions: this.createFilterConditions.bind(this) as ConditionsFn
       }
     };
+  }
+
+  protected dispatchErrorToResponse(observer: Subscriber<unknown>, url: string, error: unknown): void {
+    let message: string;
+    let detailedMessage: unknown;
+    if (typeof error === 'string') {
+      message = error;
+    } else if (error instanceof Error) {
+      message = error.message
+      detailedMessage = error;
+    } else if (typeof error === 'object') {
+      message = (error.hasOwnProperty('message')) ?
+        (error as IErrorMessage).message : 'Ocorreu um erro desconhecido ao executar o comando';
+      detailedMessage = (error.hasOwnProperty('detailedMessage')) ?
+        (error as IErrorMessage).detailedMessage : error;
+    } else {
+      message = 'Ocorreu um erro desconhecido ao executar o comando';
+      detailedMessage = error;
+    }
+    const errorMessage: IErrorMessage = { message };
+    if (detailedMessage) {
+      errorMessage.detailedMessage = detailedMessage;
+    }
+    console.log(errorMessage);
+    observer.error(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
   }
 
 }
