@@ -26,20 +26,20 @@ export class DownloadDataService {
     return this.dbService.listCollections();
   }
 
-  downloadAsJson(collectionName: string, v5: boolean = true): Observable<any> {
-    return this.getOrDownloadData(collectionName, v5 ? 'json5' : 'json', true);
+  downloadAsJson(collectionName: string, v5 = true): Observable<void> {
+    return this.getOrDownloadData(collectionName, v5 ? 'json5' : 'json', true) as Observable<void>;
   }
 
-  downloadData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<any> {
-    return this.getOrDownloadData(collectionName, getDataType, true, tsInfo);
+  downloadData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<void> {
+    return this.getOrDownloadData(collectionName, getDataType, true, tsInfo) as Observable<void>;
   }
 
-  getAllData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<any> {
-    return this.getOrDownloadData(collectionName, getDataType, false, tsInfo);
+  getAllData(collectionName: string, getDataType: GetDataType = 'json5', tsInfo?: ITypescriptInfo): Observable<string> {
+    return this.getOrDownloadData(collectionName, getDataType, false, tsInfo) as Observable<string>;
   }
 
-  // tslint:disable-next-line: max-line-length
-  private getOrDownloadData(collectionName: string, getDataType: GetDataType, isDownload: boolean, tsInfo?: ITypescriptInfo): Observable<any> {
+  // eslint-disable-next-line max-len
+  private getOrDownloadData(collectionName: string, getDataType: GetDataType, isDownload: boolean, tsInfo?: ITypescriptInfo): Observable<void | string> {
     return new Observable(observer => {
 
       this.dbService.getAllByFilter$(collectionName, undefined).subscribe(items => {

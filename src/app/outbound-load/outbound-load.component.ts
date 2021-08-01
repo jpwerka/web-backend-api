@@ -1,11 +1,11 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { IOutboundLoad } from '../entities/outbound-load/outbound-load.interface';
-import { IModalAction, ModalComponent } from '../components/modal/modal.component';
-import { OutboundLoadService } from '../services/outbound-load/outbound-load.service';
-import { IOutboundDocument } from '../entities/outbound-document/outbound-document.interface';
+import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { from, of } from 'rxjs';
-import { mergeMap, concatMap } from 'rxjs/operators';
+import { concatMap } from 'rxjs/operators';
+import { IModalAction, ModalComponent } from '../components/modal/modal.component';
+import { IOutboundDocument } from '../entities/outbound-document/outbound-document.interface';
+import { IOutboundLoad } from '../entities/outbound-load/outbound-load.interface';
+import { OutboundLoadService } from '../services/outbound-load/outbound-load.service';
 
 @Component({
   selector: 'app-outbound-load',
@@ -52,9 +52,9 @@ export class OutboundLoadComponent implements OnInit {
 
   outboundLoadForm: FormGroup;
 
-  get id() { return this.outboundLoadForm.get('id'); }
+  get id(): AbstractControl { return this.outboundLoadForm.get('id'); }
 
-  get identifier() { return this.outboundLoadForm.get('identifier'); }
+  get identifier(): AbstractControl { return this.outboundLoadForm.get('identifier'); }
 
   constructor(
     private fb: FormBuilder,
@@ -76,7 +76,7 @@ export class OutboundLoadComponent implements OnInit {
     return this.outboundLoadForm.get('documents') as FormArray;
   }
 
-  document(index: number) {
+  document(index: number): AbstractControl {
     return this.documents.at(index).get('document');
   }
 
@@ -86,11 +86,11 @@ export class OutboundLoadComponent implements OnInit {
     });
   }
 
-  removeDocument(index: number) {
+  removeDocument(index: number): void {
     this.documents.removeAt(index);
   }
 
-  showDocuments(outboundLoad: IOutboundLoad) {
+  showDocuments(outboundLoad: IOutboundLoad): void {
     if (outboundLoad.documents) {
       outboundLoad['showDocuments'] = true;
     } else {
@@ -101,11 +101,11 @@ export class OutboundLoadComponent implements OnInit {
     }
   }
 
-  hideDocuments(outboundLoad: IOutboundLoad) {
+  hideDocuments(outboundLoad: IOutboundLoad): void {
     outboundLoad['showDocuments'] = false;
   }
 
-  add() {
+  add(): void {
     this.outboundLoadService.getIdentifier().subscribe(result => {
       this.documents.clear();
       this.outboundLoadForm.reset();
@@ -115,34 +115,36 @@ export class OutboundLoadComponent implements OnInit {
     });
   }
 
-  delete(outboundLoad: IOutboundLoad) {
+  delete(outboundLoad: IOutboundLoad): void {
     this.outboundLoad = outboundLoad;
     this.modalQuestion.open();
   }
 
-  confirmForm() {
+  confirmForm(): void {
     if (this.documents.controls.length > 0) {
       this.documents.controls.forEach((form: FormGroup) => {
         form.get('document').markAsDirty({ onlySelf: true });
-       });
+      });
     } else {
-      this.documents.setErrors({required: true});
+      this.documents.setErrors({ required: true });
       this.documents.markAsTouched();
     }
     if (this.outboundLoadForm.valid) {
       const postLoad: IOutboundLoad = {
-        identifier: this.identifier.value,
-        documentsId: this.documents.controls.map(ct => ct.value.document.id)
+        identifier: this.identifier.value as string,
+        documentsId: this.documents.controls
+          .map<number>(ct => (ct.value as { document: IOutboundDocument }).document.id)
       };
       this.outboundLoadService.create(postLoad).subscribe(outboundLoad => {
-        outboundLoad['documents'] = this.documents.controls.map(ct => ct.value.document);
+        outboundLoad['documents'] = this.documents.controls
+          .map<IOutboundDocument>(ct => (ct.value as { document: IOutboundDocument }).document);
         this.outboundLoads.push(outboundLoad);
         this.modalForm.close();
       });
     }
   }
 
-  deleteOutboundLoad() {
+  deleteOutboundLoad(): void {
     this.outboundLoadService.delete(this.outboundLoad.id).subscribe(() => {
       const index = this.outboundLoads.findIndex(item => item.id === this.outboundLoad.id);
       if (index >= 0) {
@@ -153,7 +155,7 @@ export class OutboundLoadComponent implements OnInit {
   }
 
 
-  addDocument(source: string, outboundLoad?: IOutboundLoad) {
+  addDocument(source: string, outboundLoad?: IOutboundLoad): void {
     this.addDocSource = source;
     this.outboundLoad = outboundLoad;
     this.outboundLoadService.getUnloadedDocuments().subscribe(docs => {
@@ -162,13 +164,13 @@ export class OutboundLoadComponent implements OnInit {
     });
   }
 
-  deleteDocument(outboundLoad: IOutboundLoad, document: IOutboundDocument) {
+  deleteDocument(outboundLoad: IOutboundLoad, document: IOutboundDocument): void {
     this.outboundLoad = outboundLoad;
     if (this.outboundLoad.documents.length === 1) {
       window.alert('Outbound load contais only one document, delete the load.');
     } else {
       this.outboundLoadService.removeDocument(this.outboundLoad.id, document.id).subscribe(() => {
-        const index = this.outboundLoad.documents.findIndex(item => item.id ===  document.id);
+        const index = this.outboundLoad.documents.findIndex(item => item.id === document.id);
         if (index >= 0) {
           this.outboundLoad.documents.splice(index, 1);
         }
@@ -176,7 +178,7 @@ export class OutboundLoadComponent implements OnInit {
     }
   }
 
-  confirmDocs() {
+  confirmDocs(): void {
     const docsSelected = this.outboundUnloadedDocuments.filter(doc => doc['selected']);
     if (docsSelected.length > 0) {
       if (this.addDocSource === 'form') {
@@ -186,7 +188,7 @@ export class OutboundLoadComponent implements OnInit {
       } else {
         from(docsSelected).pipe(
           concatMap(doc => this.outboundLoadService.addDocument(this.outboundLoad.id, doc.id).pipe(
-            concatMap((res) => of(doc))
+            concatMap(() => of(doc))
           ))
         ).subscribe(
           (doc) => this.outboundLoad.documents.push(doc),

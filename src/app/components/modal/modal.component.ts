@@ -20,8 +20,6 @@ export class ModalComponent implements OnInit {
   @Input() primaryAction: IModalAction;
   @Input() secondaryAction: IModalAction;
 
-  constructor() { }
-
   ngOnInit() {
     this.validPrimaryAction();
   }
@@ -36,7 +34,7 @@ export class ModalComponent implements OnInit {
     this.isHidden = false;
   }
 
-  validPrimaryAction() {
+  validPrimaryAction(): void {
     if (!this.primaryAction) {
       this.primaryAction = {
         action: () => this.close(),
@@ -52,17 +50,17 @@ export class ModalComponent implements OnInit {
     }
   }
 
-  onClickOut() {
+  onClickOut(): void {
     if (this.clickOut) {
       this.close();
     }
   }
 
-  primaryActionClick() {
+  primaryActionClick(): void {
     this.primaryAction.action.call(this);
   }
 
-  secondaryActionClick() {
+  secondaryActionClick(): void {
     this.secondaryAction.action.call(this);
   }
 

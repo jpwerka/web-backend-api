@@ -54,10 +54,10 @@ export abstract class BackendConfigArgs {
    * false (default) return NOT FOUND (404) for unknown collection. false: should pass unrecognized request URL through to original backend;
    */
   passThruUnknownUrl?: boolean;
-  /**
-   * true (default) should NOT return the item (204) after a POST. false: return the item (200).
+    /**
+   * false (default) should NOT return the item in body after CREATED. true: return the item in body.
    */
-  post204?: boolean;
+  returnItemIn201?: boolean;
   /**
    * false (default) should NOT update existing item with POST. false: OK to update.
    */
@@ -67,7 +67,7 @@ export abstract class BackendConfigArgs {
    */
   put204?: boolean;
   /**
-   * false (default) if item not found, create as new item; false: should 404.
+   * false (default) if item not found, create as new item; true: should 404.
    */
   put404?: boolean;
   /**

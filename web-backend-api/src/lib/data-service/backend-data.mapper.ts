@@ -5,14 +5,14 @@ import { BackendConfigArgs, BackendTypeArgs } from '../interfaces/configuration.
 import { MemoryDbService } from './memory-db.service';
 import { IndexedDbService } from './indexed-db.service';
 
-const dataServiceFn: Map<string, LoadFn[]> = new Map();
+const dataServiceFn = new Map<string, LoadFn[]>();
 
-const backendConfig: BackendConfigArgs = new BackendConfig();
+let backendConfig: BackendConfigArgs = new BackendConfig();
 export function getBackendConfig(): BackendConfigArgs {
   return backendConfig;
 }
 
-const backendType: BackendTypeArgs = new BackendType();
+let backendType: BackendTypeArgs = new BackendType();
 export function getBackendType(): BackendTypeArgs {
   return backendType;
 }
@@ -33,13 +33,14 @@ export function getBackendService(): IBackendService {
 export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArgs): Promise<boolean> {
 
   if (config) {
-    Object.assign(backendConfig, config);
+    backendConfig = Object.assign(backendConfig, config);
   }
 
   if (dbtype) {
-    Object.assign(backendType, dbtype);
+    backendType = Object.assign(backendType, dbtype);
   }
 
+  console.log(backendType);
   if (backendType.dbtype === 'memory') {
     dbService = new MemoryDbService(backendConfig);
   } else {
@@ -49,19 +50,13 @@ export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArg
   const result$ = new Promise<boolean>((resolve, reject) => {
     dbService.deleteDatabase().then(() => {
       dbService.createDatabase().then(() => {
-        if (dataServiceFn && dataServiceFn.size > 0) {
-          dbService.createObjectStore(dataServiceFn).then(() => {
-            console.log('[WebBackendApi]', 'Database data created!');
-            resolve(true);
-          }, error => {
-            console.error('[WebBackendApi]', error);
-            reject(error);
-          });
-        } else {
-          console.warn('[WebBackendApi]', 'There is not collection in data service!');
-          dbService['dbReadySubject'].next(true);
+        dbService.createObjectStore(dataServiceFn).then(() => {
+          console.log('[WebBackendApi]', 'Database data created!');
           resolve(true);
-        }
+        }, error => {
+          console.error('[WebBackendApi]', error);
+          reject(error);
+        });
       }, error => {
         console.error('[WebBackendApi]', error);
         reject(error);

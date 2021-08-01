@@ -1,15 +1,16 @@
+import { cloneDeep } from 'lodash-es';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformPostFn, TransformPutFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
+import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
+import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
+import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, clone } from './backend.service';
+import { BackendService, IExtendEntity } from './backend.service';
 
 export class MemoryDbService extends BackendService implements IBackendService {
 
-  private db: Map<string, Array<any>>;
+  private db: Map<string, IExtendEntity[]>;
 
   constructor(config: BackendConfigArgs) {
     super(config);
@@ -17,45 +18,49 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   createDatabase(): Promise<boolean> {
     this.dbReadySubject.next(false);
-    return new Promise<boolean>((resolve, reject) => {
-      this.db = new Map<string, Array<any>>();
+    return new Promise<boolean>((resolve) => {
+      this.db = new Map<string, IExtendEntity[]>();
       resolve(true);
     });
   }
 
   deleteDatabase(): Promise<boolean> {
     this.dbReadySubject.next(false);
-    return new Promise<boolean>((resolve, reject) => {
+    return new Promise<boolean>((resolve) => {
       this.db = undefined;
       resolve(true);
     });
   }
 
   createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      dataServiceFn.forEach((loadsFn, name) => {
-        this.db.set(name, []);
-        if (loadsFn && Array.isArray(loadsFn)) {
-          loadsFn.forEach(loadFn => {
-            if (loadFn && loadFn instanceof Function) {
-              loadFn.call(null, this);
-            }
-          });
-        }
-      });
+    return new Promise<boolean>((resolve) => {
+      if (dataServiceFn && dataServiceFn.size > 0) {
+        dataServiceFn.forEach((loadsFn, name) => {
+          this.db.set(name, []);
+          if (loadsFn && Array.isArray(loadsFn)) {
+            loadsFn.forEach(loadFn => {
+              if (loadFn && loadFn instanceof Function) {
+                loadFn.call(null, this);
+              }
+            });
+          }
+        });
+      } else {
+        console.warn('[WebBackendApi]', 'There is not collection in data service!');
+      }
       this.dbReadySubject.next(true);
       resolve(true);
     });
   }
 
-  storeData(collectionName: string, data: any): Promise<string | number> {
+  storeData(collectionName: string, data: unknown): Promise<string | number> {
     return new Promise<string | number>((resolve, reject) => {
       try {
         const objectStore = this.db.get(collectionName);
-        if (!data.id) {
+        if (!data['id']) {
           data['id'] = this.generateStrategyId(objectStore, collectionName);
         }
-        objectStore.splice(this.sortedIndex(objectStore, data.id), 0, data);
+        objectStore.splice(this.sortedIndex(objectStore, data['id']), 0, data as IExtendEntity);
         resolve(data['id']);
       } catch (error) {
         reject(error);
@@ -64,7 +69,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   clearData(collectionName: string): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
+    return new Promise<boolean>((resolve) => {
       this.db.set(collectionName, []);
       resolve(true);
     });
@@ -78,12 +83,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return Array.from(this.db.keys());
   }
 
-  getInstance$(collectionName: string, id: any): Observable<any> {
+  getInstance$(collectionName: string, id: string | number): Observable<unknown> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
-      if (id !== undefined && id !== '') {
+      if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        observer.next(this.findById(objectStore, id));
+        observer.next(cloneDeep(this.findById(objectStore, id)));
         observer.complete();
       } else {
         observer.error('Não foi passado o id');
@@ -91,20 +96,19 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any> {
-    const self = this;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]> {
     return new Observable((observer) => {
-      const objectStore = self.db.get(collectionName);
+      const objectStore = this.db.get(collectionName);
       const queryParams: IQueryParams = { count: 0, conditions };
-      const queryResults: IQueryResult = { hasNext: false, items: [] };
+      const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
 
-      const cursor = {
+      const cursor: IQueryCursor<IExtendEntity> = {
         index: 0,
         value: null,
-        continue: (): any => { }
+        continue: (): void => null
       };
       while (cursor.index <= objectStore.length) {
-        cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
+        cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
         if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
           observer.next(queryResults.items);
           observer.complete();
@@ -115,8 +119,19 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   get$(
-    collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
-  ): Observable<any> {
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
+  ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  > {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
@@ -124,73 +139,82 @@ export class MemoryDbService extends BackendService implements IBackendService {
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
-        item = item ? clone(item) : item;
+        item = item ? cloneDeep(item) : item;
 
-        (async (itemAsync: any) => {
+        (async (itemAsync: IExtendEntity) => {
           if (itemAsync) {
-            itemAsync = await this.applyTransformersGetById(collectionName, itemAsync);
+            itemAsync = await this.applyTransformersGetById(collectionName, itemAsync, getJoinFields);
           }
           return itemAsync;
-        })(item).then(itemAsync => {
-          if (itemAsync) {
-            const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
-            observer.next(response);
-            observer.complete();
-          } else {
-            const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
-            observer.error(response);
-          }
-        },
-          (error) => observer.error(error));
+        })(item).then(
+          itemAsync => {
+            if (itemAsync) {
+              const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
+              observer.next(response as (IHttpResponse<unknown> | IHttpResponse<{ data: unknown }>));
+              observer.complete();
+            } else {
+              // eslint-disable-next-line max-len
+              const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
+              observer.error(response);
+            }
+          },
+          (error) => this.dispatchErrorToResponse(observer, url, error)
+        );
       } else {
         let queryParams: IQueryParams = { count: 0 };
-        const queryResults: IQueryResult = { hasNext: false, items: [] };
+        let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
         if (query) {
-          queryParams = this.getQueryParams(collectionName,
-            query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = this.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
-        const cursor = {
+        const queriesParams = this.getQueryParamsRootAndChild(queryParams);
+        const cursor: IQueryCursor<IExtendEntity> = {
           index: 0,
           value: null,
-          continue: (): any => { }
+          continue: (): void => null
         };
         while (cursor.index <= objectStore.length) {
-          cursor.value = (cursor.index < objectStore.length) ? clone(objectStore[cursor.index++]) : null;
-          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
+          cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
+          if (this.getAllItems((cursor.value ? cursor : null), queryResults, queriesParams.root)) {
             break;
           }
         }
         (async () => {
           if (queryResults.items.length) {
-            await this.applyTransformersGetAll(collectionName, queryResults.items);
+            await this.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
+            if (queriesParams.children) {
+              queryResults = this.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
+            }
           }
-        })().then(() => {
-          const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
-          observer.next(response);
-          observer.complete();
-        },
-          (error) => observer.error(error));
+        })().then(
+          () => {
+            const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
+            // eslint-disable-next-line max-len
+            observer.next(response as (IHttpResponse<unknown[]> | IHttpResponse<{ data: unknown[] }> | IHttpResponse<IQueryResult<unknown>>));
+            observer.complete();
+          },
+          (error) => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
 
-  post$(collectionName: string, id: string, item: any, url: string): Observable<any> {
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
 
+      let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
       if (item.id) {
-        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+        item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
       } else {
-        item['id'] = this.generateStrategyId(objectStore, collectionName);
+        item.id = findId ? findId : this.generateStrategyId(objectStore, collectionName, url);
       }
 
-      let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
-      if (findId && findId !== item.id) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Request id does not match item.id`);
+      if (findId && item.id && findId !== item.id) {
+        const error = `Request id (${findId}) does not match item.id (${item.id})`;
+        const response = this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
         observer.error(response);
         return;
       } else {
-        findId = item.id;
+        findId = item.id ? item.id : findId;
       }
 
       const existingIx = this.indexOf(objectStore, findId);
@@ -204,18 +228,24 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, clone(item));
-          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          if (this.config.returnItemIn201) {
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          } else {
+            const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+            delete response.body;
+            return response;
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        }, error => observer.error(error));
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       } else if (this.config.post409) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
-          {
-            message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
-            detailedMessage: 'Use PUT instead.'
-          });
+        const error = {
+          message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
+          detailedMessage: 'Use PUT instead.'
+        };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
         observer.error(response);
       } else {
         (async () => {
@@ -228,43 +258,39 @@ export class MemoryDbService extends BackendService implements IBackendService {
             item = Object.assign({}, objectStore[existingIx], item);
           }
 
-          if (!item.id) {
-            item['id'] = findId;
-          }
-
           objectStore[existingIx] = item;
 
-          if (this.config.post204) {
+          if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, clone(item));
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        }, error => observer.error(error));
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
 
-  put$(collectionName: string, id: string, item: any, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
 
     if (item.id) {
-      item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
     if (item.id && item.id !== findId) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST,
-        {
-          message: `Request for '${collectionName}' id does not match item.id`,
-          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-        }));
+      const error = {
+        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+      };
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
     }
 
     return new Observable((observer) => {
@@ -273,7 +299,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
       if (existingIx >= 0) {
 
-        (async () => {
+        void (async () => {
           const transformfn = this.transformPutMap.get(collectionName);
           if (transformfn !== undefined) {
             item = await this.applyTransformPut(objectStore[existingIx], item, transformfn);
@@ -291,27 +317,27 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, clone(item));
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        });
+        }, error => this.dispatchErrorToResponse(observer, url, error));
 
       } else if (this.config.put404) {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          {
-            message: `'${collectionName}' item with id='${id} not found and may not be created with PUT.`,
-            detailedMessage: 'Use POST instead.'
-          });
+        const error = {
+          message: `${collectionName} item with id (${id}) not found and may not be created with PUT.`,
+          detailedMessage: 'Use POST instead.'
+        };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
         observer.error(response);
       } else {
         if (!item.id) {
           item['id'] = findId;
         }
 
-        (async () => {
+        void (async () => {
           const transformfn = this.transformPostMap.get(collectionName);
           if (transformfn !== undefined) {
             item = await this.applyTransformPost(item, transformfn);
@@ -319,69 +345,88 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          item = await this.applyTransformersGetById(collectionName, clone(item));
-          return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          if (this.config.returnItemIn201) {
+            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
+          } else {
+            const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+            delete response.body;
+            return response;
+          }
         })().then(response => {
           observer.next(response);
           observer.complete();
-        });
+        }, error => this.dispatchErrorToResponse(observer, url, error));
       }
     });
   }
 
-  delete$(collectionName: string, id: string, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
     return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
       if (this.removeById(objectStore, findId) || !this.config.delete404) {
         const response = this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-        observer.next(response);
+        observer.next(response as IHttpResponse<null>);
         observer.complete();
       } else {
-        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-          { message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.' });
+        const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
+        const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
         observer.error(response);
       }
     });
   }
 
-  private generateStrategyId<T extends { id: any }>(collection: T[], collectionName: string): string | number {
+  private generateStrategyId(collection: IExtendEntity[], collectionName: string, url?: string): string | number {
     if (this.config.strategyId === 'provided') {
-      throw new Error('Id strategy is set as `provided` and id not provided.');
+      const error = url ? this.utils.createErrorResponseOptions(
+        url,
+        STATUS.BAD_REQUEST,
+        'Id strategy is set as `provided` and id not provided.'
+      ) : new Error('Id strategy is set as `provided` and id not provided.');
+      throw error;
     }
     if (this.config.strategyId === 'uuid') {
       return v4();
     } else {
       if (!this.isCollectionIdNumeric(collection)) {
-        throw new Error(
-          `Collection '${collectionName}' id type is non-numeric or unknown. Can only generate numeric ids.`);
+        const message = `Collection ${collectionName} id type is non-numeric or unknown. Can only generate numeric ids.`;
+        const error = url ? this.utils.createErrorResponseOptions(
+          url,
+          STATUS.BAD_REQUEST,
+          message
+        ) : new Error(message);
+        throw error;
       }
       let maxId = 0;
-      collection.reduce((prev: any, item: any) => {
+      collection.forEach((item: IExtendEntity) => {
         maxId = Math.max(maxId, typeof item.id === 'number' ? item.id : maxId);
-      }, undefined);
+      });
       return maxId + 1;
     }
   }
 
-  private isCollectionIdNumeric<T extends { id: any }>(collection: T[]): boolean {
+  private isCollectionIdNumeric(collection: IExtendEntity[]): boolean {
     // so that it could know the type of the `id` even when the collection is empty.
-    return !!(collection && collection[0]) && typeof collection[0].id === 'number';
+    if (Array.isArray(collection) && collection.length > 0) {
+      return typeof collection[0].id === 'number';
+    }
+    return true;
   }
 
-  private findById<T extends { id: any }>(collection: T[], id: any): T {
-    return collection.find((item: T) => item.id === id);
+  private findById(collection: IExtendEntity[], id: string | number): IExtendEntity {
+    return collection.find(item => item.id === id);
   }
 
-  private indexOf(collection: any[], id: any) {
-    return collection.findIndex((item: any) => item.id === id);
+  private indexOf(collection: IExtendEntity[], id: string | number) {
+    return collection.findIndex(item => item.id === id);
   }
 
-  private removeById(collection: any[], id: any) {
+  private removeById(collection: IExtendEntity[], id: string | number) {
     const ix = this.indexOf(collection, id);
     if (ix > -1) {
       collection.splice(ix, 1);
@@ -390,12 +435,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return false;
   }
 
-  private sortedIndex<T extends { id: any }>(collection: T[], id: any) {
+  private sortedIndex(collection: IExtendEntity[], id: string | number) {
     let low = 0;
     let high = collection.length;
 
     while (low < high) {
-      // tslint:disable-next-line: no-bitwise
+      // eslint-disable-next-line no-bitwise
       const mid = (low + high) >>> 1;
       if (collection[mid].id < id) {
         low = mid + 1;

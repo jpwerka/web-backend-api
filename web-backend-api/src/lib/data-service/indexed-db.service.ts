@@ -1,18 +1,25 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
+import { cloneDeep } from 'lodash-es';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';
-import { IBackendService, LoadFn, TransformGetFn, IJoinField } from '../interfaces/backend.interface';
+import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-import { IPassThruBackend } from '../interfaces/interceptor.interface';
-import { IQueryParams, IQueryResult, IQueryFilter } from '../interfaces/query.interface';
+import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
+import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, clone } from './backend.service';
+import { BackendService, IExtendEntity } from './backend.service';
+
+interface IEventTargetError extends EventTarget {
+  error: unknown;
+  errorCode: number;
+}
 
 export class IndexedDbService extends BackendService implements IBackendService {
 
   private dbName: string;
   private db: IDBDatabase;
 
-  constructor(config: BackendConfigArgs, dbName: string = 'web-backend-api-db') {
+  constructor(config: BackendConfigArgs, dbName = 'web-backend-api-db') {
     super(config);
     this.dbName = dbName;
   }
@@ -23,17 +30,17 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return new Promise<boolean>((resolve, reject) => {
       const request = window.indexedDB.open(self.dbName, 1);
 
-      request.onsuccess = (event: Event) => {
+      request.onsuccess = () => {
         self.db = request.result;
         console.log('[IndexedDbService] Database created!');
       };
 
       request.onerror = (event: Event) => {
-        console.error('[IndexedDbService] Database error: ', (event.target as any).errorCode);
-        reject((event.target as any).errorCode);
+        console.error('[IndexedDbService] Database error: ', (event.target as IEventTargetError).errorCode);
+        reject((event.target as IEventTargetError).errorCode);
       };
 
-      request.onupgradeneeded = (event: Event) => {
+      request.onupgradeneeded = () => {
         self.db = request.result;
         console.log('[IndexedDbService] Database upgrade nedded!');
         resolve(true);
@@ -52,7 +59,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           'Verifique se você está com outra aba aberta com a aplicação.\n' +
           'Este comportamento é necessário para ter a garantia de sempre recriar o banco de dados.';
         alert(mensagem);
-        reject((event.target as any).errorCode);
+        reject((event.target as IEventTargetError).errorCode);
       };
 
       request.onblocked = (event: Event) => {
@@ -71,20 +78,30 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
+  closeDatabase(): void {
+    this.db.close();
+  }
+
   createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean> {
     const self = this;
     return new Promise<boolean>((resolve, reject) => {
       let objectStore: IDBObjectStore;
 
-      dataServiceFn.forEach((loadsFn, name) => {
-        console.log('[IndexedDbService]', `${name} => Mock defined`);
-        objectStore = self.db.createObjectStore(name, { keyPath: 'id', autoIncrement: self.config.strategyId === 'autoincrement' });
-        if (loadsFn && Array.isArray(loadsFn)) {
-          self.loadsFn.push(...loadsFn.filter(loadFn => loadFn instanceof Function));
-        }
-      });
+      if (dataServiceFn && dataServiceFn.size > 0) {
+        dataServiceFn.forEach((loadsFn, name) => {
+          console.log('[IndexedDbService]', `${name} => Mock defined`);
+          objectStore = self.db.createObjectStore(name, { keyPath: 'id', autoIncrement: self.config.strategyId === 'autoincrement' });
+          if (loadsFn && Array.isArray(loadsFn)) {
+            self.loadsFn.push(...loadsFn.filter(loadFn => loadFn instanceof Function));
+          }
+        });
+      } else {
+        console.warn('[WebBackendApi]', 'There is not collection in data service!');
+        self.dbReadySubject.next(true);
+        resolve(true);
+      }
 
-      objectStore.transaction.oncomplete = (event: Event) => {
+      objectStore.transaction.oncomplete = () => {
         self.loadsFn.forEach(fn => {
           fn.call(null, self);
         });
@@ -97,18 +114,18 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  storeData(collectionName: string, data: any): Promise<string | number> {
+  storeData(collectionName: string, data: unknown): Promise<string | number> {
     const self = this;
     return new Promise<string | number>((resolve, reject) => {
       try {
         const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
-        if (!data.id && self.config.strategyId !== 'autoincrement') {
+        if (!data['id'] && self.config.strategyId !== 'autoincrement') {
           data['id'] = self.generateStrategyId();
         }
 
         const request = objectStore.add(data);
-        request.onsuccess = (event: Event) => {
-          resolve((request.result !== undefined) ? request.result['id'] : null);
+        request.onsuccess = () => {
+          resolve(request.result as (string | number));
         };
         request.onerror = (event: Event) => {
           reject(event);
@@ -124,7 +141,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return new Promise<boolean>((resolve, reject) => {
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const request = objectStore.clear();
-      request.onsuccess = (event: Event) => {
+      request.onsuccess = () => {
         resolve(true);
       };
       request.onerror = (event: Event) => {
@@ -146,19 +163,19 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return result;
   }
 
-  getInstance$(collectionName: string, id: any): Observable<any> {
+  getInstance$(collectionName: string, id: string | number): Observable<unknown> {
     return new Observable((observer) => {
-      let request: IDBRequest<any>;
+      let request: IDBRequest<unknown>;
       const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
-      if (id !== undefined && id !== '') {
-        id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
+      if (id !== undefined && id !== null && id !== '') {
+        id = (this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id) as number;
         request = objectStore.get(id);
-        request.onsuccess = (event) => {
+        request.onsuccess = () => {
           observer.next(request.result);
           observer.complete();
         };
         request.onerror = (event) => {
-          observer.error((event.target as any).error);
+          observer.error((event.target as IEventTargetError).error);
         };
       } else {
         observer.error('Não foi passado o id');
@@ -166,37 +183,48 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any> {
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]> {
     const self = this;
     return new Observable((observer) => {
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const request = objectStore.openCursor();
       const queryParams: IQueryParams = { count: 0, conditions };
-      const queryResults: IQueryResult = { hasNext: false, items: [] };
+      const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
 
       request.onsuccess = (event) => {
-        const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-        if (self.getAllItems(cursor, queryResults, queryParams)) {
+        const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
+        if (self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queryParams)) {
           observer.next(queryResults.items);
           observer.complete();
         }
       };
       request.onerror = (event) => {
-        observer.error((event.target as any).error);
+        observer.error((event.target as IEventTargetError).error);
       };
     });
   }
 
   get$(
-    collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
-  ): Observable<any> {
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
+  ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  > {
     const self = this;
     return new Observable((observer) => {
-      let response: any;
-      let request: IDBRequest<any>;
+      let request: IDBRequest<unknown>;
       let isCursor = false;
       let queryParams: IQueryParams = { count: 0 };
-      const queryResults: IQueryResult = { hasNext: false, items: [] };
+      let queriesParams: { root: IQueryParams, children: IQueryParams };
+      let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
@@ -207,78 +235,89 @@ export class IndexedDbService extends BackendService implements IBackendService 
         request = objectStore.openCursor();
         isCursor = true;
         if (query) {
-          queryParams = self.getQueryParams(collectionName,
-            query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = self.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
         }
+        queriesParams = this.getQueryParamsRootAndChild(queryParams);
       }
 
       request.onsuccess = (event) => {
         if (!isCursor) {
-          (async (item: any) => {
+          (async (item: IExtendEntity) => {
             if (item) {
-              item = await self.applyTransformersGetById(collectionName, item);
+              item = await self.applyTransformersGetById(collectionName, item, getJoinFields);
             }
             return item;
-          })(request.result).then(item => {
-            if (item) {
-              response = self.utils.createResponseOptions(url, STATUS.OK, item);
-              observer.next(response);
-              observer.complete();
-            } else {
-              response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
-              observer.error(response);
-            }
-          },
-            (error) => observer.error(error));
+          })(request.result as IExtendEntity).then(
+            item => {
+              if (item) {
+                const response = self.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
+                observer.next(response);
+                observer.complete();
+              } else {
+                // eslint-disable-next-line max-len
+                const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
+                observer.error(response);
+              }
+            },
+            (error) => this.dispatchErrorToResponse(observer, url, error)
+          );
         } else {
-          const cursor: IDBCursorWithValue = (event.target as IDBRequest<any>).result;
-          if (self.getAllItems(cursor, queryResults, queryParams)) {
+          const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
+          if (self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queriesParams.root)) {
             (async () => {
               if (queryResults.items.length) {
-                await self.applyTransformersGetAll(collectionName, queryResults.items);
+                await self.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
+                if (queriesParams.children) {
+                  queryResults = self.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
+                }
               }
-            })().then(() => {
-              response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
-              observer.next(response);
-              observer.complete();
-            },
-              (error) => observer.error(error));
+            })().then(
+              () => {
+                const response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
+                observer.next(response);
+                observer.complete();
+              },
+              (error) => this.dispatchErrorToResponse(observer, url, error)
+            );
           }
         }
       };
 
       request.onerror = (event) => {
-        response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as any).error);
+        // eslint-disable-next-line max-len
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as IEventTargetError).error);
         observer.error(response);
       };
     });
   }
 
-  post$(collectionName: string, id: string, item: any, url: string): Observable<any> {
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
     const self = this;
     return new Observable((observer) => {
 
-      if (item['id']) {
-        item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
+      if (item.id) {
+        item.id = (this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ?
+          parseInt(item.id, 10) : item.id) as number;
       } else {
         if (self.config.strategyId !== 'autoincrement') {
-          item['id'] = self.generateStrategyId();
+          item.id = findId ? findId : self.generateStrategyId(url);
         } else if (item.hasOwnProperty('id')) {
           delete item.id;
         }
       }
 
-      let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
-      if (findId && findId !== item.id) {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Request id does not match item.id`);
+      if (findId && item.id && findId !== item.id) {
+        const error = `Request id (${findId}) does not match item.id (${item.id})`;
+        const response = self.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
         observer.error(response);
         return;
       } else {
-        findId = item.id;
+        findId = item.id ? item.id : findId;
       }
-      let requestGet: any;
+      let requestGet: IDBRequest<unknown>;
       if (!findId) {
-        requestGet = { result: false, onsuccess: () => { }, onerror: () => { } };
+        requestGet = { result: false, onsuccess: () => true, onerror: () => false } as never;
       } else {
         requestGet = self.db.transaction(collectionName, 'readonly').objectStore(collectionName).get(findId);
       }
@@ -286,7 +325,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       requestGet.onsuccess = () => {
         if (!requestGet.result) {
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPost(item, transformfn);
@@ -295,40 +334,46 @@ export class IndexedDbService extends BackendService implements IBackendService 
             const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
-                item['id'] = requestAdd.result;
+                item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  if (this.config.returnItemIn201) {
+                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  } else {
+                    const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+                    delete response.body;
+                    return response;
+                  }
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
-                }, error => observer.error(error));
+                }, error => this.dispatchErrorToResponse(observer, url, error));
               }
             };
 
             requestAdd.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to add '${collectionName}' with id='${item.id}'`,
-                  detailedMessage: (event.target as any).error
-                });
+              const error = {
+                message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
 
         } else if (self.config.post409) {
-          const response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT,
-            {
-              message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
-              detailedMessage: 'Use PUT instead.'
-            });
+          const error = {
+            message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
+            detailedMessage: 'Use PUT instead.'
+          };
+          const response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
           observer.error(response);
         } else { // if item already exists in collection
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
-              item = await this.applyTransformPut(requestGet.result, item, transformfn);
+              item = await this.applyTransformPut(requestGet.result as IExtendEntity, item, transformfn);
             }
           })().then(() => {
 
@@ -342,65 +387,65 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
             const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
-              (async () => {
+              void (async () => {
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
                 observer.next(response);
                 observer.complete();
-              });
+              }, error => this.dispatchErrorToResponse(observer, url, error));
 
             };
 
             requestPut.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to update '${collectionName}' with id='${id}'`,
-                  detailedMessage: (event.target as any).error
-                });
+              const error = {
+                message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
 
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
         }
       };
 
       requestGet.onerror = (event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to find '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as any).error
-          });
+        const error = {
+          message: `Error to find '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
 
       if (!findId) { // fake request
-        requestGet.onsuccess();
+        requestGet.onsuccess(null);
       }
     });
   }
 
-  put$(collectionName: string, id: string, item: any, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
 
     if (item.id) {
-      item['id'] = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
     }
 
     const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
     if (item.id && item.id !== findId) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST,
-        {
-          message: `Request for '${collectionName}' id does not match item.id`,
-          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-        }));
+      const error = {
+        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+      };
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
     }
 
     const self = this;
@@ -410,7 +455,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       requestGet.onsuccess = () => {
         if (requestGet.result) {
 
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPut(requestGet.result, item, transformfn);
@@ -418,98 +463,104 @@ export class IndexedDbService extends BackendService implements IBackendService 
           })().then(() => {
 
             if (self.config.appendPut) {
-              item = Object.assign({}, requestGet.result, item);
+              item = Object.assign({}, requestGet.result as IExtendEntity, item);
             }
 
-            if (!item['id']) {
-              item['id'] = findId;
+            if (!item.id) {
+              item.id = findId;
             }
 
             const requestPut = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).put(item);
             requestPut.onsuccess = () => {
-              (async () => {
+              void (async () => {
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
+                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
                 observer.next(response);
                 observer.complete();
-              });
+              }, error => this.dispatchErrorToResponse(observer, url, error));
             };
 
             requestPut.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to update '${collectionName}' with id='${id}'`,
-                  detailedMessage: (event.target as any).error
-                });
+              const error = {
+                message: `Error to update '${collectionName}' with id='${id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
 
         } else if (self.config.put404) {
-          const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-            {
-              message: `'${collectionName}' item with id='${id}' not found and may not be created with PUT.`,
-              detailedMessage: 'Use POST instead.'
-            });
+          const error = {
+            message: `${collectionName} item with id (${id}) not found and may not be created with PUT.`,
+            detailedMessage: 'Use POST instead.'
+          };
+          const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
           observer.error(response);
         } else {
-          if (!item.id) {
-            item['id'] = findId;
-          }
-
-          (async () => {
+          void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
             if (transformfn !== undefined) {
               item = await this.applyTransformPost(item, transformfn);
             }
           })().then(() => {
 
+            if (!item.id && self.config.strategyId !== 'autoincrement') {
+              item['id'] = findId;
+            }
+
             const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
-                item['id'] = requestAdd.result;
+                item.id = requestAdd.result as (string | number);
                 (async () => {
-                  item = await this.applyTransformersGetById(collectionName, clone(item));
-                  return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(clone(item)));
+                  if (this.config.returnItemIn201) {
+                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
+                  } else {
+                    const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
+                    delete response.body;
+                    return response;
+                  }
                 })().then(response => {
                   observer.next(response);
                   observer.complete();
-                }, error => observer.error(error));
+                }, error => this.dispatchErrorToResponse(observer, url, error));
               }
             };
 
             requestAdd.onerror = (event) => {
-              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-                {
-                  message: `Error to add '${collectionName}' with id='${item.id}'`,
-                  detailedMessage: (event.target as any).error
-                });
+              const error = {
+                message: `Error to add '${collectionName}' with id='${item.id}'`,
+                detailedMessage: (event.target as IEventTargetError).error
+              };
+              const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
               observer.error(response);
             };
-          });
+          }, error => this.dispatchErrorToResponse(observer, url, error));
         }
       };
 
       requestGet.onerror = (event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to find '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as any).error
-          });
+        const error = {
+          message: `Error to find '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
     });
   }
 
-  delete$(collectionName: string, id: string, url: string): Observable<any> {
-    // tslint:disable-next-line:triple-equals
+  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
+    // eslint-disable-next-line eqeqeq
     if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Missing "${collectionName}" id`));
+      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
     }
     const self = this;
     return new Observable((observer) => {
@@ -518,16 +569,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       const onsuccess = () => {
         const response = self.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-        observer.next(response);
+        observer.next(response as IHttpResponse<null>);
         observer.complete();
       };
 
       const onerror = (event: Event) => {
-        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR,
-          {
-            message: `Error to delete '${collectionName}' with id='${id}'`,
-            detailedMessage: (event.target as any).error
-          });
+        const error = {
+          message: `Error to delete '${collectionName}' with id='${id}'`,
+          detailedMessage: (event.target as IEventTargetError).error
+        };
+        const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
         observer.error(response);
       };
 
@@ -540,8 +591,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
             request.onsuccess = onsuccess;
             request.onerror = onerror;
           } else {
-            const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND,
-              { message: `Error to find '${collectionName}' with id='${id}'`, detailedMessage: 'Id não encontrado.' });
+            const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
+            const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
             observer.error(response);
           }
         };
@@ -555,9 +606,14 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  private generateStrategyId(): string | number {
+  private generateStrategyId(url?: string): string | number {
     if (this.config.strategyId === 'provided') {
-      throw new Error('Id strategy is set as `provided` and id not provided.');
+      const error = url ? this.utils.createErrorResponseOptions(
+        url,
+        STATUS.BAD_REQUEST,
+        'Id strategy is set as `provided` and id not provided.'
+      ) : new Error('Id strategy is set as `provided` and id not provided.');
+      throw error;
     } else {
       return v4();
     }

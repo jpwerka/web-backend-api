@@ -2,13 +2,13 @@ import { Component, ViewChild, OnInit } from '@angular/core';
 import { IProduct } from '../entities/product/product.interface';
 import { ProductService } from '../services/product/product-service';
 import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { FormGroup, FormControl, Validators } from '@angular/forms';
+import { FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
 
 @Component({
   selector: 'app-product',
   templateUrl: './product.component.html',
   styleUrls: ['./product.component.css'],
-  providers: [ ProductService ]
+  providers: [ProductService]
 })
 export class ProductComponent implements OnInit {
 
@@ -32,18 +32,18 @@ export class ProductComponent implements OnInit {
     action: () => this.modalQuestion.close()
   };
 
-  @ViewChild('modalForm', {static: true}) modalForm: ModalComponent;
-  @ViewChild('modalQuestion', {static: true}) modalQuestion: ModalComponent;
+  @ViewChild('modalForm', { static: true }) modalForm: ModalComponent;
+  @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
 
   productForm: FormGroup;
 
-  get id() { return this.productForm.get('id'); }
+  get id(): AbstractControl { return this.productForm.get('id'); }
 
-  get code() { return this.productForm.get('code'); }
+  get code(): AbstractControl { return this.productForm.get('code'); }
 
-  get description() { return this.productForm.get('description'); }
+  get description(): AbstractControl { return this.productForm.get('description'); }
 
-  get codebar() { return this.productForm.get('codebar'); }
+  get codebar(): AbstractControl { return this.productForm.get('codebar'); }
 
   constructor(private productService: ProductService) {
   }
@@ -71,28 +71,28 @@ export class ProductComponent implements OnInit {
     this.productService.getAll().subscribe(products => this.products = products);
   }
 
-  add(event: Event) {
+  add(event: Event): void {
     event.preventDefault();
     this.productForm.reset();
-    this.productForm.get('active').setValue(true, {emitModelToViewChange: false});
+    this.productForm.get('active').setValue(true, { emitModelToViewChange: false });
     this.modalTitle = 'Add product';
     this.modalForm.open();
   }
 
-  edit(event: Event, product: IProduct) {
+  edit(event: Event, product: IProduct): void {
     event.preventDefault();
     this.productForm.setValue(product);
     this.modalTitle = 'Edit product';
     this.modalForm.open();
   }
 
-  delete(event: Event, product: IProduct) {
+  delete(event: Event, product: IProduct): void {
     event.preventDefault();
     this.productForm.setValue(product);
     this.modalQuestion.open();
   }
 
-  active(event: Event, product: IProduct) {
+  active(event: Event, product: IProduct): void {
     event.preventDefault();
     this.productService.active(product.id).subscribe(() => {
       const index = this.products.findIndex(item => item.id === product.id);
@@ -102,7 +102,7 @@ export class ProductComponent implements OnInit {
     });
   }
 
-  inactive(event: Event, product: IProduct) {
+  inactive(event: Event, product: IProduct): void {
     event.preventDefault();
     this.productService.inactive(product.id).subscribe(() => {
       const index = this.products.findIndex(item => item.id === product.id);
@@ -112,9 +112,9 @@ export class ProductComponent implements OnInit {
     });
   }
 
-  confirmForm() {
-    this.code.markAsDirty({onlySelf: true});
-    this.description.markAsDirty({onlySelf: true});
+  confirmForm(): void {
+    this.code.markAsDirty({ onlySelf: true });
+    this.description.markAsDirty({ onlySelf: true });
     if (this.productForm.valid) {
       if (!this.id.value) {
         this.productService.create(this.productForm.value).subscribe(product => {
@@ -133,7 +133,7 @@ export class ProductComponent implements OnInit {
     }
   }
 
-  deleteProduct() {
+  deleteProduct(): void {
     this.productService.delete(this.productForm.value).subscribe(() => {
       const index = this.products.findIndex(item => item.id === this.id.value);
       if (index >= 0) {

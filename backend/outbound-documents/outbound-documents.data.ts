@@ -1,13 +1,14 @@
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { dataService, IBackendService, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/src';
 import { collectionName, outboundDocuments, transformPost, transformPut } from './outbound-documents.mock';
 import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-document.interface';
 import { collectionName as customerCollection } from '../customers/customers.mock';
 import { map } from 'rxjs/operators';
+import { ICustomer } from '../../src/app/entities/customer/customer.interface';
 
 const transformGetEntity = (document: IOutboundDocument, dbService: IBackendService) => {
   return dbService.getInstance$(customerCollection, document.customerId).pipe(
-    map(customer => {
+    map((customer: ICustomer) => {
       document['customer'] = customer;
       return document;
     })
@@ -90,6 +91,6 @@ dataService(collectionName, (dbService: IBackendService) => {
 
   // add existing mock data to collection initial data
   outboundDocuments.forEach((outboundDocument) => {
-    dbService.storeData(collectionName, outboundDocument);
+    void dbService.storeData(collectionName, outboundDocument).then(() => null);
   });
 });

@@ -118,7 +118,7 @@
 
         </tbody>
       </table>
-      <div *ngIf="documents.controls.length == 0 && documents.invalid && (documents.dirty || documents.touched)"
+      <div *ngIf="documents.controls.length === 0 && documents.invalid && (documents.dirty || documents.touched)"
         class="form-control-error">
 
         <div *ngIf="documents.errors.required">

@@ -41,10 +41,11 @@ const routes: Routes = [
 
 @NgModule({
   imports: [RouterModule.forRoot(
-    routes, {
-    enableTracing: false,
-    relativeLinkResolution: 'corrected'
-  }
+    routes,
+    {
+      enableTracing: false,
+      relativeLinkResolution: 'corrected'
+    }
   )],
   exports: [RouterModule]
 })

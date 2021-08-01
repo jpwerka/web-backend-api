@@ -1,21 +1,21 @@
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subscriber, throwError } from 'rxjs';
 import { concatMap, first, map, tap } from 'rxjs/operators';
-import { LoadFn, TransformGetFn, TransformPostFn, TransformPutFn, IBackendUtils, IJoinField } from '../interfaces/backend.interface';
+import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-// tslint:disable-next-line: max-line-length
-import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IRequestInterceptor, IRequestCore, IPostToOtherMethod, ConditionsFn } from '../interfaces/interceptor.interface';
-// tslint:disable-next-line: max-line-length
-import { FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter, FieldFn } from '../interfaces/query.interface';
+import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
+import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
-declare const require: any;
+declare const require: (file: string) => void;
 require('json.date-extensions');
 
+export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
+
 interface IRequestInfo {
-  req: IRequestCore<any>;
+  req: IRequestCore<IExtendEntity>;
   method: string;
   url: string;
   apiBase: string;
@@ -24,7 +24,7 @@ interface IRequestInfo {
   query: Map<string, string[]>;
   extras?: string;
   resourceUrl: string;
-  body?: any;
+  body?: IExtendEntity;
   interceptor?: IRequestInterceptor;
   interceptorIds?: string[];
 }
@@ -34,15 +34,15 @@ interface IInterceptorInfo {
   interceptorIds?: string[];
 }
 
-export function clone(data: any) {
-  return JSON.parse(JSON.stringify(data));
+export function clone<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data)) as T;
 }
 
-export function removeRightSlash(path: string) {
+export function removeRightSlash(path: string): string {
   return path.replace(/\/$/, '');
 }
 
-export function removeLeftSlash(path: string) {
+export function removeLeftSlash(path: string): string {
   return path.replace(/^\//, '');
 }
 
@@ -66,16 +66,16 @@ export function paramParser(rawParams: string): Map<string, string[]> {
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
-  protected replaceMap: Map<string, Array<string[]>> = new Map();
-  protected postToOtherMethodMap: Map<string, IPostToOtherMethod[]> = new Map();
-  protected transformGetAllMap: Map<string, TransformGetFn> = new Map();
-  protected transformGetByIdMap: Map<string, TransformGetFn> = new Map();
-  protected joinnersGetAllMap: Map<string, IJoinField[]> = new Map();
-  protected joinnersGetByIdMap: Map<string, IJoinField[]> = new Map();
-  protected transformPostMap: Map<string, TransformPostFn> = new Map();
-  protected transformPutMap: Map<string, TransformPutFn> = new Map();
-  protected fieldsFilterMap: Map<string, Map<string, FilterFn | FilterOp>> = new Map();
-  protected quickFilterMap: Map<string, IQuickFilter> = new Map();
+  protected replaceMap = new Map<string, Array<string[]>>();
+  protected postToOtherMethodMap = new Map<string, IPostToOtherMethod[]>();
+  protected transformGetAllMap = new Map<string, TransformGetFn>();
+  protected transformGetByIdMap = new Map<string, TransformGetFn>();
+  protected joinnersGetAllMap = new Map<string, IJoinField[]>();
+  protected joinnersGetByIdMap = new Map<string, IJoinField[]>();
+  protected transformPostMap = new Map<string, TransformPostFn>();
+  protected transformPutMap = new Map<string, TransformPutFn>();
+  protected fieldsFilterMap = new Map<string, Map<string, FilterFn | FilterOp>>();
+  protected quickFilterMap = new Map<string, IQuickFilter>();
 
   private requestInterceptors: Array<IRequestInterceptor> = [];
 
@@ -90,7 +90,7 @@ export abstract class BackendService {
   ) {
     for (const prop in config) {
       if (config.hasOwnProperty(prop)) {
-        this.config[prop] = config[prop];
+        this.config[prop] = config[prop] as unknown;
       }
     }
     const loc = this.getLocation('/');
@@ -109,12 +109,17 @@ export abstract class BackendService {
     this.utils = value;
   }
 
-  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetAllMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetAllMap.set(collectionName, transformfn);
   }
 
-  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn) {
+  addTransformGetByIdMap(collectionName: string, transformfn: TransformGetFn): void {
     this.transformGetByIdMap.set(collectionName, transformfn);
+  }
+
+  clearTransformGetBothMap(collectionName: string): void {
+    this.transformGetAllMap.delete(collectionName);
+    this.transformGetByIdMap.delete(collectionName);
   }
 
   addJoinGetAllMap(collectionName: string, joinField: IJoinField): void {
@@ -149,30 +154,51 @@ export abstract class BackendService {
     this.addJoinGetByIdMap(collectionName, joinField);
   }
 
-  addTransformPostMap(collectionName: string, transformfn: TransformPostFn) {
+  clearJoinGetBothMap(collectionName: string): void {
+    this.joinnersGetByIdMap.delete(collectionName);
+    this.joinnersGetAllMap.delete(collectionName);
+  }
+
+  addTransformPostMap(collectionName: string, transformfn: TransformPostFn): void {
     this.transformPostMap.set(collectionName, transformfn);
   }
 
-  addTransformPutMap(collectionName: string, transformfn: TransformPutFn) {
+  clearTransformPostMap(collectionName: string): void {
+    this.transformPostMap.delete(collectionName);
+  }
+
+  addTransformPutMap(collectionName: string, transformfn: TransformPutFn): void {
     this.transformPutMap.set(collectionName, transformfn);
   }
 
-  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter) {
+  clearTransformPutMap(collectionName: string): void {
+    this.transformPutMap.delete(collectionName);
+  }
+
+  addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter): void {
     this.quickFilterMap.set(collectionName, quickFilter);
   }
 
-  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp) {
+  clearQuickFilterMap(collectionName: string): void {
+    this.quickFilterMap.delete(collectionName);
+  }
+
+  addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp): void {
     let fieldsFilterMap = this.fieldsFilterMap.get(collectionName);
     if (fieldsFilterMap !== undefined) {
       fieldsFilterMap.set(field, filterfn);
     } else {
-      fieldsFilterMap = new Map();
+      fieldsFilterMap = new Map<string, FilterFn | FilterOp>();
       fieldsFilterMap.set(field, filterfn);
       this.fieldsFilterMap.set(collectionName, fieldsFilterMap);
     }
   }
 
-  addReplaceUrl(collectionName: string, replace: string | string[]) {
+  clearFieldFilterMap(collectionName: string): void {
+    this.fieldsFilterMap.delete(collectionName);
+  }
+
+  addReplaceUrl(collectionName: string, replace: string | string[]): void {
     let replaceAdd = [];
     if (typeof replace === 'string') {
       replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
@@ -187,7 +213,11 @@ export abstract class BackendService {
     }
   }
 
-  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod) {
+  clearReplaceUrl(collectionName: string): void {
+    this.replaceMap.delete(collectionName);
+  }
+
+  addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod): void {
     const postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod !== undefined) {
       postsToOtherMethod.push(postToOtherMethod);
@@ -196,7 +226,7 @@ export abstract class BackendService {
     }
   }
 
-  addRequestInterceptor(requestInterceptor: IRequestInterceptor) {
+  addRequestInterceptor(requestInterceptor: IRequestInterceptor): void {
     if (!requestInterceptor.method) {
       requestInterceptor['method'] = 'GET';
     }
@@ -214,40 +244,43 @@ export abstract class BackendService {
       } else if (query instanceof Map) {
         params = new Map(clone(Array.from(query)));
       } else {
-        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, query[key]]))));
+        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
-      if (params && params.keys.length > 0) {
+      if (params && params.size > 0) {
         requestInterceptor['query'] = params;
+      } else {
+        delete requestInterceptor.query;
       }
     }
 
     this.requestInterceptors.push(requestInterceptor);
   }
 
-  addRequestInterceptorByValue(value: any): void {
-    let obj: any;
-    let response: IHttpResponse<any> | IHttpErrorResponse;
+  addRequestInterceptorByValue(value: IRequestInterceptor | unknown): void {
+    let obj: IRequestInterceptor;
+    let response: IHttpResponse<unknown>;
     if (typeof value === 'string') {
       try {
-        obj = JSON.parse(value);
-      } catch (error) {
+        obj = JSON.parse(value) as IRequestInterceptor;
+      } catch (error: unknown) {
         const msg = 'O valor informado não é possível de ser interpretado como uma interface IRequestInterceptor;' +
-          ` original error: ${error.message}`;
+          ` Original error: ${(error as Error).message}`;
         throw new Error(msg);
       }
     } else {
-      obj = value;
+      obj = value as IRequestInterceptor;
     }
     if (obj && obj.path && typeof obj.path === 'string' && obj.response) {
       const path = '/' + obj.path.replace(/^\//, '');
       const url = window.location.origin + path;
-      const status = (obj.response.status && typeof obj.response.status === 'number') ? obj.response.status :
-        (obj.response.statusCode && typeof obj.response.statusCode === 'number') ? obj.response.statusCode :
-          (obj.response.error) ? 400 : 200;
-      if (obj.response.error) {
-        response = this.utils.createErrorResponseOptions(url, status, obj.response.error);
+      const httpResponse = obj.response as ({ status?: number, statusCode?: number, body?: unknown, error?: unknown });
+      const status = (httpResponse.status && typeof httpResponse.status === 'number') ? httpResponse.status :
+        (httpResponse.statusCode && typeof httpResponse.statusCode === 'number') ? httpResponse.statusCode :
+          (httpResponse.error) ? STATUS.BAD_REQUEST : (httpResponse.body ? STATUS.OK : STATUS.NO_CONTENT);
+      if (httpResponse.error) {
+        response = this.utils.createErrorResponseOptions(url, status, httpResponse.error);
       } else {
-        response = this.utils.createResponseOptions(url, status, (obj.response.body) ? obj.response.body : obj.response);
+        response = this.utils.createResponseOptions(url, status, (httpResponse.body) ? httpResponse.body : obj.response);
       }
     } else {
       throw new Error('O valor informado não é possível de ser interpretado como uma interface IRequestInterceptor');
@@ -266,14 +299,16 @@ export abstract class BackendService {
 
     let params: Map<string, string[]>;
     const query = obj.query ? obj.query :
-      (obj.queryStringParameters ? obj.queryStringParameters : undefined);
+      (obj['queryStringParameters'] ? obj['queryStringParameters'] as string : undefined);
     if (query) {
       if (typeof query === 'string') {
         params = paramParser(query);
+      } else if (query instanceof Map) {
+        params = new Map(clone(Array.from(query)));
       } else {
-        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, query[key]]))));
+        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
-      if (params && params.keys.length > 0) {
+      if (params && params.size > 0) {
         requestInterceptor['query'] = params;
       }
     }
@@ -281,42 +316,44 @@ export abstract class BackendService {
     this.requestInterceptors.push(requestInterceptor);
   }
 
-  private adjustJoinFields(): void {
-    const adjustJoinFieldsGetAll = (joinFields: IJoinField[]) => {
-      joinFields.forEach((joinField: IJoinField) => {
-        if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
-          joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
-        }
-        if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
-          joinField.transformerGet = this.transformGetAllMap.get(joinField.collectionSource);
-        } else if (Array.isArray(joinField.transformerGet)) {
-          joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
-        }
-        if (Array.isArray(joinField.joinFields)) {
-          adjustJoinFieldsGetAll(joinField.joinFields);
-        }
-      });
-    };
-    const adjustJoinFieldsGetById = (joinFields: IJoinField[]) => {
-      joinFields.forEach((joinField: IJoinField) => {
-        if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
-          joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
-        }
-        if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
-          joinField.transformerGet = this.transformGetByIdMap.get(joinField.collectionSource);
-        } else if (Array.isArray(joinField.transformerGet)) {
-          joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
-        }
-        if (Array.isArray(joinField.joinFields)) {
-          adjustJoinFieldsGetById(joinField.joinFields);
-        }
-      });
-    };
-    this.joinnersGetAllMap.forEach((joinFields: IJoinField[], collectionName: string) => {
-      adjustJoinFieldsGetAll(joinFields);
+  private adjustJoinFieldsGetAll(joinFields: IJoinField[]) {
+    joinFields.forEach((joinField: IJoinField) => {
+      if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+        joinField.joinFields = this.joinnersGetAllMap.get(joinField.collectionSource);
+      }
+      if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
+        joinField.transformerGet = this.transformGetAllMap.get(joinField.collectionSource);
+      } else if (Array.isArray(joinField.transformerGet)) {
+        joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+      }
+      if (Array.isArray(joinField.joinFields)) {
+        this.adjustJoinFieldsGetAll(joinField.joinFields);
+      }
     });
-    this.joinnersGetByIdMap.forEach((joinFields: IJoinField[], collectionName: string) => {
-      adjustJoinFieldsGetById(joinFields);
+  }
+
+  private adjustJoinFieldsGetById(joinFields: IJoinField[]) {
+    joinFields.forEach((joinField: IJoinField) => {
+      if (joinField.joinFields && typeof joinField.joinFields === 'boolean') {
+        joinField.joinFields = this.joinnersGetByIdMap.get(joinField.collectionSource);
+      }
+      if (joinField.transformerGet && typeof joinField.transformerGet === 'boolean') {
+        joinField.transformerGet = this.transformGetByIdMap.get(joinField.collectionSource);
+      } else if (Array.isArray(joinField.transformerGet)) {
+        joinField.transformerGet = this.createJoinTransformGetFn(joinField.transformerGet);
+      }
+      if (Array.isArray(joinField.joinFields)) {
+        this.adjustJoinFieldsGetById(joinField.joinFields);
+      }
+    });
+  }
+
+  adjustJoinFields(): void {
+    this.joinnersGetAllMap.forEach((joinFields: IJoinField[]) => {
+      this.adjustJoinFieldsGetAll(joinFields);
+    });
+    this.joinnersGetByIdMap.forEach((joinFields: IJoinField[]) => {
+      this.adjustJoinFieldsGetById(joinFields);
     });
   }
 
@@ -324,30 +361,30 @@ export abstract class BackendService {
     return this.dbReadySubject.asObservable().pipe(first((r: boolean) => r));
   }
 
-  protected logRequest(request: IRequestCore<any>) {
+  protected logRequest(request: IRequestCore<IExtendEntity>): void {
     if (this.config.log) {
       console.log(request);
     }
   }
 
-  protected logResponse(response: IHttpResponse<any> | IHttpErrorResponse) {
+  protected logResponse(response: IHttpResponse<unknown> | IHttpErrorResponse): void {
     if (this.config.log) {
       console.log(response);
     }
   }
 
-  protected convertResponse(response: IHttpResponse<any> | IHttpErrorResponse): IHttpResponse<any> | IHttpErrorResponse {
+  protected convertResponse(response: IHttpResponse<unknown>): IHttpResponse<unknown> {
     if (this.config.jsonParseWithDate && response) {
       const contentType = response.headers ? response.headers.get('Content-Type') : undefined;
-      const body = (response as IHttpResponse<any>).body;
+      const body = response.body;
       if (contentType === 'application/json' && body) {
-        (response as IHttpResponse<any>).body = JSON.parse(JSON.stringify(body), (JSON as any).dateParser);
+        response.body = JSON.parse(JSON.stringify(body), JSON['dateParser']);
       }
     }
     return response;
   }
 
-  handleRequest(req: IRequestCore<any>): Observable<any> {
+  handleRequest(req: IRequestCore<IExtendEntity>): Observable<IHttpResponse<unknown>> {
     //  handle the request when there is an in-memory database
     return this.dbReady().pipe(
       map(() => this.logRequest(req)),
@@ -358,7 +395,7 @@ export abstract class BackendService {
     );
   }
 
-  private handleRequest_(req: IRequestCore<any>): Observable<any> {
+  private handleRequest_(req: IRequestCore<IExtendEntity>): Observable<IHttpResponse<unknown>> {
 
     const url = req.urlWithParams ? req.urlWithParams : req.url;
     let method = req.method || 'GET';
@@ -366,10 +403,10 @@ export abstract class BackendService {
     const intInfo: IInterceptorInfo = {};
 
     const parsed: IParsedRequestUrl = this.parseRequestUrl(method, url, intInfo);
-    let response$: Observable<any>;
+    let response$: Observable<IHttpResponse<unknown>>;
 
     if (intInfo.interceptor && intInfo.interceptor.applyToPath === 'complete') {
-      const intUtils = this.createInterceptorUtils(url, undefined, undefined, parsed.query, req.body);
+      const intUtils = this.createInterceptorUtils(url, undefined, intInfo.interceptorIds, parsed.query, req.body);
       response$ = this.processInterceptResponse(intInfo.interceptor, intUtils);
       if (response$) {
         return response$;
@@ -420,8 +457,8 @@ export abstract class BackendService {
 
   abstract hasCollection(collectionName: string): boolean;
 
-  private collectionHandler(reqInfo: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private collectionHandler(reqInfo: IRequestInfo): Observable<IHttpResponse<unknown>> {
+    let response$: Observable<IHttpResponse<unknown>>;
     switch (reqInfo.method.toLocaleLowerCase()) {
       case 'get':
         response$ = this.get(reqInfo);
@@ -435,26 +472,40 @@ export abstract class BackendService {
       case 'delete':
         response$ = this.delete(reqInfo);
         break;
-      default:
+      default: {
         const error: IErrorMessage = {
-          message: `Method '${reqInfo.method.toUpperCase()}' not allowed`,
+          message: `Method ${reqInfo.method.toUpperCase()} not allowed`,
           detailedMessage: 'Only methods GET, POST, PUT and DELETE are allowed'
         };
         response$ = throwError(this.utils.createErrorResponseOptions(reqInfo.url, STATUS.METHOD_NOT_ALLOWED, error));
         break;
+      }
     }
     return response$;
   }
 
-  abstract getInstance$(collectionName: string, id: any): Observable<any>;
-  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<any>;
+  abstract getInstance$(collectionName: string, id: string | number): Observable<unknown>;
+  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<unknown[]>;
 
   abstract get$(
-    collectionName: string, id: string, query: Map<string, string[]>, url: string, caseSensitiveSearch?: string
-  ): Observable<any>;
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: string
+  ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  >;
 
-  private get({ collectionName, id, query, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private get(
+    { collectionName, id, query, url, interceptor, interceptorIds }: IRequestInfo
+  ): Observable<IHttpResponse<unknown>> {
+    let response$: Observable<IHttpResponse<unknown>>;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -465,28 +516,43 @@ export abstract class BackendService {
       }
     }
 
-    response$ = this.get$(collectionName, id, query, url, this.config.caseSensitiveSearch ? undefined : 'i');
+    response$ = this.get$(collectionName, id, query, url, undefined, this.config.caseSensitiveSearch ? undefined : 'i');
     return this.addDelay(response$, this.config.delay);
   }
 
-  private createJoinTransformGetFn(properties: string[]): TransformGetFn {
-    return (item: any) => {
+  private createJoinTransformGetFn(properties: (string | { field: string, property: string })[]): TransformGetFn {
+    return (item: IExtendEntity): IExtendEntity => {
       const result = {};
       properties.forEach(property => {
-        if (item.hasOwnProperty(property)) {
-          result[property] = item[property];
+        if (typeof property === 'string') {
+          if (item.hasOwnProperty(property)) {
+            result[property] = item[property];
+          }
+        } else {
+          if (item.hasOwnProperty(property.field)) {
+            result[property.property] = item[property.field];
+          }
         }
       });
       return result;
     };
   }
 
-  protected async applyTransformersGetById(collectionName: string, item: any): Promise<any> {
-    const getJoinFields = this.joinnersGetByIdMap.get(collectionName);
+  protected async applyTransformersGetById(
+    collectionName: string, item: IExtendEntity, getJoinFields?: IJoinField[]
+  ): Promise<IExtendEntity> {
+    let _getJoinFields: IJoinField[];
     const transformGetFn = this.transformGetByIdMap.get(collectionName);
 
-    if (getJoinFields !== undefined) {
-      await this.applyJoinFields(item, getJoinFields);
+    if (Array.isArray(getJoinFields) && getJoinFields.length > 0) {
+      this.adjustJoinFieldsGetById(getJoinFields);
+      _getJoinFields = getJoinFields;
+    } else {
+      _getJoinFields = this.joinnersGetByIdMap.get(collectionName);
+    }
+
+    if (_getJoinFields !== undefined) {
+      await this.applyJoinFields(item, _getJoinFields);
     }
     if (transformGetFn !== undefined) {
       item = await this.applyTransformGetFn(item, transformGetFn);
@@ -494,14 +560,23 @@ export abstract class BackendService {
     return item;
   }
 
-  protected async applyTransformersGetAll(collectionName: string, items: any[]): Promise<any> {
-    const getJoinFields = this.joinnersGetAllMap.get(collectionName);
+  protected async applyTransformersGetAll(
+    collectionName: string, items: IExtendEntity[], getJoinFields?: IJoinField[]
+  ): Promise<void> {
+    let _getJoinFields: IJoinField[];
     const transformGetFn = this.transformGetAllMap.get(collectionName);
+
+    if (Array.isArray(getJoinFields) && getJoinFields.length > 0) {
+      this.adjustJoinFieldsGetAll(getJoinFields);
+      _getJoinFields = getJoinFields;
+    } else {
+      _getJoinFields = this.joinnersGetAllMap.get(collectionName);
+    }
 
     let index = 0;
     for (let item of items) {
-      if (getJoinFields !== undefined) {
-        await this.applyJoinFields(item, getJoinFields);
+      if (_getJoinFields !== undefined) {
+        await this.applyJoinFields(item, _getJoinFields);
       }
       if (transformGetFn !== undefined) {
         item = await this.applyTransformGetFn(item, transformGetFn);
@@ -511,21 +586,20 @@ export abstract class BackendService {
     }
   }
 
-  protected async applyJoinFields(item: any, joinFields: IJoinField[]): Promise<any> {
-    const self = this;
+  protected async applyJoinFields(item: IExtendEntity, joinFields: IJoinField[]): Promise<IExtendEntity> {
     for (const joinField of joinFields) {
       const isCollectionField = joinField.collectionField !== undefined && joinField.collectionField.trim().length > 0;
       const joinFieldValue = isCollectionField ? item[joinField.collectionField] : item[joinField.fieldId];
       if (joinFieldValue) {
         const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
-        let data: any;
         if (Array.isArray(joinFieldValue)) {
-          const ids = isCollectionField ? joinFieldValue.map(element => element[joinField.fieldId]) : joinFieldValue;
+          const joinFieldValues = joinFieldValue as IExtendEntity[];
+          const ids = isCollectionField ? joinFieldValues.map(element => element[joinField.fieldId]) : joinFieldValue;
           const conditions: IQueryFilter[] = [{
             name: 'id',
             fn: this.createFilterArrayFn('id', ids)
           }];
-          data = await this.getAllByFilter$(joinField.collectionSource, conditions).toPromise();
+          const data = await this.getAllByFilter$(joinField.collectionSource, conditions).toPromise() as IExtendEntity[];
           // Reordena na mesma ordem existente dos ids de busca
           const dataAux = [];
           ids.forEach((id, index) => {
@@ -534,52 +608,79 @@ export abstract class BackendService {
           if (joinField.joinFields) {
             for (let index = 0; index < dataAux.length; index++) {
               if (dataAux[index] !== undefined) {
-                dataAux[index] = await self.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
+                dataAux[index] = await this.applyJoinFields(dataAux[index], joinField.joinFields as IJoinField[]);
               }
             }
           }
           if (joinField.transformerGet instanceof Function) {
             for (let index = 0; index < dataAux.length; index++) {
               if (dataAux[index] !== undefined) {
-                dataAux[index] = await self.applyTransformGetFn(dataAux[index], joinField.transformerGet);
+                dataAux[index] = await this.applyTransformGetFn(dataAux[index], joinField.transformerGet);
               }
             }
           }
           if (isCollectionField) {
-            joinFieldValue.forEach((element, index) => {
+            if (joinField.unwrapField && joinField.fieldDest) {
+              // eslint-disable-next-line max-len
+              console.warn(`Don't use field destination '${joinField.collectionField}[i].${joinField.fieldDest}', because field '${joinField.collectionField}[i].${joinField.fieldId}' is unwrapped.`);
+            }
+            joinFieldValues.forEach((element: IExtendEntity, index: number, self: IExtendEntity[]) => {
               if (dataAux[index] !== undefined) {
                 if (joinField.removeFieldId) {
                   delete element[joinField.fieldId];
                 }
-                element[fieldDest] = dataAux[index];
+                if (joinField.unwrapField) {
+                  self[index] = Object.assign(element, dataAux[index]) as IExtendEntity;
+                } else {
+                  element[fieldDest] = dataAux[index];
+                }
               }
             });
           } else {
             if (joinField.removeFieldId) {
               delete item[joinField.fieldId];
             }
+            if (joinField.unwrapField) {
+              console.warn(`Don't unwrapped field '${joinField.fieldId}', because is an simple array.`);
+            }
             item[fieldDest] = dataAux;
           }
         } else {
-          const id = isCollectionField ? joinFieldValue[joinField.fieldId] : joinFieldValue;
-          data = await this.getInstance$(joinField.collectionSource, id).toPromise();
+          let data: IExtendEntity;
+          const id = (isCollectionField ? (joinFieldValue as IExtendEntity)[joinField.fieldId] : joinFieldValue) as string;
+          data = await this.getInstance$(joinField.collectionSource, id).toPromise() as IExtendEntity;
           if (data && joinField.joinFields) {
-            data = await self.applyJoinFields(data, joinField.joinFields as IJoinField[]);
+            data = await this.applyJoinFields(data, joinField.joinFields as IJoinField[]);
           }
           if (data && joinField.transformerGet instanceof Function) {
-            data = await self.applyTransformGetFn(data, joinField.transformerGet);
+            data = await this.applyTransformGetFn(data, joinField.transformerGet);
           }
           if (data) {
             if (isCollectionField) {
               if (joinField.removeFieldId) {
-                delete  item[joinField.collectionField][joinField.fieldId];
+                delete item[joinField.collectionField][joinField.fieldId];
               }
-              item[joinField.collectionField][fieldDest] = data;
+              if (joinField.unwrapField) {
+                if (joinField.fieldDest) {
+                  // eslint-disable-next-line max-len
+                  console.warn(`Don't use field destination '${joinField.collectionField}.${joinField.fieldDest}', because field '${joinField.collectionField}.${joinField.fieldId}' is unwrapped.`);
+                }
+                item[joinField.collectionField] = Object.assign(item[joinField.collectionField], data);
+              } else {
+                item[joinField.collectionField][fieldDest] = data;
+              }
             } else {
               if (joinField.removeFieldId) {
                 delete item[joinField.fieldId];
               }
-              item[fieldDest] = data;
+              if (joinField.unwrapField) {
+                if (joinField.fieldDest) {
+                  console.warn(`Don't use field destination '${joinField.fieldDest}', because field '${joinField.fieldId}' is unwrapped.`);
+                }
+                item = Object.assign(item, data);
+              } else {
+                item[fieldDest] = data;
+              }
             }
           }
         }
@@ -588,9 +689,9 @@ export abstract class BackendService {
     return item;
   }
 
-  protected applyTransformGetFn(item: any, transformfn: TransformGetFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, this);
+  protected applyTransformGetFn(item: IExtendEntity, transformfn: TransformGetFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, this) as (IExtendEntity | Observable<IExtendEntity>);
       if (retorno instanceof Observable) {
         retorno.subscribe(itemObs => resolve(itemObs), error => reject(error));
       } else {
@@ -599,10 +700,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract post$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  abstract post$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
 
-  private post({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private post({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<IHttpResponse<unknown>> {
+    let response$: Observable<IHttpResponse<unknown>>;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -617,9 +718,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPost(body: any, transformfn: TransformPostFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, body, this);
+  protected applyTransformPost(body: unknown, transformfn: TransformPostFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, body, this) as (IExtendEntity | Observable<IExtendEntity>);
       if (retorno instanceof Observable) {
         retorno.subscribe(item => resolve(item), error => reject(error));
       } else {
@@ -628,10 +729,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract put$(collectionName: string, id: string, item: any, url: string): Observable<any>;
+  abstract put$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
 
-  private put({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private put({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Observable<IHttpResponse<unknown>> {
+    let response$: Observable<IHttpResponse<unknown>>;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -646,9 +747,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPut(item: any, body: any, transformfn: TransformPutFn): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, body, this);
+  protected applyTransformPut(item: IExtendEntity, body: unknown, transformfn: TransformPutFn): Promise<IExtendEntity> {
+    return new Promise<IExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, body, this) as (IExtendEntity | Observable<IExtendEntity>);
       if (retorno instanceof Observable) {
         retorno.subscribe(itemObs => resolve(itemObs), error => reject(error));
       } else {
@@ -657,10 +758,10 @@ export abstract class BackendService {
     });
   }
 
-  abstract delete$(collectionName: string, id: string, url: string): Observable<any>;
+  abstract delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>>;
 
-  private delete({ collectionName, id, url, interceptor, interceptorIds }: IRequestInfo): Observable<any> {
-    let response$: Observable<any>;
+  private delete({ collectionName, id, url, interceptor, interceptorIds }: IRequestInfo): Observable<IHttpResponse<unknown>> {
+    let response$: Observable<IHttpResponse<unknown>>;
 
     // Caso tenha um interceptador, retorna a resposta do mesmo
     if (interceptor) {
@@ -675,17 +776,19 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected pagefy(queryResults: IQueryResult, queryParams: IQueryParams) {
+  protected pagefy(
+    queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
+  ): IQueryResult<IExtendEntity> | { data: IExtendEntity[] } | IExtendEntity[] {
     return (queryParams.page || this.config.pageEncapsulation) ?
       queryResults : this.config.dataEncapsulation ?
         { data: queryResults.items } : queryResults.items;
   }
 
-  protected bodify(data: any) {
+  protected bodify<T>(data: T): { data: T } | T {
     return this.config.dataEncapsulation ? { data } : data;
   }
 
-  private addDelay(response$: Observable<{}>, delay: number): Observable<any> {
+  private addDelay(response$: Observable<IHttpResponse<unknown>>, delay: number): Observable<IHttpResponse<unknown>> {
     return delay === 0 ? response$ : delayResponse(response$, (Math.floor((Math.random() * delay) + 1)) || 500);
   }
 
@@ -698,7 +801,7 @@ export abstract class BackendService {
     }
   }
 
-  private filterItem(item: any, conditions: Array<IQueryFilter>): boolean {
+  private filterItem(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
     if (conditions === undefined) {
       return true;
     }
@@ -706,7 +809,21 @@ export abstract class BackendService {
     return useFilterOr ? this.filterItemOr(item, conditions) : this.filterItemAnd(item, conditions);
   }
 
-  private filterItemAnd(item: any, conditions: Array<IQueryFilter>): boolean {
+  private getFieldValue(item: IExtendEntity, name: string): IExtendEntity | unknown {
+    if (name.includes('.')) {
+      const root = name.substring(0, name.indexOf('.'));
+      const child = name.substring(name.indexOf('.') + 1);
+      if (item && item.hasOwnProperty(root)) {
+        return this.getFieldValue(item[root] as IExtendEntity, child);
+      } else {
+        return undefined;
+      }
+    } else {
+      return item[name];
+    }
+  }
+
+  private filterItemAnd(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
     let ok = true;
     let i = conditions.length;
     let cond: IQueryFilter;
@@ -714,15 +831,16 @@ export abstract class BackendService {
       i -= 1;
       cond = conditions[i];
       if (cond.fn) {
-        ok = cond.fn.call(this, item);
+        ok = cond.fn.call(this, item) as boolean;
       } else {
-        ok = cond.rx.test(item[cond.name]);
+        const fieldValue = this.getFieldValue(item, cond.name);
+        ok = cond.rx.test(fieldValue as string);
       }
     }
     return ok;
   }
 
-  private filterItemOr(item: any, conditions: Array<IQueryFilter>): boolean {
+  private filterItemOr(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
     let okOr = false;
     let okAnd = true;
     let i = conditions.length;
@@ -733,16 +851,18 @@ export abstract class BackendService {
       if (cond.or) {
         if (!okOr) {
           if (cond.fn) {
-            okOr = cond.fn.call(this, item);
+            okOr = cond.fn.call(this, item) as boolean;
           } else {
-            okOr = cond.rx.test(item[cond.name]);
+            const fieldValue = this.getFieldValue(item, cond.name);
+            okOr = cond.rx.test(fieldValue as string);
           }
         }
       } else {
         if (cond.fn) {
-          okAnd = cond.fn.call(this, item);
+          okAnd = cond.fn.call(this, item) as boolean;
         } else {
-          okAnd = cond.rx.test(item[cond.name]);
+          const fieldValue = this.getFieldValue(item, cond.name);
+          okAnd = cond.rx.test(fieldValue as string);
         }
       }
     }
@@ -750,37 +870,39 @@ export abstract class BackendService {
   }
 
   private createFilterFn(value: string | string[], filterFn: FilterFn): FieldFn {
-    return (item: any) => {
-      return filterFn.call(this, value, item);
+    return (item: IExtendEntity): boolean => {
+      return filterFn.call(this, value, item) as boolean;
     };
   }
 
   private createFilterOpFn(field: string, value: string, filterOp: FilterOp): FieldFn {
-    return (item: any) => {
+    return (item: IExtendEntity): boolean => {
+      const fieldValue = this.getFieldValue(item, field);
       switch (filterOp) {
         case 'eq':
-          // tslint:disable-next-line: triple-equals
-          return item[field] == value;
+          // eslint-disable-next-line eqeqeq
+          return fieldValue == value;
         case 'ne':
-          // tslint:disable-next-line: triple-equals
-          return item[field] != value;
+          // eslint-disable-next-line eqeqeq
+          return fieldValue != value;
         case 'gt':
-          return item[field] > value;
+          return fieldValue > value;
         case 'ge':
-          return item[field] >= value;
+          return fieldValue >= value;
         case 'lt':
-          return item[field] < value;
+          return fieldValue < value;
         case 'le':
-          return item[field] <= value;
+          return fieldValue <= value;
         default:
           return false;
       }
     };
   }
 
-  private createFilterArrayFn(field: string, value: Array<any>): FieldFn {
-    return (item: any) => {
-      return value.includes(item[field]);
+  private createFilterArrayFn(field: string, value: string[]): FieldFn {
+    return (item: IExtendEntity) => {
+      const fieldValue = this.getFieldValue(item, field) as string;
+      return value.includes(fieldValue);
     };
   }
 
@@ -824,7 +946,40 @@ export abstract class BackendService {
     return queryParams;
   }
 
-  protected getAllItems(cursor: IQueryCursor, queryResults: IQueryResult, queryParams: IQueryParams): boolean {
+  protected getQueryParamsRootAndChild(queryParams: IQueryParams): { root: IQueryParams, children: IQueryParams } {
+    const hasPagination = (queryParams.page && queryParams.pageSize) ? true : false;
+    const hasMultiLevelFilter = queryParams.conditions && queryParams.conditions.some(cond => cond.name.includes('.'));
+    let root: IQueryParams;
+    let children: IQueryParams;
+    if (hasPagination && hasMultiLevelFilter) {
+      children = {
+        count: 0,
+        page: queryParams.page,
+        pageSize: queryParams.pageSize,
+        conditions: queryParams.conditions.filter(cond => cond.name.includes('.'))
+      };
+      root = {
+        count: 0,
+        conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
+      };
+    } else if (hasMultiLevelFilter) {
+      children = {
+        count: 0,
+        conditions: queryParams.conditions.filter(cond => cond.name.includes('.'))
+      };
+      root = {
+        count: 0,
+        conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
+      };
+    } else {
+      root = queryParams;
+    }
+    return { root, children };
+  }
+
+  protected getAllItems(
+    cursor: IQueryCursor<IExtendEntity>, queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
+  ): boolean {
     let retorna = false;
     if (cursor) {
       const item = cursor.value;
@@ -856,6 +1011,22 @@ export abstract class BackendService {
     return retorna;
   }
 
+  protected getAllItemsFilterByChildren(items: IExtendEntity[], queryParams: IQueryParams): IQueryResult<IExtendEntity> {
+    const cursor: IQueryCursor<IExtendEntity> = {
+      index: 0,
+      value: null,
+      continue: (): void => null
+    };
+    const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+    while (cursor.index <= items.length) {
+      cursor.value = (cursor.index < items.length) ? items[cursor.index++] : null;
+      if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
+        break;
+      }
+    }
+    return queryResults;
+  }
+
   private hasRequestInterceptor(
     applyToPath: string,
     method: string,
@@ -864,13 +1035,12 @@ export abstract class BackendService {
     uriQuery: Map<string, string[]>,
     intInfo: IInterceptorInfo
   ): boolean {
-    const self = this;
     const interceptorIds: string[] = [];
-    const interceptors = self.requestInterceptors.filter(value => {
+    const interceptors = this.requestInterceptors.filter(value => {
       return value.applyToPath === applyToPath;
     });
     const interceptor = interceptors.find(value => {
-      return self.compareRequestInterceptor(value, method, collectionName, uriPaths, uriQuery, interceptorIds);
+      return this.compareRequestInterceptor(value, method, collectionName, uriPaths, uriQuery, interceptorIds);
     });
     if (interceptor) {
       intInfo['interceptor'] = interceptor;
@@ -936,7 +1106,9 @@ export abstract class BackendService {
     return interceptorPathOk && interceptorQueryOk;
   }
 
-  private processInterceptResponse(interceptor: IRequestInterceptor, utils: IInterceptorUtils): Observable<any> {
+  private processInterceptResponse(
+    interceptor: IRequestInterceptor, utils: IInterceptorUtils
+  ): Observable<IHttpResponse<unknown>> {
     const response = this.interceptResponse(interceptor, utils);
     if (response instanceof Observable) {
       return response;
@@ -955,11 +1127,11 @@ export abstract class BackendService {
   }
 
   private interceptResponse(interceptor: IRequestInterceptor, utils: IInterceptorUtils):
-    IHttpResponse<any> | IHttpErrorResponse | Observable<any> | undefined {
-    let response: IHttpResponse<any> | IHttpErrorResponse;
+    IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown>> | undefined {
+    let response: IHttpResponse<unknown>;
     if (interceptor.response) {
       if (interceptor.response instanceof Function) {
-        response = interceptor.response.call(this, utils);
+        response = interceptor.response.call(this, utils) as IHttpResponse<unknown>;
       } else {
         response = clone(interceptor.response);
       }
@@ -1048,6 +1220,7 @@ export abstract class BackendService {
       const query = paramParser(loc.query);
       let pathSegments = path.split('/').filter(value => value.trim().length > 0);
       let segmentIx = 0;
+      parsed.query = query;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
         return parsed;
@@ -1057,7 +1230,7 @@ export abstract class BackendService {
       // Assumes first path segment if no config.apiBase
       // else ignores as many path segments as are in config.apiBase
       // Does NOT care what the api base chars actually are.
-      // tslint:disable-next-line:triple-equals
+      // eslint-disable-next-line eqeqeq
       if (this.config.apiBase == undefined) {
         parsed.apiBase = pathSegments[segmentIx++];
       } else {
@@ -1069,7 +1242,6 @@ export abstract class BackendService {
         }
       }
       parsed.apiBase += '/';
-      parsed.query = query;
 
       pathSegments = this.applyReplaceMap(pathSegments.slice(segmentIx));
       segmentIx = 0;
@@ -1098,12 +1270,12 @@ export abstract class BackendService {
       return parsed;
 
     } catch (err) {
-      const msg = `unable to parse url '${url}'; original error: ${err.message}`;
+      const msg = `Unable to parse url '${url}'; original error: ${(err as Error).message}`;
       throw new Error(msg);
     }
   }
 
-  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: any): string {
+  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: IExtendEntity): string {
     let method = 'POST';
     let postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod === undefined) {
@@ -1113,17 +1285,23 @@ export abstract class BackendService {
       let found = false;
       for (const postToOtherMethod of postsToOtherMethod) {
         switch (postToOtherMethod.applyTo) {
-          case 'urlSegment':
+          case 'urlSegment': {
             const segments = urlExtras ? urlExtras.split('/').filter(value => value.trim().length > 0) : [];
             found = segments.reverse().filter(segment => segment === postToOtherMethod.value).length > 0;
             break;
-          case 'queryParam':
+          }
+          case 'queryParam': {
             const queryParam = query ? query.get(postToOtherMethod.param) : undefined;
             found = queryParam && queryParam.length > 0 && queryParam[0] === postToOtherMethod.value;
             break;
-          case 'bodyParam':
+          }
+          case 'bodyParam': {
             found = body && body[postToOtherMethod.param] && body[postToOtherMethod.param] === postToOtherMethod.value;
+            if (found) {
+              delete body[postToOtherMethod.param];
+            }
             break;
+          }
         }
         if (found) {
           method = postToOtherMethod.otherMethod;
@@ -1144,12 +1322,12 @@ export abstract class BackendService {
       this.passThruBackend = this.utils.createPassThruBackend();
   }
 
-  private createFilterConditions(conditions: ConditionsFn): IQueryFilter[] {
-    const queryConditions = [];
+  private createFilterConditions(conditions: IConditionsParam): IQueryFilter[] {
+    const queryConditions: IQueryFilter[] = [];
     for (const name in conditions) {
       if (conditions.hasOwnProperty(name)) {
         const condition: IQueryFilter = { name, or: false };
-        const param: { value: any, filter?: FilterFn | FilterOp } = conditions[name];
+        const param = conditions[name];
         if (param.filter !== undefined && typeof param.filter === 'function') {
           condition['fn'] = this.createFilterFn(param.value, param.filter);
         } else if (param.filter !== undefined && typeof param.filter === 'string' && !Array.isArray(param.value)) {
@@ -1166,7 +1344,7 @@ export abstract class BackendService {
   }
 
   private createInterceptorUtils(
-    url: string, id?: string, interceptorIds?: string[], query?: Map<string, string[]>, body?: any
+    url: string, id?: string, interceptorIds?: string[], query?: Map<string, string[]>, body?: unknown
   ): IInterceptorUtils {
     return {
       url,
@@ -1175,11 +1353,37 @@ export abstract class BackendService {
       query,
       body,
       fn: {
-        response: this.utils.createResponseOptions,
-        errorResponse: this.utils.createErrorResponseOptions,
-        conditions: this.createFilterConditions.bind(this)
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        response: this.utils.createResponseOptions as ResponseFn,
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        errorResponse: this.utils.createErrorResponseOptions as ErrorResponseFn,
+        conditions: this.createFilterConditions.bind(this) as ConditionsFn
       }
     };
+  }
+
+  protected dispatchErrorToResponse(observer: Subscriber<unknown>, url: string, error: unknown): void {
+    let message: string;
+    let detailedMessage: unknown;
+    if (typeof error === 'string') {
+      message = error;
+    } else if (error instanceof Error) {
+      message = error.message
+      detailedMessage = error;
+    } else if (typeof error === 'object') {
+      message = (error.hasOwnProperty('message')) ?
+        (error as IErrorMessage).message : 'Ocorreu um erro desconhecido ao executar o comando';
+      detailedMessage = (error.hasOwnProperty('detailedMessage')) ?
+        (error as IErrorMessage).detailedMessage : error;
+    } else {
+      message = 'Ocorreu um erro desconhecido ao executar o comando';
+      detailedMessage = error;
+    }
+    const errorMessage: IErrorMessage = { message };
+    if (detailedMessage) {
+      errorMessage.detailedMessage = detailedMessage;
+    }
+    observer.error(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
   }
 
 }
