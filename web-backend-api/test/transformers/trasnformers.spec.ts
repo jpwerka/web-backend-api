@@ -40,9 +40,10 @@ describe('Testes para as funções de trasnformação', () => {
     const backendConfig = new BackendConfig({
       pageEncapsulation: false,
       dataEncapsulation: true,
-      returnBodyIn201: true,
+      returnItemIn201: true,
       put204: false,
-      strategyId: 'provided'
+      strategyId: 'provided',
+      delay: 0
     })
 
     beforeAll((done: DoneFn) => {

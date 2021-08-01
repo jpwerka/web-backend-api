@@ -55,7 +55,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
     let dbService: MemoryDbService;
 
     const backendConfig = new BackendConfig({
-      returnBodyIn201: true, // return the item in body after POST
+      returnItemIn201: true, // return the item in body after POST
       put204: false, // return the item in body after PUT
       pageEncapsulation: false,
       delay: 0,

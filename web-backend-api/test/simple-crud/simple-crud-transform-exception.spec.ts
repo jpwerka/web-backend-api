@@ -20,6 +20,8 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
     const backendConfig = new BackendConfig({
       appendExistingPost: false,
       appendPut: false,
+      returnItemIn201: true,
+      put204: false,
       delay: 0
     })
 
@@ -203,6 +205,110 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       } as IErrorMessage;
       dbService.addTransformPostMap(collectionCustomers, () => {
         throw 'Erro no TransformPost';
+      });
+      // when
+      dbService.handleRequest(req).subscribe({
+        next: () => done.fail('Do not have return in Observable.next in this request'),
+        error: (erro: IHttpErrorResponse) => {
+          expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
+          expect(erro.error).toEqual(responseError);
+          done();
+        }
+      });
+    });
+
+    it(`Deve retornar erro ao fazer POST e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const req: IRequestCore<Partial<ICustomer>> = {
+        method: 'POST',
+        url: `http:://localhost/${collectionCustomers}`,
+        body: {
+          name: 'Criando cliente com erro na transformação do GET'
+        }
+      };
+      const responseError = {
+        message: 'Erro no TransformGetById'
+      } as IErrorMessage;
+      dbService.addTransformGetByIdMap(collectionCustomers, () => {
+        throw 'Erro no TransformGetById';
+      });
+      // when
+      dbService.handleRequest(req).subscribe({
+        next: () => done.fail('Do not have return in Observable.next in this request'),
+        error: (erro: IHttpErrorResponse) => {
+          expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
+          expect(erro.error).toEqual(responseError);
+          done();
+        }
+      });
+    });
+
+    it(`Deve retornar erro ao fazer POST atualizando um registro e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const req: IRequestCore<Partial<ICustomer>> = {
+        method: 'POST',
+        url: `http:://localhost/${collectionCustomers}/5`,
+        body: {
+          name: 'Alterando cliente com POST com erro na transformação do GET'
+        }
+      };
+      const responseError = {
+        message: 'Erro no TransformGetById'
+      } as IErrorMessage;
+      dbService.addTransformGetByIdMap(collectionCustomers, () => {
+        throw 'Erro no TransformGetById';
+      });
+      // when
+      dbService.handleRequest(req).subscribe({
+        next: () => done.fail('Do not have return in Observable.next in this request'),
+        error: (erro: IHttpErrorResponse) => {
+          expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
+          expect(erro.error).toEqual(responseError);
+          done();
+        }
+      });
+    });
+
+    it(`Deve retornar erro ao fazer PUT e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const req: IRequestCore<Partial<ICustomer>> = {
+        method: 'PUT',
+        url: `http:://localhost/${collectionCustomers}/1`,
+        body: {
+          name: 'Alterando cliente com erro na transformação do GET'
+        }
+      };
+      const responseError = {
+        message: 'Erro no TransformGetById'
+      } as IErrorMessage;
+      dbService.addTransformGetByIdMap(collectionCustomers, () => {
+        throw 'Erro no TransformGetById';
+      });
+      // when
+      dbService.handleRequest(req).subscribe({
+        next: () => done.fail('Do not have return in Observable.next in this request'),
+        error: (erro: IHttpErrorResponse) => {
+          expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
+          expect(erro.error).toEqual(responseError);
+          done();
+        }
+      });
+    });
+
+    it(`Deve retornar erro ao fazer PUT e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const req: IRequestCore<Partial<ICustomer>> = {
+        method: 'PUT',
+        url: `http:://localhost/${collectionCustomers}/70`,
+        body: {
+          name: 'Criando cliente com PUT com erro na transformação do GET'
+        }
+      };
+      const responseError = {
+        message: 'Erro no TransformGetById'
+      } as IErrorMessage;
+      dbService.addTransformGetByIdMap(collectionCustomers, () => {
+        throw 'Erro no TransformGetById';
       });
       // when
       dbService.handleRequest(req).subscribe({

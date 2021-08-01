@@ -172,7 +172,7 @@ export abstract class BackendService {
   }
 
   clearTransformPutMap(collectionName: string): void {
-    this.transformPostMap.delete(collectionName);
+    this.transformPutMap.delete(collectionName);
   }
 
   addQuickFilterMap(collectionName: string, quickFilter: IQuickFilter): void {
@@ -213,6 +213,10 @@ export abstract class BackendService {
     }
   }
 
+  clearReplaceUrl(collectionName: string): void {
+    this.replaceMap.delete(collectionName);
+  }
+
   addPostToOtherMethodMap(collectionName: string, postToOtherMethod: IPostToOtherMethod): void {
     const postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod !== undefined) {
@@ -242,8 +246,10 @@ export abstract class BackendService {
       } else {
         params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
-      if (params && params.keys.length > 0) {
+      if (params && params.size > 0) {
         requestInterceptor['query'] = params;
+      } else {
+        delete requestInterceptor.query;
       }
     }
 
@@ -258,7 +264,7 @@ export abstract class BackendService {
         obj = JSON.parse(value) as IRequestInterceptor;
       } catch (error: unknown) {
         const msg = 'O valor informado não é possível de ser interpretado como uma interface IRequestInterceptor;' +
-          ` original error: ${(error as Error).message}`;
+          ` Original error: ${(error as Error).message}`;
         throw new Error(msg);
       }
     } else {
@@ -270,7 +276,7 @@ export abstract class BackendService {
       const httpResponse = obj.response as ({ status?: number, statusCode?: number, body?: unknown, error?: unknown });
       const status = (httpResponse.status && typeof httpResponse.status === 'number') ? httpResponse.status :
         (httpResponse.statusCode && typeof httpResponse.statusCode === 'number') ? httpResponse.statusCode :
-          (httpResponse.error) ? 400 : 200;
+          (httpResponse.error) ? STATUS.BAD_REQUEST : (httpResponse.body ? STATUS.OK : STATUS.NO_CONTENT);
       if (httpResponse.error) {
         response = this.utils.createErrorResponseOptions(url, status, httpResponse.error);
       } else {
@@ -302,7 +308,7 @@ export abstract class BackendService {
       } else {
         params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
-      if (params && params.keys.length > 0) {
+      if (params && params.size > 0) {
         requestInterceptor['query'] = params;
       }
     }
@@ -400,7 +406,7 @@ export abstract class BackendService {
     let response$: Observable<IHttpResponse<unknown>>;
 
     if (intInfo.interceptor && intInfo.interceptor.applyToPath === 'complete') {
-      const intUtils = this.createInterceptorUtils(url, undefined, undefined, parsed.query, req.body);
+      const intUtils = this.createInterceptorUtils(url, undefined, intInfo.interceptorIds, parsed.query, req.body);
       response$ = this.processInterceptResponse(intInfo.interceptor, intUtils);
       if (response$) {
         return response$;
@@ -1214,6 +1220,7 @@ export abstract class BackendService {
       const query = paramParser(loc.query);
       let pathSegments = path.split('/').filter(value => value.trim().length > 0);
       let segmentIx = 0;
+      parsed.query = query;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
         return parsed;
@@ -1235,7 +1242,6 @@ export abstract class BackendService {
         }
       }
       parsed.apiBase += '/';
-      parsed.query = query;
 
       pathSegments = this.applyReplaceMap(pathSegments.slice(segmentIx));
       segmentIx = 0;
@@ -1377,7 +1383,6 @@ export abstract class BackendService {
     if (detailedMessage) {
       errorMessage.detailedMessage = detailedMessage;
     }
-    console.log(errorMessage);
     observer.error(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
   }
 

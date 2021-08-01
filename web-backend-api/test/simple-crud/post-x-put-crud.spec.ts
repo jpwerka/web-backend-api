@@ -38,7 +38,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
       put204: false,
-      returnBodyIn201: true,
+      returnItemIn201: true,
       delay: 0
     })
 

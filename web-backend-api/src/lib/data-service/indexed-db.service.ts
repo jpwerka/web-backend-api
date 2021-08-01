@@ -9,8 +9,6 @@ import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../inter
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
 
-declare const v4: () => string;
-
 interface IEventTargetError extends EventTarget {
   error: unknown;
   errorCode: number;
@@ -127,7 +125,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
         const request = objectStore.add(data);
         request.onsuccess = () => {
-          resolve((request.result !== undefined) ? request.result['id'] : null);
+          resolve(request.result as (string | number));
         };
         request.onerror = (event: Event) => {
           reject(event);
@@ -338,7 +336,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  if (this.config.returnBodyIn201) {
+                  if (this.config.returnItemIn201) {
                     item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                     return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                   } else {
@@ -399,7 +397,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               })().then(response => {
                 observer.next(response);
                 observer.complete();
-              });
+              }, error => this.dispatchErrorToResponse(observer, url, error));
 
             };
 
@@ -484,7 +482,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               })().then(response => {
                 observer.next(response);
                 observer.complete();
-              });
+              }, error => this.dispatchErrorToResponse(observer, url, error));
             };
 
             requestPut.onerror = (event) => {
@@ -511,12 +509,17 @@ export class IndexedDbService extends BackendService implements IBackendService 
               item = await this.applyTransformPost(item, transformfn);
             }
           })().then(() => {
+
+            if (!item.id && self.config.strategyId !== 'autoincrement') {
+              item['id'] = findId;
+            }
+
             const requestAdd = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName).add(item);
             requestAdd.onsuccess = () => {
               if (requestAdd.result) {
                 item.id = requestAdd.result as (string | number);
                 (async () => {
-                  if (this.config.returnBodyIn201) {
+                  if (this.config.returnItemIn201) {
                     item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
                     return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                   } else {

@@ -8,8 +8,6 @@ import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../inter
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
 
-declare const v4: () => string;
-
 export class MemoryDbService extends BackendService implements IBackendService {
 
   private db: Map<string, IExtendEntity[]>;
@@ -230,7 +228,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          if (this.config.returnBodyIn201) {
+          if (this.config.returnItemIn201) {
             item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {
@@ -347,7 +345,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
-          if (this.config.returnBodyIn201) {
+          if (this.config.returnItemIn201) {
             item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {

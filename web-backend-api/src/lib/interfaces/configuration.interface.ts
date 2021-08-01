@@ -55,9 +55,9 @@ export abstract class BackendConfigArgs {
    */
   passThruUnknownUrl?: boolean;
     /**
-   * false (default) should NOT return the item in body after a POST. true: return the item in body.
+   * false (default) should NOT return the item in body after CREATED. true: return the item in body.
    */
-  returnBodyIn201?: boolean;
+  returnItemIn201?: boolean;
   /**
    * false (default) should NOT update existing item with POST. false: OK to update.
    */
@@ -67,7 +67,7 @@ export abstract class BackendConfigArgs {
    */
   put204?: boolean;
   /**
-   * false (default) if item not found, create as new item; false: should 404.
+   * false (default) if item not found, create as new item; true: should 404.
    */
   put404?: boolean;
   /**

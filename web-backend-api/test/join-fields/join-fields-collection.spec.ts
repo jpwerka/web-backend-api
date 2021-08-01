@@ -306,6 +306,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
 
     it(`Deve fazer a junção com a configuração da sub-coleção para o GetById. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
+      const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
       const expectedLoad = clone(loads[0]);
       expectedLoad.documents = expectedLoad.documentsId.map(id => {
@@ -313,7 +314,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
         document = Object.assign(
           {},
           document,
-          { customer: customers.find(item => item.id === document.customerId) }
+          { customer: mapCustomer(customers.find(item => item.id === document.customerId)) }
         );
         document.items = document.items.map(item => Object.assign(
           {},
@@ -325,7 +326,8 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       delete expectedLoad.documentsId;
       dbService.addJoinGetByIdMap(collectionDocuments, {
         fieldId: 'customerId',
-        collectionSource: collectionCustomers
+        collectionSource: collectionCustomers,
+        transformerGet: ['id', 'name']
       });
       dbService.addJoinGetByIdMap(collectionDocuments, {
         fieldId: 'productId',

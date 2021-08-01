@@ -69,7 +69,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
   describe('Testes para ID incremental em memória', () => {
     let dbService: MemoryDbService;
     const backendConfig = new BackendConfig({
-      returnBodyIn201: true,
+      returnItemIn201: true,
       delay: 0
     })
 

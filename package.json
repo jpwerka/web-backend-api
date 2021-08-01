@@ -50,6 +50,7 @@
     "@angular/platform-browser-dynamic": "12.1.2",
     "@angular/router": "12.1.2",
     "@types/lodash-es": "^4.17.3",
+    "@types/uuid": "^8.3.1",
     "core-js": "2.6.10",
     "json.date-extensions": "^1.2.2",
     "rxjs": "6.6.7",
