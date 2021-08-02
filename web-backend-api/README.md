@@ -139,6 +139,8 @@ $ ng serve --configuration=backend
 
 ## Separate backend from production
 
+### Option 1 - With replace file in angular.json
+
 To separate backend from production is necessary create an module in your app that load web-backend-api when necessary and don't load it when unnecessary.
 
 Create the same module in two different folders in your app:
@@ -207,6 +209,72 @@ Change configuration in `angular.json` file include file replacement for this mo
   }
 ```
 When app load and start this module is load too, but, was this an empty module then nothing is changed for production.
+
+### Option 2 - With module loaded via enviroment (recomended)
+
+Create only one empty module to serve with mock when real app is running:
+
+File `mocks/web-backend-api-mock.module.ts` is the module used for production configuration.
+```typescript
+import { ModuleWithProviders, NgModule } from '@angular/core';
+
+@NgModule({})
+export class WebBackendApiMockModule {
+  static forRoot(): ModuleWithProviders<WebBackendApiMockModule> {
+    return {
+      ngModule: WebBackendApiMockModule,
+      providers: [] // Empty module
+    };
+  }
+
+  static forFeature(): ModuleWithProviders<WebBackendApiMockModule> {
+    return WebBackendApiMockModule.forRoot();
+  }
+}
+```
+In yours enviroments files, create a property with name `webBackendApi` and add de reference to the module use to load `web-backend-api. 
+
+Real module, for simulate backend and mock module to load in your production enviroment.
+
+File `src/environments/environment.back.ts` is the module used for simulate backend configuration.
+```typescript
+import { WebBackendApiModule } from 'web-backend-api';
+
+export const environment = {
+  production: false,
+  webBackendApi: {
+    modulo: WebBackendApiModule,
+  }
+}
+```
+
+File `src/environments/environment.prod.ts` is the module used for production configuration.
+```typescript
+import { WebBackendApiMockModule } from '../mocks/web-backend-api-mock.module.ts';
+
+export const environment = {
+  production: true,
+  webBackendApi: {
+    modulo: WebBackendApiMockModule,
+  }
+}
+```
+
+Add `environment.webBackendApi.modulo.forRoot()` to your AppModule's import array
+
+```typescript
+import { environment } from './../environments/environment';
+. . .
+
+@NgModule({
+  imports : [
+    CommonModule, 
+    environment.webBackendApi.modulo.forRoot(), 
+    ...
+  ],
+})
+export class AppModule {}
+```
 
 ## Autor
 
