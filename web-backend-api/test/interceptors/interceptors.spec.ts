@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'lodash';
 import { throwError } from 'rxjs';
 import { BackendConfig } from '../../src/lib/data-service/backend-config';
 import { IBackendService, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IRequestCore, IRequestInterceptor, LoadFn, MemoryDbService, STATUS } from '../../src/public-api';

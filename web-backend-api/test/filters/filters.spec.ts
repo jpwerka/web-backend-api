@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'lodash';
 import { BackendConfig } from '../../src/lib/data-service/backend-config';
 import { IBackendService, IHttpResponse, LoadFn, MemoryDbService } from '../../src/public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
