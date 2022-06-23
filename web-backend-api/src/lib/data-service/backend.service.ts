@@ -226,7 +226,33 @@ export abstract class BackendService {
     }
   }
 
-  addRequestInterceptor(requestInterceptor: IRequestInterceptor): void {
+  addRequestInterceptor(requestInterceptor: IRequestInterceptor): IRequestInterceptor | null {
+
+    this.adjustInterceptor(requestInterceptor);
+
+    const index = this.requestInterceptors.findIndex((item) => this.isEqualsInterceptor(requestInterceptor, item));
+    if (index >= 0) {
+      return this.requestInterceptors.splice(index, 1, requestInterceptor)[0];
+    } else {
+      this.requestInterceptors.push(requestInterceptor);
+      return null;
+    }
+  }
+
+  removeRequestInterceptor(requestInterceptor: IRequestInterceptor): IRequestInterceptor | null {
+
+    this.adjustInterceptor(requestInterceptor);
+
+    const index = this.requestInterceptors.findIndex((item) => this.isEqualsInterceptor(requestInterceptor, item));
+    if (index >= 0) {
+      return this.requestInterceptors.splice(index, 1)[0];
+    } else {
+      return null;
+    }
+  }
+
+  private adjustInterceptor(requestInterceptor: IRequestInterceptor): void {
+
     if (!requestInterceptor.method) {
       requestInterceptor['method'] = 'GET';
     }
@@ -252,8 +278,33 @@ export abstract class BackendService {
         delete requestInterceptor.query;
       }
     }
+  }
 
-    this.requestInterceptors.push(requestInterceptor);
+  private isEqualsInterceptor(source: IRequestInterceptor, dest: IRequestInterceptor): boolean {
+    let ret = true;
+    ret = source.method.toLocaleLowerCase() === dest.method.toLocaleLowerCase();
+    ret = ret && source.path === dest.path;
+    ret = ret && source.applyToPath === dest.applyToPath;
+    if (source.applyToPath !== 'complete') {
+      ret = ret && source.collectionName === dest.collectionName;
+    }
+    ret = ret && (!source.query && !dest.query);
+    if (ret && source.query && !dest.query) {
+      ret = false;
+    }
+    if (ret && !source.query && dest.query) {
+      ret = false;
+    }
+    if (ret && source.query && dest.query) {
+      const keys = (source.query as Map<string, string[]>).keys();
+      const destQuery = (dest.query as Map<string, string[]>);
+      for (const key of keys) {
+        ret = destQuery.has(key);
+        if (!ret)
+          break;
+      }
+    }
+    return ret;
   }
 
   addRequestInterceptorByValue(value: IRequestInterceptor | unknown): void {
@@ -484,7 +535,7 @@ export abstract class BackendService {
     return response$;
   }
 
-  abstract getInstance$(collectionName: string, id: string | number): Observable<unknown>;
+  abstract getInstance$(collectionName: string, id: string | number): Promise<unknown>;
   abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Observable<unknown[]>;
 
   abstract get$(
@@ -648,7 +699,7 @@ export abstract class BackendService {
         } else {
           let data: IExtendEntity;
           const id = (isCollectionField ? (joinFieldValue as IExtendEntity)[joinField.fieldId] : joinFieldValue) as string;
-          data = await this.getInstance$(joinField.collectionSource, id).toPromise() as IExtendEntity;
+          data = await this.getInstance$(joinField.collectionSource, id) as IExtendEntity;
           if (data && joinField.joinFields) {
             data = await this.applyJoinFields(data, joinField.joinFields as IJoinField[]);
           }

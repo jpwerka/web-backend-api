@@ -163,22 +163,21 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return result;
   }
 
-  getInstance$(collectionName: string, id: string | number): Observable<unknown> {
-    return new Observable((observer) => {
+  getInstance$<T = unknown>(collectionName: string, id: string | number): Promise<T> {
+    return new Promise((resolve, reject) => {
       let request: IDBRequest<unknown>;
       const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       if (id !== undefined && id !== null && id !== '') {
         id = (this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id) as number;
         request = objectStore.get(id);
         request.onsuccess = () => {
-          observer.next(request.result);
-          observer.complete();
+          resolve(request.result as T);
         };
         request.onerror = (event) => {
-          observer.error((event.target as IEventTargetError).error);
+          reject((event.target as IEventTargetError).error);
         };
       } else {
-        observer.error('Não foi passado o id');
+        reject('Não foi passado o id');
       }
     });
   }

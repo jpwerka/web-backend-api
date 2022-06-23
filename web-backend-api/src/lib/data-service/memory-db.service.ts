@@ -83,15 +83,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return Array.from(this.db.keys());
   }
 
-  getInstance$(collectionName: string, id: string | number): Observable<unknown> {
-    return new Observable((observer) => {
+  getInstance$<T = unknown>(collectionName: string, id: string | number): Promise<T> {
+    return new Promise((resolve, reject) => {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        observer.next(cloneDeep(this.findById(objectStore, id)));
-        observer.complete();
+        resolve(cloneDeep(this.findById(objectStore, id)) as unknown as T);
       } else {
-        observer.error('Não foi passado o id');
+        reject('Não foi passado o id');
       }
     });
   }

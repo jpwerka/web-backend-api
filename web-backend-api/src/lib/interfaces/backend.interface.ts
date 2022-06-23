@@ -329,7 +329,7 @@ export interface IBackendService {
    *    }
    *   });
    */
-  addRequestInterceptor(requestInterceptor: IRequestInterceptor): void;
+  addRequestInterceptor(requestInterceptor: IRequestInterceptor): IRequestInterceptor | null;
 
   /**
    * Permite adicionar um objeto que configura uma regra de interceptação para uma
@@ -348,7 +348,7 @@ export interface IBackendService {
    * o item não será submetido a função de transformação mapeada, caso esta exista.
    * @param collectionName - Nome da coleção a qual se deseja buscar o item
    * @param id - Id do item que deseja ser recuperado
-   * @returns Um observable que retorna a intância do item quando completo.
+   * @returns Uma promise que retorna a intância do item quando resolvida.
    * @example
    *   // Considerando que foi adicionado um interceptador para o GetById de documentos
    *   const dbService = getBackendService();
@@ -359,7 +359,7 @@ export interface IBackendService {
    *       ))
    *   }
    */
-  getInstance$(collectionName: string, id: string | number): Observable<unknown>;
+  getInstance$<T = unknown>(collectionName: string, id: string | number): Promise<T>;
 
   /**
    * Permite buscar itens diretamente da coleção através de condições. Pode ser utilizado para complementar informações
