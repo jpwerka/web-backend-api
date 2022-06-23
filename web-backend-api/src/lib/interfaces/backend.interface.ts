@@ -314,6 +314,10 @@ export interface IBackendService {
    * determinada requisição com base no método, url e parâmetros fornecendo uma
    * resposta customizada conforme a necessidade.
    * @param requestInterceptor - Objeto que representa interface de um interceptor
+   * @returns Passando um interceptor com os mesmos dados (method, path, applyToPath, collectionName, query),
+   * será substituído e retornando a instância do interceptor existente. No caso de `query`,
+   * somente serão considerados se os `params` forem iguais, desconsiderando os `values`.
+   * Caso não exista um interceptor anterior, será retornado `null`.
    * @alias IRequestInterceptor
    * @example
    *  // add interceptor to generate a document identifier in backend
@@ -330,6 +334,30 @@ export interface IBackendService {
    *   });
    */
   addRequestInterceptor(requestInterceptor: IRequestInterceptor): IRequestInterceptor | null;
+
+  /**
+   * Permite remover um objeto que configura uma regra de interceptação para uma
+   * determinada requisição com base no método, url e parâmetros fornecendo uma
+   * resposta customizada conforme a necessidade.
+   * @param requestInterceptor - Objeto que representa interface de um interceptor
+   * @returns Passando um interceptor com os dados (method, path, applyToPath, collectionName, query),
+   * será removido e retornando a instância do interceptor existente. No caso de `query`,
+   * somente serão considerados se os `params` forem iguais, desconsiderando os `values`.
+   * Caso não encontre será retornado `null`.
+   * @obs No caso de remoção a função de resposta será ignorada, pois ela não é utilizada para fazer a comparação.
+   * @alias IRequestInterceptor
+   * @example
+   *  // remove the interceptor to generate a document identifier in backend
+   *  // intercept the url: http://myhost.com/api/documents/identifier
+   *  dbService.removeRequestInterceptor({
+   *    method: 'POST',
+   *    path: 'identifier',
+   *    applyToPath: 'beforeId',
+   *    collectionName: 'documents',
+   *    response: () => null
+   *   });
+   */
+  removeRequestInterceptor(requestInterceptor: IRequestInterceptor): IRequestInterceptor | null;
 
   /**
    * Permite adicionar um objeto que configura uma regra de interceptação para uma
