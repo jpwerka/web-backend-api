@@ -1,9 +1,9 @@
-import { LoadFn, IBackendService } from '../interfaces/backend.interface';
+import { IBackendService, LoadFn } from '../interfaces/backend.interface';
+import { BackendConfigArgs, BackendTypeArgs } from '../interfaces/configuration.interface';
 import { BackendConfig } from './backend-config';
 import { BackendType } from './backend-type';
-import { BackendConfigArgs, BackendTypeArgs } from '../interfaces/configuration.interface';
-import { MemoryDbService } from './memory-db.service';
 import { IndexedDbService } from './indexed-db.service';
+import { MemoryDbService } from './memory-db.service';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 

@@ -1,4 +1,4 @@
-import { IBackendService, STATUS } from '../../src/public-api';
+import { IBackendService, STATUS } from '../../public-api';
 
 export function configureBackendUtils(dbService: IBackendService): void {
   dbService.backendUtils({

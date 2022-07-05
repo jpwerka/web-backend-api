@@ -2,11 +2,9 @@
 import { XhrFactory } from '@angular/common';
 import { HttpBackend } from '@angular/common/http';
 import { ModuleWithProviders, NgModule } from '@angular/core';
-import { getBackendService } from './data-service/backend-data.mapper';
+import { getBackendService, IBackendService } from '../../database';
 import { DownloadDataService } from './download-data.service';
 import { BACKEND_SERVICE, HttpClientBackendService } from './http-client-backend.service';
-import { IBackendService } from './interfaces/interface.index';
-
 
 export function httpClientBackendServiceFactory(
   dbService: IBackendService,

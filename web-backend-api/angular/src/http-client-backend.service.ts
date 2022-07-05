@@ -2,10 +2,8 @@
 import { XhrFactory } from '@angular/common';
 import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
 import { Inject, Injectable, InjectionToken, Optional } from '@angular/core';
+import { ErrorResponseFn, getStatusText, IBackendService, IErrorMessage, IPassThruBackend, ResponseFn, STATUS } from '../../database';
 import { Observable, throwError } from 'rxjs';
-import { ErrorResponseFn, IErrorMessage, IPassThruBackend, ResponseFn } from './interfaces/interceptor.interface';
-import { IBackendService } from './interfaces/interface.index';
-import { getStatusText, STATUS } from './utils/http-status-codes';
 
 export const BACKEND_SERVICE = new InjectionToken<IBackendService>('backend.service');
 

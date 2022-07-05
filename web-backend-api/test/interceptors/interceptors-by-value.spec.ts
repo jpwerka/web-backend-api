@@ -1,5 +1,5 @@
-import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { IBackendService, IHttpErrorResponse, IHttpResponse, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../src/public-api';
+import { BackendConfig } from '../../database/src/data-service/backend-config';
+import { IBackendService, IHttpErrorResponse, IHttpResponse, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers } from './interceptors.mock';
 

@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import { stringify } from 'json5';
 import { camelCase, kebabCase, upperFirst } from 'lodash';
 import { Observable } from 'rxjs';
-import { getBackendService } from './data-service/backend-data.mapper';
-import { IBackendService } from './interfaces/backend.interface';
+import { getBackendService, IBackendService } from '../../database';
 
 export type GetDataType = 'json' | 'json5' | 'typescript';
 

@@ -1,7 +1,7 @@
 import { TestCase } from 'jasmine-data-provider-ts';
 import { v4 } from 'uuid';
-import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../src/public-api';
+import { BackendConfig } from '../../database/src/data-service/backend-config';
+import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers as customersOrigem } from './simple-crud.mock';
 

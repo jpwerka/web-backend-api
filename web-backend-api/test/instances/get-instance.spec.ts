@@ -1,5 +1,5 @@
 import { TestCase } from 'jasmine-data-provider-ts';
-import { BackendConfigArgs, BackendTypeArgs, dataService, getBackendService, IBackendService, IndexedDbService, IQueryFilter, setupBackend } from '../../src/public-api';
+import { BackendConfigArgs, BackendTypeArgs, dataService, getBackendService, IBackendService, IndexedDbService, IQueryFilter, setupBackend } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './get-instance.mock';
 

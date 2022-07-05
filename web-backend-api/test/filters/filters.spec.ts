@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash';
-import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { IBackendService, IHttpResponse, LoadFn, MemoryDbService } from '../../src/public-api';
+import { BackendConfig } from '../../database/src/data-service/backend-config';
+import { IBackendService, IHttpResponse, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionDocuments, documents, IOutboundDocument } from './filters.mock';
 

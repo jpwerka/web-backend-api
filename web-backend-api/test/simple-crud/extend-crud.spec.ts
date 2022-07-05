@@ -1,7 +1,7 @@
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
-import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { IBackendService, IHttpResponse, IPostToOtherMethod, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../src/public-api';
+import { BackendConfig } from '../../database/src/data-service/backend-config';
+import { IBackendService, IHttpResponse, IPostToOtherMethod, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
 

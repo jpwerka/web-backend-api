@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable, Subscriber, throwError } from 'rxjs';
-import { concatMap, first, map, tap } from 'rxjs/operators';
+import { catchError, concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
@@ -442,6 +442,10 @@ export abstract class BackendService {
       concatMap(() => this.handleRequest_(req).pipe(
         tap(res => this.logResponse(res)),
         map(res => this.convertResponse(res)),
+        catchError(err => {
+          this.logResponse(err);
+          return throwError(err);
+        })
       ))
     );
   }

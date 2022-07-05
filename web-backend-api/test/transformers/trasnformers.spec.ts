@@ -1,8 +1,8 @@
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
 import { defer, of } from 'rxjs';
-import { BackendConfig } from '../../src/lib/data-service/backend-config';
-import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../src/public-api';
+import { BackendConfig } from '../../database/src/data-service/backend-config';
+import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { getDateWithoutSeconds } from '../utils/date-utils';
 import { collectionProducts, IProduct, products } from './transformers.mock';
