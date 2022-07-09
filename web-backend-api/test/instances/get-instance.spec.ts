@@ -38,27 +38,19 @@ describe('Testes para busca diretamente de instâncias', () => {
       );
     })
 
-    it(`Deve buscar uma instancia de um cliente por id. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
-
+    it(`Deve buscar uma instancia de um cliente por id. DbType: ${dbType.dbtype}`, async () => {
       const customer = customers[0];
-      dbService.getInstance$(collectionCustomers, 1).subscribe(
-        (instance: ICustomer) => {
-          expect(instance).toEqual(customer);
-          done();
-        },
-        error => done.fail(error)
-      );
+      const instance: ICustomer = await dbService.getInstance$(collectionCustomers, 1);
+      expect(instance).toEqual(customer);
     });
 
-    it(`Deve lançar erro ao tentar buscar uma instancia sem informar o ID. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+    it(`Deve lançar erro ao tentar buscar uma instancia sem informar o ID. DbType: ${dbType.dbtype}`, async () => {
 
-      dbService.getInstance$(collectionCustomers, null).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this getInstance$'),
-        error: erro => {
-          expect(erro).toEqual('Não foi passado o id');
-          done();
-        }
-      });
+      try {
+        await dbService.getInstance$(collectionCustomers, null);
+      } catch (erro) {
+        expect(erro).toEqual('Não foi passado o id');
+      }
     });
 
     it(`Deve buscar todas as instâncias de clientes. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
