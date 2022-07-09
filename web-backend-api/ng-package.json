@@ -2,11 +2,6 @@
   "$schema": "../node_modules/ng-packagr/ng-package.schema.json",
   "dest": "../dist/web-backend-api",
   "lib": {
-    "entryFile": "./public-api.ts",
-    "umdModuleIds": {
-      "uuid": "uuid",
-      "json5": "json5",
-      "lodash": "lodash"
-    }
+    "entryFile": "./public-api.ts"
   }
 }
