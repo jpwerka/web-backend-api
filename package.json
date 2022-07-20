@@ -1,6 +1,6 @@
 {
   "name": "web-backend-api",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": false,
   "description": "API para simular um backend em memoria para ser usado em aplicações angular",
   "readmeFilename": "README.md",
@@ -53,7 +53,7 @@
     "@types/uuid": "^8.3.1",
     "core-js": "2.6.10",
     "json.date-extensions": "^1.2.2",
-    "rxjs": "6.6.7",
+    "rxjs": "~7.4.0",
     "tslib": "^2.0.0",
     "zone.js": "~0.11.4"
   },

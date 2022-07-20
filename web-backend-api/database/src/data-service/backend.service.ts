@@ -9,8 +9,7 @@ import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
-declare const require: (file: string) => void;
-require('json.date-extensions');
+import 'json.date-extensions';
 
 export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
 
