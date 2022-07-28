@@ -224,6 +224,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let queryParams: IQueryParams = { count: 0 };
       let queriesParams: { root: IQueryParams, children: IQueryParams };
       let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+      let orderedItems: IExtendEntity[] = [];
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
@@ -262,23 +263,42 @@ export class IndexedDbService extends BackendService implements IBackendService 
           );
         } else {
           const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
-          if (self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queriesParams.root)) {
-            (async () => {
-              if (queryResults.items.length) {
-                await self.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
-                if (queriesParams.children) {
-                  queryResults = self.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
-                }
+          if (queryParams.orders && queryParams.orders.length) {
+            if (!self.getAllItemsToArray(cursor as unknown as IQueryCursor<IExtendEntity>, orderedItems)) {
+              return;
+            }
+            const cursorArray: IQueryCursor<IExtendEntity> = {
+              index: 0,
+              value: null,
+              continue: (): void => null
+            };
+            orderedItems = self.orderItems(orderedItems, queryParams.orders);
+            while (cursorArray.index <= orderedItems.length) {
+              cursorArray.value = (cursorArray.index < orderedItems.length) ? orderedItems[cursorArray.index++] : null;
+              if (self.getAllItems((cursorArray.value ? cursorArray : null), queryResults, queriesParams.root)) {
+                break;
               }
-            })().then(
-              () => {
-                const response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
-                observer.next(response);
-                observer.complete();
-              },
-              (error) => this.dispatchErrorToResponse(observer, url, error)
-            );
+            }
+          } else {
+            if (!self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queriesParams.root)) {
+              return;
+            }
           }
+          (async () => {
+            if (queryResults.items.length) {
+              await self.applyTransformersGetAll(collectionName, queryResults.items, getJoinFields);
+              if (queriesParams.children) {
+                queryResults = self.getAllItemsFilterByChildren(queryResults.items, queriesParams.children);
+              }
+            }
+          })().then(
+            () => {
+              const response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
+              observer.next(response);
+              observer.complete();
+            },
+            (error) => self.dispatchErrorToResponse(observer, url, error)
+          );
         }
       };
 
@@ -288,6 +308,18 @@ export class IndexedDbService extends BackendService implements IBackendService 
         observer.error(response);
       };
     });
+  }
+
+  private getAllItemsToArray(cursor: IQueryCursor<IExtendEntity>, items: IExtendEntity[]): boolean {
+    let retorna = false;
+    if (cursor) {
+      const item = cursor.value;
+      items.push(item);
+      cursor.continue();
+    } else {
+      retorna = true;
+    }
+    return retorna;
   }
 
   post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {

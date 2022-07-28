@@ -3,7 +3,7 @@ import { catchError, concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
-import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
+import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
@@ -978,8 +978,21 @@ export abstract class BackendService {
             return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
           }));
         }
+      } else if (name === 'order') {
+        queryParams['orders'] = new Array<IQueryOrder>();
+        value.forEach(field => {
+          if (field.includes('.')) {
+            console.warn('Don\'t support order by child property yet');
+          } else {
+            if (field.charAt(0) === '-') {
+              queryParams.orders.push({ name: field.substring(1), order: 'desc' });
+            } else {
+              queryParams.orders.push({ name: field, order: 'asc' });
+            }
+          }
+        })
       } else if ((!quickFilter || (quickFilter && quickFilter.term !== name)) &&
-        (name !== 'order' && name !== 'fields' && name !== '$filter' && name !== 'expand')) {
+        (name !== 'fields' && name !== '$filter' && name !== 'expand')) {
         if (queryParams['conditions'] === undefined) {
           queryParams['conditions'] = [];
         }
@@ -1438,6 +1451,79 @@ export abstract class BackendService {
       errorMessage.detailedMessage = detailedMessage;
     }
     observer.error(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
+  }
+
+  protected orderItems(items: IExtendEntity[], orders: IQueryOrder[]): IExtendEntity[] {
+    // utility functions
+    const defaultCmp = function (a: unknown, b: unknown): number {
+      if (a == b) return 0;
+      return a < b ? -1 : 1;
+    };
+    const getCmpFunc = function (primer?: (v: unknown) => unknown, reverse?: boolean) {
+      const dfc = defaultCmp;
+      let cmp = defaultCmp;
+      if (primer) {
+        cmp = function (a, b) {
+          return dfc(primer(a), primer(b));
+        };
+      }
+      if (reverse) {
+        return function (a: unknown, b: unknown) {
+          return -1 * cmp(a, b);
+        };
+      }
+      return cmp;
+    };
+
+    type Field = {
+      name: string;
+      cmp: typeof defaultCmp;
+    }
+
+    // actual implementation
+    const sortBy = function (orders: IQueryOrder[]) {
+      const fields: Field[] = [];
+
+      const n_fields = orders.length;
+
+      let order: IQueryOrder;
+      let name: string;
+      let cmp: typeof defaultCmp;
+
+      // preprocess sorting options
+      for (let i = 0; i < n_fields; i++) {
+        order = orders[i];
+        if (typeof order === 'string') {
+          name = order;
+          cmp = defaultCmp;
+        }
+        else {
+          name = order.name;
+          cmp = getCmpFunc(undefined, order.order === 'desc');
+        }
+        fields.push({
+          name,
+          cmp
+        });
+      }
+
+      // final comparison function
+      return function (a: unknown, b: unknown) {
+        let name: string;
+        let result: number;
+        let field: Field;
+        for (let i = 0; i < n_fields; i++) {
+          result = 0;
+          field = fields[i];
+          name = field.name;
+
+          result = field.cmp(a[name], b[name]);
+          if (result !== 0) break;
+        }
+        return result;
+      }
+    }
+    return items.sort(sortBy(orders));
   }
 
 }

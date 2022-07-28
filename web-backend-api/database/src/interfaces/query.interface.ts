@@ -23,11 +23,16 @@ export interface IQueryFilter {
   or?: boolean;
 }
 
+export interface IQueryOrder {
+  name: string;
+  order: 'asc' | 'desc'
+}
 export interface IQueryParams {
   count: number;
   page?: number;
   pageSize?: number;
   conditions?: IQueryFilter[];
+  orders?: IQueryOrder[];
 }
 
 export interface IQueryResult<T> {
