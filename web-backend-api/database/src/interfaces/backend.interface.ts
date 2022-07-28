@@ -1,6 +1,6 @@
 import { Observable } from 'rxjs';
 import { IErrorMessage, IHttpErrorResponse, IHttpResponse, IPassThruBackend, IRequestCore, IRequestInterceptor, IPostToOtherMethod } from './interceptor.interface';
-import { FilterFn, FilterOp, IQuickFilter, IQueryFilter, IQueryResult } from './query.interface';
+import { FilterFn, FilterOp, IQuickFilter, IQueryFilter, IQueryResult, CompareFn } from './query.interface';
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada para a configuração
@@ -263,6 +263,23 @@ export interface IBackendService {
    *   service.addFieldFilterMap('documents', 'identifier', 'eq');
    */
   addFieldFilterMap(collectionName: string, field: string, filterfn: FilterFn | FilterOp): void;
+
+  /**
+   * Permite adicionar uma função que irá aplicar uma comparação customizada para um
+   * determinado parâmetro da query quando for acionado endpoint de listagem
+   * dos dados da coleção e este campo for passado para ordenação no parametro `order`
+   * @param collectionName - Nome da coleção a qual se deseja adicionar a regra de comparação
+   * @param field - Nome do parâmetro enviado na query da URL
+   * @param compareFn - Função que irá fazer a comparação do campo
+   * @example
+   *   // Usando CompareFn
+   *   const compareFn = (a: string, b: string): number => {
+   *     return a.localeCompare(b, 'pt-BR', {'sensitivity': 'base'});
+   *   }
+   *   service.addFieldCompareMap('clients', 'name', compareFn);
+   */
+  addFieldCompareMap(collectionName: string, field: string, compareFn: CompareFn): void;
+
 
   /**
    * Permite adicionar uma string, ou uma lista de strings que devem ser substituídas

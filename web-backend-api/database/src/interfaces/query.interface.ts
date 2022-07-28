@@ -1,15 +1,17 @@
 export type FilterFn = (value: string | string[], item: unknown) => boolean;
 
 export type FilterOp =
-  | 'eq' // Equal
-  | 'ne' // Not equal
-  | 'gt' // Greater than
-  | 'ge' // Greater than or equal
-  | 'lt' // Less than
-  | 'le' // Less than or equal
-  ;
+| 'eq' // Equal
+| 'ne' // Not equal
+| 'gt' // Greater than
+| 'ge' // Greater than or equal
+| 'lt' // Less than
+| 'le' // Less than or equal
+;
 
 export type FieldFn = (item: unknown) => boolean;
+
+export type CompareFn = (a: unknown, b: unknown) => number;
 
 export interface IQuickFilter {
   term: string;

@@ -272,7 +272,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               value: null,
               continue: (): void => null
             };
-            orderedItems = self.orderItems(orderedItems, queryParams.orders);
+            orderedItems = self.orderItems(collectionName, orderedItems, queryParams.orders);
             while (cursorArray.index <= orderedItems.length) {
               cursorArray.value = (cursorArray.index < orderedItems.length) ? orderedItems[cursorArray.index++] : null;
               if (self.getAllItems((cursorArray.value ? cursorArray : null), queryResults, queriesParams.root)) {

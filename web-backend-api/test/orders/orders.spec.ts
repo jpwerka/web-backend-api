@@ -34,8 +34,7 @@ describe('Testes para cenários de ordenação', () => {
     });
 
     beforeEach(() => {
-      dbService.clearJoinGetBothMap(collectionDocuments);
-      dbService.clearFieldFilterMap(collectionDocuments);
+      dbService.clearFieldCompareMap(collectionDocuments);
     });
 
     afterAll((done: DoneFn) => {
@@ -95,7 +94,7 @@ describe('Testes para cenários de ordenação', () => {
 
     it(`Deve fazer uma ordenação composta por dois campos (customerId ASC, identifier ASC). DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
-      const expectedOrdered = documents.map(doc => ({customerId: doc.customerId, identifier: doc.identifier}));
+      const expectedOrdered = documents.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
       expectedOrdered.sort((a, b) => {
         let result: number;
         result = defaultCmp(a.customerId, b.customerId);
@@ -110,7 +109,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc =>  ({customerId: doc.customerId, identifier: doc.identifier}));
+          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -120,7 +119,7 @@ describe('Testes para cenários de ordenação', () => {
 
     it(`Deve fazer uma ordenação composta por dois campos (customerId ASC, identifier DESC). DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
-      const expectedOrdered = documents.map(doc => ({customerId: doc.customerId, identifier: doc.identifier}));
+      const expectedOrdered = documents.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
       expectedOrdered.sort((a, b) => {
         let result: number;
         result = defaultCmp(a.customerId, b.customerId);
@@ -135,7 +134,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc =>  ({customerId: doc.customerId, identifier: doc.identifier}));
+          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -145,7 +144,7 @@ describe('Testes para cenários de ordenação', () => {
 
     it(`Deve fazer uma ordenação composta por dois campos (customerId DESC, identifier ASC). DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
-      const expectedOrdered = documents.map(doc => ({customerId: doc.customerId, identifier: doc.identifier}));
+      const expectedOrdered = documents.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
       expectedOrdered.sort((a, b) => {
         let result: number;
         result = reverseCmp(a.customerId, b.customerId);
@@ -160,8 +159,48 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc =>  ({customerId: doc.customerId, identifier: doc.identifier}));
+          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
+          done();
+        },
+        error => done.fail(error)
+      );
+    });
+
+    it(`Deve fazer uma ordenação utilizando uma função customizada ASC. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const compareFn = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+      const expectedOrdered = documents.map(doc => doc.description);
+      expectedOrdered.sort(compareFn);
+      const query = new Map<string, string[]>([['order', ['description']]]);
+      dbService.addFieldCompareMap(collectionDocuments, 'description', compareFn);
+
+      // when
+      dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
+        (response: IHttpResponse<IOutboundDocument[]>) => {
+          // then
+          const expectsDescriptions = response.body.map(doc => doc.description);
+          expect(expectsDescriptions).toEqual(expectedOrdered);
+          done();
+        },
+        error => done.fail(error)
+      );
+    });
+
+    it(`Deve fazer uma ordenação utilizando uma função customizada DESC. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
+      // given
+      const compareFn = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+      const expectedOrdered = documents.map(doc => doc.description);
+      expectedOrdered.sort((a, b) => (compareFn(a, b) * -1));
+      const query = new Map<string, string[]>([['order', ['-description']]]);
+      dbService.addFieldCompareMap(collectionDocuments, 'description', compareFn);
+
+      // when
+      dbService.get$(collectionDocuments, undefined, query, collectionDocuments).subscribe(
+        (response: IHttpResponse<IOutboundDocument[]>) => {
+          // then
+          const expectsDescriptions = response.body.map(doc => doc.description);
+          expect(expectsDescriptions).toEqual(expectedOrdered);
           done();
         },
         error => done.fail(error)

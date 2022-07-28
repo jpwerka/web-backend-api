@@ -3,7 +3,7 @@ import { catchError, concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
-import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
+import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter, CompareFn } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
@@ -74,6 +74,7 @@ export abstract class BackendService {
   protected transformPostMap = new Map<string, TransformPostFn>();
   protected transformPutMap = new Map<string, TransformPutFn>();
   protected fieldsFilterMap = new Map<string, Map<string, FilterFn | FilterOp>>();
+  protected fieldsCompareMap = new Map<string, Map<string, CompareFn>>();
   protected quickFilterMap = new Map<string, IQuickFilter>();
 
   private requestInterceptors: Array<IRequestInterceptor> = [];
@@ -195,6 +196,21 @@ export abstract class BackendService {
 
   clearFieldFilterMap(collectionName: string): void {
     this.fieldsFilterMap.delete(collectionName);
+  }
+
+  addFieldCompareMap(collectionName: string, field: string, compareFn: CompareFn): void {
+    let fieldsCompareMap = this.fieldsCompareMap.get(collectionName);
+    if (fieldsCompareMap !== undefined) {
+      fieldsCompareMap.set(field, compareFn);
+    } else {
+      fieldsCompareMap = new Map<string, CompareFn>();
+      fieldsCompareMap.set(field, compareFn);
+      this.fieldsCompareMap.set(collectionName, fieldsCompareMap);
+    }
+  }
+
+  clearFieldCompareMap(collectionName: string): void {
+    this.fieldsCompareMap.delete(collectionName);
   }
 
   addReplaceUrl(collectionName: string, replace: string | string[]): void {
@@ -1453,7 +1469,8 @@ export abstract class BackendService {
     observer.error(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
   }
 
-  protected orderItems(items: IExtendEntity[], orders: IQueryOrder[]): IExtendEntity[] {
+  protected orderItems(collectionName: string, items: IExtendEntity[], orders: IQueryOrder[]): IExtendEntity[] {
+    const collectionCompareMap = this.fieldsCompareMap.get(collectionName);
     // utility functions
     const defaultCmp = function (a: unknown, b: unknown): number {
       if (a == b) return 0;
@@ -1474,6 +1491,14 @@ export abstract class BackendService {
       }
       return cmp;
     };
+    const getCustomFunc = function (compareFn: CompareFn, reverse?: boolean) {
+      if (reverse) {
+        return function (a: unknown, b: unknown) {
+          return -1 * compareFn(a, b);
+        };
+      }
+      return compareFn;
+    };
 
     type Field = {
       name: string;
@@ -1489,16 +1514,15 @@ export abstract class BackendService {
       let order: IQueryOrder;
       let name: string;
       let cmp: typeof defaultCmp;
+      let fieldCmp: CompareFn;
 
       // preprocess sorting options
       for (let i = 0; i < n_fields; i++) {
         order = orders[i];
-        if (typeof order === 'string') {
-          name = order;
-          cmp = defaultCmp;
-        }
-        else {
-          name = order.name;
+        name = order.name;
+        if (collectionCompareMap && (fieldCmp = collectionCompareMap.get(name))) {
+          cmp = getCustomFunc(fieldCmp, order.order === 'desc');
+        } else {
           cmp = getCmpFunc(undefined, order.order === 'desc');
         }
         fields.push({

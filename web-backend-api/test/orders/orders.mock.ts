@@ -1,6 +1,7 @@
 export interface IOutboundDocument {
   id?: number;
   identifier: string;
+  description: string;
   customerId: number;
   customer?: {
     id?: number;
@@ -21,6 +22,7 @@ export const documents: IOutboundDocument[] = [
   {
     id: 1,
     identifier: '4167161881',
+    description: 'DOCUMENT 003',
     customerId: 2,
     customer: {
       id: 2,
@@ -42,6 +44,7 @@ export const documents: IOutboundDocument[] = [
   {
     id: 2,
     identifier: '2345187362',
+    description: 'DOCUMENT 009',
     customerId: 1,
     customer: {
       id: 1,
@@ -64,6 +67,7 @@ export const documents: IOutboundDocument[] = [
   {
     id: 3,
     identifier: '2226863794',
+    description: 'document 001',
     customerId: 2,
     customer: {
       id: 2,
@@ -85,6 +89,7 @@ export const documents: IOutboundDocument[] = [
   {
     id: 4,
     identifier: '5703254555',
+    description: 'document 004',
     customerId: 3,
     customer: {
       id: 3,
@@ -106,6 +111,7 @@ export const documents: IOutboundDocument[] = [
   {
     id: 5,
     identifier: '978342308',
+    description: 'Document 006',
     customerId: 1,
     customer: {
       id: 1,

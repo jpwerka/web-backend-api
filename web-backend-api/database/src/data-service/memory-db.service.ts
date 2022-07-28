@@ -173,7 +173,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         };
         let items = objectStore;
         if (queryParams.orders) {
-          items = this.orderItems(items, queryParams.orders);
+          items = this.orderItems(collectionName, items, queryParams.orders);
         }
         while (cursor.index <= items.length) {
           cursor.value = (cursor.index < items.length) ? cloneDeep(items[cursor.index++]) : null;
