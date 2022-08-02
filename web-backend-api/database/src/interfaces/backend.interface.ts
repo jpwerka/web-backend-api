@@ -438,7 +438,7 @@ export interface IBackendService {
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: string
+    caseSensitiveSearch?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |

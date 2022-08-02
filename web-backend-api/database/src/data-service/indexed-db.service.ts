@@ -209,7 +209,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: string
+    caseSensitiveSearch?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
@@ -235,7 +235,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         request = objectStore.openCursor();
         isCursor = true;
         if (query) {
-          queryParams = self.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = self.getQueryParams(collectionName, query, caseSensitiveSearch);
         }
         queriesParams = this.getQueryParamsRootAndChild(queryParams);
       }

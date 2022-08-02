@@ -3,7 +3,7 @@ import { catchError, concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
-import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter, CompareFn } from '../interfaces/query.interface';
+import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter, CompareFn, CaseSensitive } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
@@ -563,7 +563,7 @@ export abstract class BackendService {
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: string
+    caseSensitiveSearch?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
@@ -586,7 +586,7 @@ export abstract class BackendService {
       }
     }
 
-    response$ = this.get$(collectionName, id, query, url, undefined, this.config.caseSensitiveSearch ? undefined : 'i');
+    response$ = this.get$(collectionName, id, query, url);
     return this.addDelay(response$, this.config.delay);
   }
 
@@ -667,7 +667,7 @@ export abstract class BackendService {
           const ids = isCollectionField ? joinFieldValues.map(element => element[joinField.fieldId]) : joinFieldValue;
           const conditions: IQueryFilter[] = [{
             name: 'id',
-            fn: this.createFilterArrayFn('id', ids)
+            fn: this.createFilterArrayFn('id', ids, null)
           }];
           const data = await this.getAllByFilter$(joinField.collectionSource, conditions).toPromise() as IExtendEntity[];
           // Reordena na mesma ordem existente dos ids de busca
@@ -945,40 +945,74 @@ export abstract class BackendService {
     };
   }
 
-  private createFilterOpFn(field: string, value: string, filterOp: FilterOp): FieldFn {
+  private createFilterOpFn(field: string, value: string, filterOp: FilterOp, caseSensitive: CaseSensitive): FieldFn {
     return (item: IExtendEntity): boolean => {
       const fieldValue = this.getFieldValue(item, field);
       switch (filterOp) {
         case 'eq':
-          // eslint-disable-next-line eqeqeq
-          return fieldValue == value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) === 0);
+          } else {
+            // eslint-disable-next-line eqeqeq
+            return fieldValue == value;
+          }
         case 'ne':
-          // eslint-disable-next-line eqeqeq
-          return fieldValue != value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) !== 0);
+          } else {
+            // eslint-disable-next-line eqeqeq
+            return fieldValue != value;
+          }
         case 'gt':
-          return fieldValue > value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) > 0);
+          } else {
+            return fieldValue > value;
+          }
         case 'ge':
-          return fieldValue >= value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) >= 0);
+          } else {
+            return fieldValue >= value;
+          }
         case 'lt':
-          return fieldValue < value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) < 0);
+          } else {
+            return fieldValue < value;
+          }
         case 'le':
-          return fieldValue <= value;
+          if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+            return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) <= 0);
+          } else {
+            return fieldValue <= value;
+          }
         default:
           return false;
       }
     };
   }
 
-  private createFilterArrayFn(field: string, value: string[]): FieldFn {
+  private createFilterArrayFn(field: string, value: string[], caseSensitive: CaseSensitive): FieldFn {
     return (item: IExtendEntity) => {
       const fieldValue = this.getFieldValue(item, field) as string;
-      return value.includes(fieldValue);
+      if (typeof fieldValue === 'string' && caseSensitive === 'i') {
+        return value.findIndex(v => (fieldValue.localeCompare(v, 'en', { sensitivity: 'base' }) === 0)) >= 0;
+      } else {
+        return value.includes(fieldValue);
+      }
     };
   }
 
-  protected getQueryParams(collectionName: string, query: Map<string, string[]>, caseSensitive: string): IQueryParams {
+  protected getQueryParams(collectionName: string, query: Map<string, string[]>, caseSensitiveSearch: boolean): IQueryParams {
     const quickFilter = this.quickFilterMap.get(collectionName);
     const queryParams: IQueryParams = { count: 0 };
+    let caseSensitive: CaseSensitive = 'i';
+    if (typeof caseSensitiveSearch === 'boolean' && caseSensitiveSearch) {
+      caseSensitive = '';
+    } else if (typeof this.config.caseSensitiveSearch === 'boolean' && this.config.caseSensitiveSearch) {
+      caseSensitive = '';
+    }
     query.forEach((value: string[], name: string) => {
       if (name === 'page') {
         queryParams['page'] = parseInt(value[0], 10);
@@ -1001,9 +1035,9 @@ export abstract class BackendService {
             console.warn('Don\'t support order by child property yet');
           } else {
             if (field.charAt(0) === '-') {
-              queryParams.orders.push({ name: field.substring(1), order: 'desc' });
+              queryParams.orders.push({ name: field.substring(1), order: 'desc', caseSensitive });
             } else {
-              queryParams.orders.push({ name: field, order: 'asc' });
+              queryParams.orders.push({ name: field, order: 'asc', caseSensitive });
             }
           }
         })
@@ -1017,9 +1051,9 @@ export abstract class BackendService {
         if (filterFn !== undefined && typeof filterFn === 'function') {
           condition['fn'] = this.createFilterFn(value.length > 1 ? value : value[0], filterFn);
         } else if (filterFn !== undefined && typeof filterFn === 'string' && value.length === 1) {
-          condition['fn'] = this.createFilterOpFn(name, value[0], filterFn);
+          condition['fn'] = this.createFilterOpFn(name, value[0], filterFn, caseSensitive);
         } else if (value.length > 1) {
-          condition['fn'] = this.createFilterArrayFn(name, value);
+          condition['fn'] = this.createFilterArrayFn(name, value, caseSensitive);
         } else {
           condition['rx'] = new RegExp(value[0], caseSensitive);
         }
@@ -1407,6 +1441,10 @@ export abstract class BackendService {
 
   private createFilterConditions(conditions: IConditionsParam): IQueryFilter[] {
     const queryConditions: IQueryFilter[] = [];
+    let caseSensitive: CaseSensitive = 'i';
+    if (typeof this.config.caseSensitiveSearch === 'boolean' && this.config.caseSensitiveSearch) {
+      caseSensitive = '';
+    }
     for (const name in conditions) {
       if (conditions.hasOwnProperty(name)) {
         const condition: IQueryFilter = { name, or: false };
@@ -1414,11 +1452,11 @@ export abstract class BackendService {
         if (param.filter !== undefined && typeof param.filter === 'function') {
           condition['fn'] = this.createFilterFn(param.value, param.filter);
         } else if (param.filter !== undefined && typeof param.filter === 'string' && !Array.isArray(param.value)) {
-          condition['fn'] = this.createFilterOpFn(name, param.value, param.filter);
+          condition['fn'] = this.createFilterOpFn(name, param.value, param.filter, caseSensitive);
         } else if (Array.isArray(param.value)) {
-          condition['fn'] = this.createFilterArrayFn(name, param.value);
+          condition['fn'] = this.createFilterArrayFn(name, param.value, caseSensitive);
         } else {
-          condition['rx'] = new RegExp(param.value, this.config.caseSensitiveSearch ? undefined : 'i');
+          condition['rx'] = new RegExp(param.value, caseSensitive);
         }
         queryConditions.push(condition);
       }
@@ -1472,29 +1510,32 @@ export abstract class BackendService {
   protected orderItems(collectionName: string, items: IExtendEntity[], orders: IQueryOrder[]): IExtendEntity[] {
     const collectionCompareMap = this.fieldsCompareMap.get(collectionName);
     // utility functions
-    const defaultCmp = function (a: unknown, b: unknown): number {
+    const defaultCmp = function (a: unknown, b: unknown, caseSensitive: CaseSensitive): number {
+      if (typeof a === 'string' && caseSensitive === 'i') {
+        return a.localeCompare(b as string, 'en', { sensitivity: 'base' });
+      }
       if (a == b) return 0;
       return a < b ? -1 : 1;
     };
-    const getCmpFunc = function (primer?: (v: unknown) => unknown, reverse?: boolean) {
+    const getCmpFunc = function (primer?: (v: unknown) => unknown, reverse?: boolean, caseSensitive?: CaseSensitive) {
       const dfc = defaultCmp;
       let cmp = defaultCmp;
       if (primer) {
         cmp = function (a, b) {
-          return dfc(primer(a), primer(b));
+          return dfc(primer(a), primer(b), caseSensitive);
         };
       }
       if (reverse) {
-        return function (a: unknown, b: unknown) {
-          return -1 * cmp(a, b);
+        return function (a: unknown, b: unknown, caseSensitive: CaseSensitive) {
+          return -1 * cmp(a, b, caseSensitive);
         };
       }
       return cmp;
     };
     const getCustomFunc = function (compareFn: CompareFn, reverse?: boolean) {
       if (reverse) {
-        return function (a: unknown, b: unknown) {
-          return -1 * compareFn(a, b);
+        return function (a: unknown, b: unknown, caseSensitive: CaseSensitive) {
+          return -1 * compareFn(a, b, caseSensitive);
         };
       }
       return compareFn;
@@ -1502,7 +1543,8 @@ export abstract class BackendService {
 
     type Field = {
       name: string;
-      cmp: typeof defaultCmp;
+      cmp: CompareFn;
+      caseSensitive: CaseSensitive;
     }
 
     // actual implementation
@@ -1513,7 +1555,7 @@ export abstract class BackendService {
 
       let order: IQueryOrder;
       let name: string;
-      let cmp: typeof defaultCmp;
+      let cmp: CompareFn;
       let fieldCmp: CompareFn;
 
       // preprocess sorting options
@@ -1523,11 +1565,12 @@ export abstract class BackendService {
         if (collectionCompareMap && (fieldCmp = collectionCompareMap.get(name))) {
           cmp = getCustomFunc(fieldCmp, order.order === 'desc');
         } else {
-          cmp = getCmpFunc(undefined, order.order === 'desc');
+          cmp = getCmpFunc(undefined, order.order === 'desc', order.caseSensitive);
         }
         fields.push({
           name,
-          cmp
+          cmp,
+          caseSensitive: order.caseSensitive
         });
       }
 
@@ -1541,7 +1584,7 @@ export abstract class BackendService {
           field = fields[i];
           name = field.name;
 
-          result = field.cmp(a[name], b[name]);
+          result = field.cmp(a[name], b[name], field.caseSensitive);
           if (result !== 0) break;
         }
         return result;

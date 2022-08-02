@@ -1,4 +1,6 @@
-export type FilterFn = (value: string | string[], item: unknown) => boolean;
+export type CaseSensitive = 'i' | '';
+
+export type FilterFn = (value: string | string[], item: unknown, caseSensitive: CaseSensitive) => boolean;
 
 export type FilterOp =
 | 'eq' // Equal
@@ -11,7 +13,7 @@ export type FilterOp =
 
 export type FieldFn = (item: unknown) => boolean;
 
-export type CompareFn = (a: unknown, b: unknown) => number;
+export type CompareFn = (a: unknown, b: unknown, caseSensitive: CaseSensitive) => number;
 
 export interface IQuickFilter {
   term: string;
@@ -27,7 +29,8 @@ export interface IQueryFilter {
 
 export interface IQueryOrder {
   name: string;
-  order: 'asc' | 'desc'
+  order: 'asc' | 'desc',
+  caseSensitive: CaseSensitive;
 }
 export interface IQueryParams {
   count: number;

@@ -123,7 +123,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: string
+    caseSensitiveSearch?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
@@ -163,7 +163,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         let queryParams: IQueryParams = { count: 0 };
         let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
         if (query) {
-          queryParams = this.getQueryParams(collectionName, query, (caseSensitiveSearch ? caseSensitiveSearch : 'i'));
+          queryParams = this.getQueryParams(collectionName, query, caseSensitiveSearch);
         }
         const queriesParams = this.getQueryParamsRootAndChild(queryParams);
         const cursor: IQueryCursor<IExtendEntity> = {
