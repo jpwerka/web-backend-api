@@ -203,6 +203,16 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
+  count$(collectionName: string): Promise<number> {
+    return new Promise((resolve) => {
+      const objectStore = this.db.transaction(collectionName, 'readonly').objectStore(collectionName);
+      const countRequest = objectStore.count();
+      countRequest.onsuccess = function () {
+        resolve(countRequest.result);
+      }
+    });
+  }
+
   get$(
     collectionName: string,
     id: string,

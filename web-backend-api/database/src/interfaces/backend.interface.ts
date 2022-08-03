@@ -417,6 +417,13 @@ export interface IBackendService {
   getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]>;
 
   /**
+   * Permite retornar a quantidade de registros da coleção.
+   * @param collectionName - Nome da coleção a qual se deseja retornar o count
+   * @returns Uma promise que retorna a quantidade de registros da coleção quando resolvida.
+   */
+  count$(collectionName: string): Promise<number>;
+
+  /**
    * Permite recuperar um ou mais itens de uma coleção retonando um resposta HTTP.
    * Esta função é acionada pela biblioteca quando feita uma requsição GET padrão,
    * porém, é externalizada para ser utilizada nos interceptors caso necessário.

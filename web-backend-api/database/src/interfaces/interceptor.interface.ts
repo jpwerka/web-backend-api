@@ -102,6 +102,44 @@ export type ConditionsFn = (conditions: IConditionsParam) => IQueryFilter[];
 export type ResponseInterceptorFn = (utils: IInterceptorUtils) =>
   IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
 
+ /**
+  * Type for a default response function that will be applied to a request interceptor.
+  * in all collections that has a match path with configuration.
+  * When returns a `Observable` the result of a observer must be a valid `HttpResponse`
+  * @example
+  * const config: BackendConfigArgs = {
+  *  . . . ,
+  *   defaultInterceptors: [
+  *     // add default interceptor to return then count for all collections
+  *     {
+  *       applyToPath: 'beforeId',
+  *       method: 'GET',
+  *       path: `count`,
+  *       responseFn: (colectionName: string, utils: IInterceptorUtils) =>
+  *         new Observable(observer => {
+  *           (async () => {
+  *             const dbService = getBackendService();
+  *             const count = await dbService.count$(colectionName);
+  *             observer.next(utils.fn.response(utils.url, 200, { count }));
+  *           })();
+  *         })
+  *     },
+  *     // add default interceptor for activate all collections
+  *     {
+  *        applyToPath: 'afterId',
+  *        method: 'PUT',
+  *        path: 'activate',
+  *        responseFn: (colectionName: string, utils: IInterceptorUtils) => {
+  *          const dbService = getBackendService();
+  *          return dbService.put$(colectionName, utils.id, { active: true }, utils.url);
+  *        }
+  *      }
+  *   ]
+  * }
+  */
+export type DefaultResponseInterceptorFn = (colectionName: string, utils: IInterceptorUtils) =>
+  IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
+
 /**
  * Mapping interface for requests interceptions
  */
@@ -232,6 +270,53 @@ export interface IPostToOtherMethod {
    * URL query string param name or BODY protery name to use for compare with value
    */
   param?: string;
+}
+
+export interface IDefaultInterceptor {
+  /**
+   * Method to intercept GET, POST, PUT and DELETE
+   */
+  method?: string;
+  /**
+   * Request path that must be intercepted.
+   *
+   * When applied `beforeId` path, it will be applied excluding `config.rootPath`,
+   * `config.apiBase` and the `collectionName` from url. If `collectionName` has a replacer,
+   * this is applied before interceptor.
+   *   URL => http://myhost/api/customers/inactives => path: 'inactives'.
+   *   URL => http://myhost/api/documents/outbound/identifier
+   *       => replacer `documents/outbound` to `collectionName`
+   *       => path: 'identifier'.
+   *
+   * When the `afterId` path is applied, it will be similar to the `beforeId`,
+   * only discarding the segment of the URL that represents the id.
+   *
+   * Obs¹: The path can be empty, in this case will intercept request to get all e get by id to collection.
+   *   URL => http://myhost/api/customers apply => `beforeId` => path: ''
+   *   => expect to response that list all customers, but the response is the interceptor response.
+   *   URL => http://myhost/api/customers/1 apply => `afterId` => path: ''
+   *   => expect to response that get customer by id 1, but the response is the interceptor response.
+   *
+   * Obs²: The path can contains `**`, `:id` or `{id}` segments.
+   *    URL => http://myhost/api/customers/:id/activate apply => `beforeId` => path: ':id/activate'
+   * When `**` the segment is ignored for parser to intercept the request path.
+   * When `:id` or `{id}` the respectives ids are parsed and passed to interceptor response function in `utils.interceptorIds` parameter
+   */
+  path: string;
+  /**
+   * How the path will be interpreted.
+   */
+  applyToPath: 'beforeId' | 'afterId';
+  /**
+   * The response that must be returned when the interceptor is activated.
+   * When a collection has a custom interceptor to apply it only to it,
+   * it takes precedence. That is, default interceptors are only applied
+   * if there is no specific one for the collection.
+   * It can be a function with the signature `DefaultResponseInterceptorFn`
+   * that will process the request and respond dynamically to it.
+   * @alias DefaultResponseInterceptorFn
+   */
+  responseFn: DefaultResponseInterceptorFn;
 }
 
 export interface IPassThruBackend {

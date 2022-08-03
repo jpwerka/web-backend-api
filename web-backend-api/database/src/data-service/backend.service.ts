@@ -2,7 +2,7 @@ import { BehaviorSubject, Observable, Subscriber, throwError } from 'rxjs';
 import { catchError, concatMap, first, map, tap } from 'rxjs/operators';
 import { IBackendUtils, IJoinField, LoadFn, TransformGetFn, TransformPostFn, TransformPutFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
-import { ConditionsFn, ErrorResponseFn, IConditionsParam, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
+import { ConditionsFn, ErrorResponseFn, IConditionsParam, IDefaultInterceptor, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
 import { FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter, CompareFn, CaseSensitive } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
 import { delayResponse } from '../utils/delay-response';
@@ -952,6 +952,8 @@ export abstract class BackendService {
         case 'eq':
           if (typeof fieldValue === 'string' && caseSensitive === 'i') {
             return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) === 0);
+          } else if (typeof fieldValue === 'boolean') {
+            return fieldValue == Boolean(value);
           } else {
             // eslint-disable-next-line eqeqeq
             return fieldValue == value;
@@ -959,6 +961,8 @@ export abstract class BackendService {
         case 'ne':
           if (typeof fieldValue === 'string' && caseSensitive === 'i') {
             return (fieldValue.localeCompare(value, 'en', { sensitivity: 'base' }) !== 0);
+          } else if (typeof fieldValue === 'boolean') {
+            return fieldValue != Boolean(value);
           } else {
             // eslint-disable-next-line eqeqeq
             return fieldValue != value;
@@ -1223,6 +1227,74 @@ export abstract class BackendService {
     return interceptorPathOk && interceptorQueryOk;
   }
 
+  private hasDefaultRequestInterceptor(
+    applyToPath: string,
+    method: string,
+    collectionName: string,
+    uriPaths: string[],
+    intInfo: IInterceptorInfo
+  ): boolean {
+    if (Array.isArray(this.config.defaultInterceptors) && this.config.defaultInterceptors.length > 0) {
+      const interceptorIds: string[] = [];
+      const interceptors = this.config.defaultInterceptors.filter(value => {
+        return value.applyToPath === applyToPath;
+      });
+      const interceptor = interceptors.find(value => {
+        return this.compareDefaultRequestInterceptor(value, method, uriPaths, interceptorIds);
+      });
+      if (interceptor) {
+        intInfo['interceptor'] = {
+          method,
+          collectionName,
+          path: interceptor.path,
+          response: (utils: IInterceptorUtils) => interceptor.responseFn(collectionName, utils)
+        };
+        if (interceptorIds.length > 0) {
+          intInfo['interceptorIds'] = interceptorIds;
+        }
+        return true;
+      } else {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  private compareDefaultRequestInterceptor(
+    interceptor: IDefaultInterceptor,
+    method: string,
+    uriPaths: string[],
+    interceptorIds?: string[]
+  ): boolean {
+    let interceptorPathOk = true;
+
+    if (interceptor.method.toLowerCase() !== method.toLowerCase()) {
+      return false;
+    }
+
+    const intPaths = interceptor.path.split('/').filter(value => value.trim().length > 0);
+    // Se possui o mesmo número de segmentos na URL
+    interceptorPathOk = intPaths.length === uriPaths.length;
+    if (interceptorPathOk) {
+      // Avalia se todos os segmentos são iguais
+      for (let i = 0; i < intPaths.length && interceptorPathOk; i++) {
+        // Se é um segmento 'coriga' descarta o mesmo.
+        // Utilizado para interceptar urls tipo: /api/parent/:id/child/:id/action
+        if (intPaths[i] === '**') {
+          continue;
+        }
+        if (interceptorIds && interceptorIds instanceof Array &&
+          (intPaths[i] === ':id' || (intPaths[i].startsWith('{') && intPaths[i].endsWith('}')))) {
+          interceptorIds.push(uriPaths[i]);
+          continue;
+        }
+        interceptorPathOk = intPaths[i] === uriPaths[i];
+      }
+    }
+    return interceptorPathOk;
+  }
+
+
   private processInterceptResponse(
     interceptor: IRequestInterceptor, utils: IInterceptorUtils
   ): Observable<IHttpResponse<unknown>> {
@@ -1371,10 +1443,17 @@ export abstract class BackendService {
         return parsed;
       }
 
+      if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
+        return parsed;
+      }
+
       parsed.id = pathSegments[segmentIx++];
 
       if (pathSegments.length >= segmentIx) {
         if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
+          return parsed;
+        }
+        if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
           return parsed;
         }
       }

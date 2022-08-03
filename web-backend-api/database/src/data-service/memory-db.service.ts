@@ -117,6 +117,11 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
+  count$(collectionName: string): Promise<number> {
+    const objectStore = this.db.get(collectionName);
+    return Promise.resolve(objectStore.length);
+  }
+
   get$(
     collectionName: string,
     id: string,

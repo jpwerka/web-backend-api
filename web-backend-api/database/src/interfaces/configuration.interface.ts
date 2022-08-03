@@ -1,4 +1,4 @@
-import { IPostToOtherMethod } from './interceptor.interface';
+import { IDefaultInterceptor, IPostToOtherMethod } from './interceptor.interface';
 
 /**
  * Interface for BackendService configuration options
@@ -78,6 +78,10 @@ export abstract class BackendConfigArgs {
    * [] (default) POST method mappings for other methods
    */
   postsToOtherMethod?: IPostToOtherMethod[];
+  /**
+   * [] (default) Default interceptors response for all collections
+   */
+  defaultInterceptors?: IDefaultInterceptor[];
   /**
    * false (default) log request and response to console
    */
