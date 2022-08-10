@@ -102,17 +102,18 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       })().then(() => done());
     })
 
-    it(`Deve chamar o método PUT mesmo passando uma requisição de POST por Segmento URL.`, (done: DoneFn) => {
+    fit(`Deve chamar o método PUT mesmo passando uma requisição de POST por Segmento URL.`, (done: DoneFn) => {
       // given
       const expectedCustomer = cloneDeep(customers[0]);
       expectedCustomer.name = 'Cliente 01 nome alterado';
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1/alterar`,
+        url: `http://localhost:4200/${collectionCustomers}/1/alterar`,
         body: {
           name: 'Cliente 01 nome alterado'
         }
       };
+
       const spyPut$ = spyOn(dbService, 'put$').and.callThrough();
       // when
       dbService.handleRequest(req).subscribe(
@@ -132,7 +133,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       expectedCustomer.name = 'Cliente 01 nome alterado';
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1?action=update`,
+        url: `http://localhost/${collectionCustomers}/1?action=update`,
         body: {
           name: 'Cliente 01 nome alterado'
         }
@@ -156,7 +157,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       expectedCustomer.name = 'Cliente 01 nome alterado';
       const req: IRequestCore<Partial<ICustomer> & { operation: string }> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           operation: 'update',
           name: 'Cliente 01 nome alterado'
@@ -180,7 +181,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       // given
       const req: IRequestCore<null> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1/excluir`,
+        url: `http://localhost/${collectionCustomers}/1/excluir`,
       };
       const spyDelete$ = spyOn(dbService, 'delete$').and.callThrough();
       // when
@@ -199,7 +200,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       // given
       const req: IRequestCore<null> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/2?action=delete`,
+        url: `http://localhost/${collectionCustomers}/2?action=delete`,
       };
       const spyDelete$ = spyOn(dbService, 'delete$').and.callThrough();
       // when
@@ -218,7 +219,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       // given
       const req: IRequestCore<{ operation: string }> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/3`,
+        url: `http://localhost/${collectionCustomers}/3`,
         body: {
           operation: 'delete',
         }

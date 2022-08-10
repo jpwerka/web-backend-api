@@ -64,7 +64,7 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Cliente criado com POST'
         }
@@ -85,7 +85,7 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
       const id = v4();
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/${id}`,
+        url: `http://localhost/${collectionCustomers}/${id}`,
         body: {
           name: 'Cliente criado com PUT'
         }
@@ -109,7 +109,7 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/${customers[4].id}`,
+        url: `http://localhost/${collectionCustomers}/${customers[4].id}`,
         body: {
           name: 'Cliente atualizado com POST'
         }
@@ -128,7 +128,7 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/${customers[0].id}`,
+        url: `http://localhost/${collectionCustomers}/${customers[0].id}`,
         body: {
           name: 'Cliente atualizado com PUT'
         }

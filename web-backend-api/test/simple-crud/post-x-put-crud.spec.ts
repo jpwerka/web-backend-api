@@ -83,7 +83,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
       expectedCustomer.name = 'Cliente 01 nome alterado';
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           name: 'Cliente 01 nome alterado'
         }
@@ -110,7 +110,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
       const expectedCustomer = TransformersFn.transformePost(cloneDeep(putCustomer));
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/99`,
+        url: `http://localhost/${collectionCustomers}/99`,
         body: putCustomer
       };
       const spyPost$ = spyOn(TransformersFn, 'transformePost').and.callThrough();

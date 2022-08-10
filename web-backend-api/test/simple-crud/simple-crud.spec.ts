@@ -48,7 +48,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       })().then(() => {
         const req: IRequestCore<null> = {
           method: 'GET',
-          url: `http:://localhost/${collectionCustomers}`
+          url: `http://localhost/${collectionCustomers}`
         };
         dbService.handleRequest(req).subscribe(
           (response: IHttpResponse<ICustomer[]>) => {
@@ -70,8 +70,8 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         const expectedCustomers = customers.filter(customer => customer.name.includes('23451'));
         const req: IRequestCore<null> = {
           method: 'GET',
-          url: `http:://localhost/${collectionCustomers}`,
-          urlWithParams: `http:://localhost/${collectionCustomers}?name=23451`
+          url: `http://localhost/${collectionCustomers}`,
+          urlWithParams: `http://localhost/${collectionCustomers}?name=23451`
         };
         dbService.handleRequest(req).subscribe(
           (response: IHttpResponse<ICustomer[]>) => {
@@ -93,7 +93,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         const expectedCustomer = customers.find(customer => customer.id === 5);
         const req: IRequestCore<null> = {
           method: 'GET',
-          url: `http:://localhost/${collectionCustomers}/5`,
+          url: `http://localhost/${collectionCustomers}/5`,
         };
         dbService.handleRequest(req).subscribe(
           (response: IHttpResponse<ICustomer>) => {
@@ -113,7 +113,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       };
       const req: IRequestCore<ICustomer> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: expectedCustomer
       };
       dbService.handleRequest(req).subscribe(
@@ -138,7 +138,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       };
       const req: IRequestCore<ICustomer> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: expectedCustomer
       };
       dbService.handleRequest(req).subscribe(
@@ -166,7 +166,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       })().then(() => {
         const req: IRequestCore<{ name: string }> = {
           method: 'PUT',
-          url: `http:://localhost/${collectionCustomers}/1`,
+          url: `http://localhost/${collectionCustomers}/1`,
           body: { name: 'Alterado nome cliente 1' }
         };
         dbService.handleRequest(req).subscribe(
@@ -195,11 +195,11 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       })().then(() => {
         const req: IRequestCore<void> = {
           method: 'DELETE',
-          url: `http:://localhost/${collectionCustomers}/5`,
+          url: `http://localhost/${collectionCustomers}/5`,
         };
         dbService.handleRequest(req).subscribe(
           (responseDelete: IHttpResponse<ICustomer>) => {
-            expect(responseDelete).toEqual(jasmine.objectContaining({ url: `http:://localhost/${collectionCustomers}/5`, status: 204 }));
+            expect(responseDelete).toEqual(jasmine.objectContaining({ url: `http://localhost/${collectionCustomers}/5`, status: 204 }));
             dbService.get$(collectionCustomers, '5', undefined, collectionCustomers).subscribe(
               (responseGet: IHttpResponse<ICustomer>) => done.fail(`Should not return a customer with id ${responseGet.body.id}`),
               error => {

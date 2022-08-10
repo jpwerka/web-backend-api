@@ -61,7 +61,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<null> = {
         method: 'GET',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
       };
       const responseError = {
         message: 'Erro no TransformGetById'
@@ -84,7 +84,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<null> = {
         method: 'GET',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
       };
       const responseError = {
         message: 'Erro no TransformGetAll',
@@ -108,7 +108,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Criando cliente com erro na transformação do POST'
         }
@@ -135,7 +135,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           name: 'Alterando cliente com erro na transformação do PUT'
         }
@@ -168,7 +168,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           name: 'Alterando cliente com erro na transformação do PUT'
         }
@@ -195,7 +195,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/80`,
+        url: `http://localhost/${collectionCustomers}/80`,
         body: {
           name: 'Alterando cliente com erro na transformação do PUT'
         }
@@ -221,7 +221,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Criando cliente com erro na transformação do GET'
         }
@@ -247,7 +247,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/5`,
+        url: `http://localhost/${collectionCustomers}/5`,
         body: {
           name: 'Alterando cliente com POST com erro na transformação do GET'
         }
@@ -273,7 +273,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           name: 'Alterando cliente com erro na transformação do GET'
         }
@@ -299,7 +299,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/70`,
+        url: `http://localhost/${collectionCustomers}/70`,
         body: {
           name: 'Criando cliente com PUT com erro na transformação do GET'
         }

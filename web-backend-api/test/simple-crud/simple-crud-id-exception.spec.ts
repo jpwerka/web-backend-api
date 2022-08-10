@@ -47,7 +47,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Cliente sem ID informado'
         }
@@ -96,7 +96,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Cliente sem ID informado'
         }
@@ -121,7 +121,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
         // given
         const req: IRequestCore<Partial<ICustomer>> = {
           method: 'POST',
-          url: `http:://localhost/${collectionCustomers}`,
+          url: `http://localhost/${collectionCustomers}`,
           body: {
             name: 'Cliente sem ID informado'
           }
