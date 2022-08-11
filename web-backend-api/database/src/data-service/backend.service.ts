@@ -10,6 +10,7 @@ import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
 import 'json.date-extensions';
+import { Logger, LoggerLevel } from '../utils/logger';
 
 export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
 
@@ -62,6 +63,8 @@ export function paramParser(rawParams: string): Map<string, string[]> {
   return mapParam;
 }
 
+export const LOG: Logger = new Logger();
+export const style = 'font-style: italic; font-weight: bold; color: brown';
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
@@ -103,6 +106,11 @@ export abstract class BackendService {
         sub.unsubscribe();
       }
     });
+    if (typeof this.config.log === 'boolean') {
+      LOG.level = this.config.log ? LoggerLevel.TRACE : LoggerLevel.ERROR;
+    } else {
+      LOG.level = this.config.log;
+    }
   }
 
   backendUtils(value: IBackendUtils): void {
@@ -428,15 +436,11 @@ export abstract class BackendService {
   }
 
   protected logRequest(request: IRequestCore<IExtendEntity>): void {
-    if (this.config.log) {
-      console.log(request);
-    }
+    LOG.info(request);
   }
 
   protected logResponse(response: IHttpResponse<unknown> | IHttpErrorResponse): void {
-    if (this.config.log) {
-      console.log(response);
-    }
+    LOG.info(response);
   }
 
   protected convertResponse(response: IHttpResponse<unknown>): IHttpResponse<unknown> {
@@ -445,7 +449,7 @@ export abstract class BackendService {
       const body = response.body;
       if (contentType === 'application/json' && body) {
         response.body = JSON.parse(JSON.stringify(body), JSON['dateParser']);
-        // TODO - DEBUG - The  body has parsed to convert possibles dates to Date Object
+        LOG.trace('Body has parsed to convert possibles dates to Date Object. (Body)', response.body);
       }
     }
     return response;
@@ -482,14 +486,14 @@ export abstract class BackendService {
       if (response$) {
         return response$;
       } else if (this.config.passThruUnknownUrl) {
-        // TODO - DEBUG - Has one complete interceptor, but it does not has a valid response and dispatch request to real backend server
+        LOG.debug('Has one complete interceptor, but it does not has a valid response and dispatch request to real backend server.');
         return this.getPassThruBackend().handle(req);
       } else {
-        // TODO - ERROR - Has one complete interceptor, but it does not has a valid response and throw one error
         const error: IErrorMessage = {
           message: `Interceptor path '${intInfo.interceptor.path}' does not return a valid response.`,
           detailedMessage: 'Implement a valid response or configure service to dispatch to real backend. (config.passThruUnknownUrl)'
         };
+        LOG.error('Has one complete interceptor, but it does not has a valid response.', error);
         return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_IMPLEMENTED, error));
       }
     }
@@ -516,16 +520,17 @@ export abstract class BackendService {
     if (this.hasCollection(parsed.collectionName)) {
       return this.collectionHandler(reqInfo);
     } else if (this.config.passThruUnknownUrl) {
-      // TODO - DEBUG - Has no collection in database, then dispatch request to real backend server
+      LOG.debug('Has no collection in database, then dispatch request to real backend server');
       // Caso não tenha a collection, repassa a requisição para o backend verdadeiro
       return this.getPassThruBackend().handle(req);
     } else {
-      // TODO - ERROR - Has no collection in database, and not dispatch request to real backend server and throw one error
       const error: IErrorMessage = {
         message: `Collection '${parsed.collectionName}' not found`,
         detailedMessage: 'Implement interceptor to complete path or configure ' +
           'service to dispatch to real backend. (config.passThruUnknownUrl)'
       };
+      const message = 'Has no collection in database, and not dispatch request to real backend server';
+      LOG.error(message, error)
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error));
     }
   }
@@ -548,11 +553,11 @@ export abstract class BackendService {
         response$ = this.delete(reqInfo);
         break;
       default: {
-        // TODO - ERROR - Has received a method not allowed
         const error: IErrorMessage = {
           message: `Method ${reqInfo.method.toUpperCase()} not allowed`,
           detailedMessage: 'Only methods GET, POST, PUT and DELETE are allowed'
         };
+        LOG.error('Has received a method not allowed', error);
         response$ = throwError(this.utils.createErrorResponseOptions(reqInfo.url, STATUS.METHOD_NOT_ALLOWED, error));
         break;
       }
@@ -1166,7 +1171,8 @@ export abstract class BackendService {
     const interceptors = this.requestInterceptors.filter(value => {
       return value.applyToPath === applyToPath;
     });
-    // TODO - TRACE - Log number of interceptors that has filtered with applyToPath value
+    LOG.trace('Number of collection interceptors that has filtered with applyToPath value.',
+      '(applyToPath)', applyToPath, '(Quantity)', interceptors.length);
     const interceptor = interceptors.find(value => {
       return this.compareRequestInterceptor(value, method, collectionName, uriPaths, uriQuery, interceptorIds);
     });
@@ -1192,15 +1198,15 @@ export abstract class BackendService {
     let interceptorPathOk = true;
     let interceptorQueryOk = true;
 
-    // TODO - TRACE - Log interceptor info to compare
+    LOG.trace('Interceptor info to compare. (Interceptor)', interceptor,
+      '(Method)', method, '(Collection name)', collectionName, '(URL segments)', uriPaths,
+      '(Query)', uriQuery.size > 0 ? uriQuery : undefined)
 
     if (interceptor.applyToPath !== 'complete' && interceptor.collectionName !== collectionName) {
-      // TODO - TRACE - Log interceptor not is apllied to collectionName
       return false;
     }
 
     if (interceptor.method.toLowerCase() !== method.toLowerCase()) {
-      // TODO - TRACE - Log interceptor not is apllied to METHOD
       return false;
     }
 
@@ -1213,17 +1219,22 @@ export abstract class BackendService {
         // Se é um segmento 'coriga' descarta o mesmo.
         // Utilizado para interceptar urls tipo: /api/parent/:id/child/:id/action
         if (intPaths[i] === '**') {
+          LOG.trace('Discarding wildcard segment. (Interceptor segment)', intPaths[i], '(URL segment)', uriPaths[i]);
           continue;
         }
         if (interceptorIds && interceptorIds instanceof Array &&
           (intPaths[i] === ':id' || (intPaths[i].startsWith('{') && intPaths[i].endsWith('}')))) {
           interceptorIds.push(uriPaths[i]);
+          LOG.trace('Collecting id by interceptor. (Interceptor segment)', intPaths[i],
+            '(URL segment)', uriPaths[i], '(IDs)', interceptorIds);
           continue;
         }
         interceptorPathOk = intPaths[i] === uriPaths[i];
       }
     }
-    // TODO - TRACE - Log interceptor paths and URI paths and result of compare
+    if (!interceptorPathOk) {
+      LOG.trace('Discard interceptor because path does not match.', '(Interceptor segments)', intPaths, '(URL segments)', uriPaths);
+    }
     if (interceptorPathOk) {
       if (interceptor.query) {
         const intQuery = interceptor.query as Map<string, string[]>;
@@ -1234,7 +1245,10 @@ export abstract class BackendService {
             break;
           }
         }
-        // TODO - TRACE - Log interceptor query and request query and result of compare
+        if (!interceptorPathOk) {
+          LOG.trace('Discard interceptor because query does not match.',
+            '(Interceptor query)', interceptor.query, '(URL query)', uriQuery.size > 0 ? uriQuery : undefined);
+        }
       }
     }
     return interceptorPathOk && interceptorQueryOk;
@@ -1252,7 +1266,8 @@ export abstract class BackendService {
       const interceptors = this.config.defaultInterceptors.filter(value => {
         return value.applyToPath === applyToPath;
       });
-      // TODO - TRACE - Log number of default interceptors that has filtered with applyToPath value
+      LOG.trace('Number of default interceptors that has filtered with applyToPath value.',
+        '(applyToPath)', applyToPath, '(Quantity)', interceptors.length);
       const interceptor = interceptors.find(value => {
         return this.compareDefaultRequestInterceptor(value, method, uriPaths, interceptorIds);
       });
@@ -1282,10 +1297,9 @@ export abstract class BackendService {
   ): boolean {
     let interceptorPathOk = true;
 
-    // TODO - TRACE - Log default interceptor info to compare
+    LOG.trace('Interceptor info to compare. (Interceptor)', interceptor, '(Method)', method, '(URL segments)', uriPaths);
 
     if (interceptor.method.toLowerCase() !== method.toLowerCase()) {
-      // TODO - TRACE - Log interceptor not is apllied to METHOD
       return false;
     }
 
@@ -1298,17 +1312,22 @@ export abstract class BackendService {
         // Se é um segmento 'coriga' descarta o mesmo.
         // Utilizado para interceptar urls tipo: /api/parent/:id/child/:id/action
         if (intPaths[i] === '**') {
+          LOG.trace('Discarding wildcard segment. (Interceptor segment)', intPaths[i], '(URL segment)', uriPaths[i]);
           continue;
         }
         if (interceptorIds && interceptorIds instanceof Array &&
           (intPaths[i] === ':id' || (intPaths[i].startsWith('{') && intPaths[i].endsWith('}')))) {
           interceptorIds.push(uriPaths[i]);
+          LOG.trace('Collecting id by interceptor. (Interceptor segment)', intPaths[i],
+            '(URL segment)', uriPaths[i], '(IDs)', interceptorIds);
           continue;
         }
         interceptorPathOk = intPaths[i] === uriPaths[i];
       }
     }
-    // TODO - TRACE - Log interceptor paths and URI paths and result of compare
+    if (!interceptorPathOk) {
+      LOG.trace('Discard interceptor because path does not match.', '(Interceptor segments)', intPaths, '(URL segments)', uriPaths);
+    }
     return interceptorPathOk;
   }
 
@@ -1316,14 +1335,13 @@ export abstract class BackendService {
   private processInterceptResponse(
     interceptor: IRequestInterceptor, utils: IInterceptorUtils
   ): Observable<IHttpResponse<unknown>> {
-    // TODO - TRACE - Log that response has been processed by interceptor
+    LOG.trace('Response will be processed by the interceptor.', '(Interceptor Utils)', utils);
     const response = this.interceptResponse(interceptor, utils);
     if (response instanceof Observable) {
       return response;
     }
     if (response !== undefined) {
       return new Observable(observer => {
-        // TODO - TRACE - Log that response has no one observable, then create a one
         if ((response as IHttpErrorResponse).error) {
           observer.error(response);
         } else {
@@ -1332,6 +1350,7 @@ export abstract class BackendService {
         }
       });
     }
+    LOG.trace('Response of interceptor is undefined. Processing default response.');
     return undefined;
   }
 
@@ -1340,10 +1359,10 @@ export abstract class BackendService {
     let response: IHttpResponse<unknown>;
     if (interceptor.response) {
       if (interceptor.response instanceof Function) {
-        // TODO - TRACE - Log that interceptor response is one function and call that
+        LOG.trace('That interceptor response is one function and call that. (Function)', interceptor.response);
         response = interceptor.response.call(this, utils) as IHttpResponse<unknown>;
       } else {
-        // TODO - TRACE - Log that interceptor response is one JSON then clone it
+        LOG.trace('That interceptor response is one JSON then clone it. (JSON)', interceptor.response);
         response = clone(interceptor.response);
       }
     }
@@ -1355,12 +1374,13 @@ export abstract class BackendService {
    */
   private getLocation(url: string): IUriInfo {
     if (!url.startsWith('http')) {
+      const originalUrl = url;
       // get the document iff running in browser
       const doc: Document = (typeof document === 'undefined') ? undefined : document;
       // add host info to url before parsing.  Use a fake host when not in browser.
       const base = doc ? doc.location.protocol + '//' + doc.location.host : 'http://fake';
       url = url.startsWith('/') ? base + url : base + '/' + url;
-      // TODO - TRACE - Log adjust URL (original URL and discovered URL)
+      LOG.trace('Does not HTTP url request. Parsing URL usind discovered URL. (Original URL, Discover URL)', originalUrl, url);
     }
     return parseUri(url);
   }
@@ -1383,8 +1403,9 @@ export abstract class BackendService {
           }
         }
         if (match) {
-          // TODO - DEBUG - Log that has a matching segments to replace
-          pathSegments.splice(0, i, item[0]);
+          const deteted = pathSegments.splice(0, i, item[0]);
+          LOG.debug('Applying replace URL segments map. (Deleted segments)',
+            deteted, '(Replace segment)', item[0], '(URL segments)', pathSegments);
           break;
         }
       }
@@ -1421,7 +1442,7 @@ export abstract class BackendService {
         query: undefined,
         resourceUrl: undefined,
       };
-      // TODO - DEBUG - Log start parser url
+      LOG.debug('Start parser URL: %s for METHOD: %s', url, method);
       const loc = this.getLocation(url);
       let drop = this.config.rootPath.length;
       let urlRoot = '';
@@ -1430,19 +1451,19 @@ export abstract class BackendService {
         // assume it's collection is actually here too.
         drop = 1; // the leading slash
         urlRoot = loc.protocol + '//' + loc.host + '/';
-        // TODO - DEBUG - Log host diferent configuration
+        LOG.debug('Request host is diferent from configuration host.', '(Req Host)', loc.host, '(Config Host)', this.config.host);
       }
       const path = loc.path.substring(drop);
-      // TODO - DEBUG - Log path after substring
+      LOG.debug('Path after discard host and rootPath. (Path)', path);
       const query = paramParser(loc.query);
-      // TODO - DEBUG - Log query after parser
+      if (query.size > 0) {
+        LOG.debug('Query params received to the request. (Query)', query);
+      }
       let pathSegments = path.split('/').filter(value => value.trim().length > 0);
-      // TODO - DEBUG - Log pathSegments after split
-      let segmentIx = 0;
       parsed.query = query;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
-        // TODO - DEBUG - Log has complete interceptor
+        LOG.debug('Has %ccomplete%c interceptor to the path.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
@@ -1452,62 +1473,63 @@ export abstract class BackendService {
       // Does NOT care what the api base chars actually are.
       // eslint-disable-next-line eqeqeq
       if (this.config.apiBase == undefined) {
-        parsed.apiBase = pathSegments[segmentIx++];
-        // TODO - DEBUG - Log that config.apiBase is undefined and assumes that the first segment is apiBase
+        parsed.apiBase = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
+        LOG.debug('Assuming the first segment as the Base API, and remove it from URL segments. (Base API)',
+          parsed.apiBase, '(URL segments)', pathSegments);
       } else {
         parsed.apiBase = removeLeftSlash(removeRightSlash(this.config.apiBase.trim()));
         if (parsed.apiBase) {
-          segmentIx = parsed.apiBase.split('/').length;
-          // TODO - DEBUG - Log apiBase has X segments
-        } else {
-          segmentIx = 0; // no api base at all; unwise but allowed.
-          // TODO - DEBUG - Log does not have segments to apiBase
+          pathSegments.splice(0, parsed.apiBase.split('/').length);
         }
+        LOG.debug('Defined Base API, and remove it from URL segments. (Base API)', parsed.apiBase, '(URL segments)', pathSegments);
       }
       parsed.apiBase += '/';
 
-      pathSegments = this.applyReplaceMap(pathSegments.slice(segmentIx));
-      segmentIx = 0;
-      parsed.collectionName = pathSegments[segmentIx++];
-      // TODO - DEBUG - Log collectionName is discovered and rest of path segments
+
+      pathSegments = this.applyReplaceMap(pathSegments);
+      parsed.collectionName = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
       // ignore anything after a '.' (e.g.,the "json" in "customers.json")
       parsed.collectionName = parsed.collectionName && parsed.collectionName.split('.')[0];
+      LOG.debug('Defined collection name, and remove it from URL segments. (Collection name)',
+        parsed.collectionName, '(URL segments)', pathSegments);
       parsed.resourceUrl = urlRoot + parsed.apiBase + parsed.collectionName + '/';
 
-      if (this.hasRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
-        // TODO - DEBUG -  Log has beforeId interceptor to the collection name
+      if (this.hasRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, query, intInfo)) {
+        LOG.debug('Has %cbeforeId%c interceptor to the collection name.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
-      if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
-        // TODO - DEBUG -  Log has beforeId interceptor to the configuration database
+      if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, intInfo)) {
+        LOG.debug('Has %cbeforeId%c interceptor to the configuration database.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
-      parsed.id = pathSegments[segmentIx++];
-      // TODO - DEBUG - Log id is discovered and rest of path segments
+      parsed.id = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
+      LOG.debug('Defined collection id, and remove it from URL segments. (Collection id)',
+        parsed.id, '(URL segments)', pathSegments);
 
-      if (pathSegments.length >= segmentIx) {
-        if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
-           // TODO - DEBUG -  Log has afterId interceptor to the collection name
+      if (pathSegments.length >= 0) {
+        if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, query, intInfo)) {
+          LOG.debug('Has %cafterId%c interceptor to the collection name.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
-        if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
-          // TODO - DEBUG -  Log has afterId interceptor to the configuration database
+        if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, intInfo)) {
+          LOG.debug('Has %cafterId%c interceptor to the configuration database.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
       }
 
-      const extras = pathSegments.length > segmentIx ? pathSegments.slice(segmentIx).join('/') : undefined;
+      const extras = pathSegments.length > 0 ? pathSegments.join('/') : undefined;
       if (extras) {
-        // TODO - DEBUG - Log extra path segments
         parsed['extras'] = extras;
+        LOG.debug('Defined extras paths for the request. (Extras)', extras);
       }
 
-      // TODO - DEBUG - Log result parsed
+      LOG.debug('Defined parsed object for the request . (Parsed)', parsed);
       return parsed;
 
     } catch (err) {
+      LOG.error(`Unable to parse url '${url}'; original error:`, err);
       const msg = `Unable to parse url '${url}'; original error: ${(err as Error).message}`;
       throw new Error(msg);
     }
@@ -1526,20 +1548,29 @@ export abstract class BackendService {
           case 'urlSegment': {
             const segments = urlExtras ? urlExtras.split('/').filter(value => value.trim().length > 0) : [];
             found = segments.reverse().filter(segment => segment === postToOtherMethod.value).length > 0;
-            // TODO - DEBUG - Has one config mapping to POST to other method by url segment
+            if (found) {
+              LOG.debug('Has one config mapping to POST to other method by url segment',
+                '(Segment)', postToOtherMethod.value, '(Other METHOD)', postToOtherMethod.otherMethod);
+            }
             break;
           }
           case 'queryParam': {
             const queryParam = query ? query.get(postToOtherMethod.param) : undefined;
             found = queryParam && queryParam.length > 0 && queryParam[0] === postToOtherMethod.value;
-            // TODO - DEBUG - Has one config mapping to POST to other method by query parameter
+            if (found) {
+              LOG.debug('Has one config mapping to POST to other method by query parameter',
+                '(Query param)', postToOtherMethod.param, '(Param value)', postToOtherMethod.value,
+                '(Other METHOD)', postToOtherMethod.otherMethod);
+            }
             break;
           }
           case 'bodyParam': {
             found = body && body[postToOtherMethod.param] && body[postToOtherMethod.param] === postToOtherMethod.value;
             if (found) {
+              LOG.debug('Has one config mapping to POST to other method by body parameter',
+                '(Body param)', postToOtherMethod.param, '(Param value)', postToOtherMethod.value,
+                '(Other METHOD)', postToOtherMethod.otherMethod)
               delete body[postToOtherMethod.param];
-              // TODO - DEBUG - Has one config mapping to POST to other method by body parameter
             }
             break;
           }
