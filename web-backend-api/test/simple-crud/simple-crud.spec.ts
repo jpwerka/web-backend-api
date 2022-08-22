@@ -14,6 +14,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       dataService(collectionCustomers, () => null);
 
       const config: BackendConfigArgs = {
+        apiBase: '/',
         returnItemIn201: true, // return the item in body after POST
         put204: false, // return the item in body after PUT
         delete404: false,

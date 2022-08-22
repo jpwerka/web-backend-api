@@ -18,6 +18,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       post409: true,
       put404: true,
       delete404: true,

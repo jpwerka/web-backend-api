@@ -26,6 +26,7 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       strategyId: 'uuid',
       appendExistingPost: false,
       appendPut: false,

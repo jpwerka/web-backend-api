@@ -64,7 +64,8 @@ export function paramParser(rawParams: string): Map<string, string[]> {
 }
 
 export const LOG: Logger = new Logger();
-export const style = 'font-style: italic; font-weight: bold; color: brown';
+export const cssBIB = 'font-style: italic; font-weight: bold; color: brown';
+export const cssBIG = 'font-style: italic; font-weight: bold; color: darkgreen';
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
@@ -255,8 +256,11 @@ export abstract class BackendService {
 
     const index = this.requestInterceptors.findIndex((item) => this.isEqualsInterceptor(requestInterceptor, item));
     if (index >= 0) {
+      LOG.debug('Replace existing interceptor. (Existing Interceptor)',
+        this.requestInterceptors[index], '(New interceptor)', requestInterceptor);
       return this.requestInterceptors.splice(index, 1, requestInterceptor)[0];
     } else {
+      LOG.debug('Add new interceptor. (New interceptor)', requestInterceptor);
       this.requestInterceptors.push(requestInterceptor);
       return null;
     }
@@ -860,12 +864,24 @@ export abstract class BackendService {
   protected pagefy(
     queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
   ): IQueryResult<IExtendEntity> | { data: IExtendEntity[] } | IExtendEntity[] {
+    if (queryParams.page || this.config.pageEncapsulation) {
+      LOG.trace('Body will be returned as QueryResult (hasNext: boolean, items: unknow[])');
+    } else if (this.config.dataEncapsulation) {
+      LOG.trace('Body will be returned as Data (data: unknow[])');
+    } {
+      LOG.trace('Body will be returned as Array (unknow[])');
+    }
     return (queryParams.page || this.config.pageEncapsulation) ?
       queryResults : this.config.dataEncapsulation ?
         { data: queryResults.items } : queryResults.items;
   }
 
   protected bodify<T>(data: T): { data: T } | T {
+    if (this.config.dataEncapsulation) {
+      LOG.trace('Body will be returned as Data (data: unknow)');
+    } {
+      LOG.trace('Body will be returned as simple JSON (unknow)');
+    }
     return this.config.dataEncapsulation ? { data } : data;
   }
 
@@ -908,6 +924,7 @@ export abstract class BackendService {
     let ok = true;
     let i = conditions.length;
     let cond: IQueryFilter;
+    LOG.trace('Applying the filters on the item with AND conditions only. (Item)', item);
     while (ok && i) {
       i -= 1;
       cond = conditions[i];
@@ -918,6 +935,11 @@ export abstract class BackendService {
         ok = cond.rx.test(fieldValue as string);
       }
     }
+    if (ok) {
+      LOG.trace('Filters applied to the item match and the item will be returned in the query');
+    } else {
+      LOG.trace('Filters applied to the item not match and the item will be discarded by the field:', cond.name);
+    }
     return ok;
   }
 
@@ -926,6 +948,7 @@ export abstract class BackendService {
     let okAnd = true;
     let i = conditions.length;
     let cond: IQueryFilter;
+    LOG.trace('Applying the filters on the item with AND and OR conditions. (Item)', item);
     while (okAnd && i) {
       i -= 1;
       cond = conditions[i];
@@ -938,6 +961,9 @@ export abstract class BackendService {
             okOr = cond.rx.test(fieldValue as string);
           }
         }
+        if (okOr) {
+          LOG.trace('Condition OR pass to item at the field:', cond.name);
+        }
       } else {
         if (cond.fn) {
           okAnd = cond.fn.call(this, item) as boolean;
@@ -945,7 +971,16 @@ export abstract class BackendService {
           const fieldValue = this.getFieldValue(item, cond.name);
           okAnd = cond.rx.test(fieldValue as string);
         }
+        if (!okAnd) {
+          LOG.trace('Condition AND not pass to item at the field:', cond.name);
+        }
       }
+    }
+    if (!okOr) {
+      LOG.trace('No OR condition passed for the item to fields:', conditions.filter(cond => cond.or).map(cond => cond.name));
+    }
+    if (okOr && okAnd) {
+      LOG.trace('Filters applied to the item match and the item will be returned in the query');
     }
     return okOr && okAnd;
   }
@@ -1028,26 +1063,33 @@ export abstract class BackendService {
     } else if (typeof this.config.caseSensitiveSearch === 'boolean' && this.config.caseSensitiveSearch) {
       caseSensitive = '';
     }
+    LOG.debug(`Filters and orders in database is ${caseSensitive === 'i' ? 'not ' : ''} case sensitive`);
     query.forEach((value: string[], name: string) => {
-      if (name === 'page') {
+      if (name === 'fields' || name === '$filter' || name === 'expand') {
+        LOG.debug(`Param %c${name}%c is not supported by the library`, cssBIB, '');
+      } else if (name === 'page') {
         queryParams['page'] = parseInt(value[0], 10);
       } else if (name === 'pageSize') {
         queryParams['pageSize'] = parseInt(value[0], 10);
-      } else if (quickFilter && quickFilter.term === name && value[0]) {
-        const fields = quickFilter.fields;
-        if (fields !== undefined) {
-          if (queryParams['conditions'] === undefined) {
-            queryParams['conditions'] = [];
+      } else if (quickFilter && quickFilter.term === name) {
+        if (value[0]) {
+          const message = `Query will be %cfiltered%c by quick filter term %c${quickFilter.term}%c applying this with OR to the fields.`;
+          LOG.debug(message, cssBIB, '', cssBIG, '', '(Value)', value[0], '(Fields)', quickFilter.fields);
+          const fields = quickFilter.fields;
+          if (fields !== undefined) {
+            if (queryParams['conditions'] === undefined) {
+              queryParams['conditions'] = [];
+            }
+            queryParams.conditions.push(...fields.map<IQueryFilter>((field) => {
+              return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
+            }));
           }
-          queryParams.conditions.push(...fields.map<IQueryFilter>((field) => {
-            return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
-          }));
         }
       } else if (name === 'order') {
         queryParams['orders'] = new Array<IQueryOrder>();
         value.forEach(field => {
           if (field.includes('.')) {
-            console.warn('Don\'t support order by child property yet');
+            LOG.warn('Don\'t support order by child property yet. (Field)', field);
           } else {
             if (field.charAt(0) === '-') {
               queryParams.orders.push({ name: field.substring(1), order: 'desc', caseSensitive });
@@ -1056,8 +1098,9 @@ export abstract class BackendService {
             }
           }
         })
-      } else if ((!quickFilter || (quickFilter && quickFilter.term !== name)) &&
-        (name !== 'fields' && name !== '$filter' && name !== 'expand')) {
+        const message = `Query will be %cordered%c by fields: `;
+        LOG.debug(message, cssBIB, '', queryParams.orders);
+      } else {
         if (queryParams['conditions'] === undefined) {
           queryParams['conditions'] = [];
         }
@@ -1065,12 +1108,18 @@ export abstract class BackendService {
         const filterFn = this.getFieldFilterMap(collectionName, name);
         if (filterFn !== undefined && typeof filterFn === 'function') {
           condition['fn'] = this.createFilterFn(value.length > 1 ? value : value[0], filterFn);
+          LOG.debug(`Field %c${name}%c to be filtered by provided function.`, cssBIB, '',
+            '(Value)', value.length > 1 ? value : value[0], '(Function)', filterFn);
         } else if (filterFn !== undefined && typeof filterFn === 'string' && value.length === 1) {
           condition['fn'] = this.createFilterOpFn(name, value[0], filterFn, caseSensitive);
+          LOG.debug(`Field %c${name}%c to be filtered by operators. `, cssBIB, '', '(Value)', value, '(Operator)', filterFn);
         } else if (value.length > 1) {
           condition['fn'] = this.createFilterArrayFn(name, value, caseSensitive);
+          const message = `Field %c${name}%c to be filtered by array function (Array.includes OR Array.findIndex case field is string).`;
+          LOG.debug(message, cssBIB, '', '(Filter array values)', value);
         } else {
           condition['rx'] = new RegExp(value[0], caseSensitive);
+          LOG.debug(`Field %c${name}%c to be filtered by regex: `, cssBIB, '', condition['rx']);
         }
         queryParams.conditions.push(condition);
       }
@@ -1094,6 +1143,7 @@ export abstract class BackendService {
         count: 0,
         conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
       };
+      LOG.debug('Query will be filtered on the root and children with pagination. (Root)', root, '(Children)', children);
     } else if (hasMultiLevelFilter) {
       children = {
         count: 0,
@@ -1103,8 +1153,10 @@ export abstract class BackendService {
         count: 0,
         conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
       };
+      LOG.debug('Query will be filtered on the root and children without pagination. (Root)', root, '(Children)', children);
     } else {
       root = queryParams;
+      LOG.debug('Query will be filtered only at the root by applying the following parameters:', queryParams);
     }
     return { root, children };
   }
@@ -1171,8 +1223,6 @@ export abstract class BackendService {
     const interceptors = this.requestInterceptors.filter(value => {
       return value.applyToPath === applyToPath;
     });
-    LOG.trace('Number of collection interceptors that has filtered with applyToPath value.',
-      '(applyToPath)', applyToPath, '(Quantity)', interceptors.length);
     const interceptor = interceptors.find(value => {
       return this.compareRequestInterceptor(value, method, collectionName, uriPaths, uriQuery, interceptorIds);
     });
@@ -1198,10 +1248,6 @@ export abstract class BackendService {
     let interceptorPathOk = true;
     let interceptorQueryOk = true;
 
-    LOG.trace('Interceptor info to compare. (Interceptor)', interceptor,
-      '(Method)', method, '(Collection name)', collectionName, '(URL segments)', uriPaths,
-      '(Query)', uriQuery.size > 0 ? uriQuery : undefined)
-
     if (interceptor.applyToPath !== 'complete' && interceptor.collectionName !== collectionName) {
       return false;
     }
@@ -1219,21 +1265,15 @@ export abstract class BackendService {
         // Se é um segmento 'coriga' descarta o mesmo.
         // Utilizado para interceptar urls tipo: /api/parent/:id/child/:id/action
         if (intPaths[i] === '**') {
-          LOG.trace('Discarding wildcard segment. (Interceptor segment)', intPaths[i], '(URL segment)', uriPaths[i]);
           continue;
         }
         if (interceptorIds && interceptorIds instanceof Array &&
           (intPaths[i] === ':id' || (intPaths[i].startsWith('{') && intPaths[i].endsWith('}')))) {
           interceptorIds.push(uriPaths[i]);
-          LOG.trace('Collecting id by interceptor. (Interceptor segment)', intPaths[i],
-            '(URL segment)', uriPaths[i], '(IDs)', interceptorIds);
           continue;
         }
         interceptorPathOk = intPaths[i] === uriPaths[i];
       }
-    }
-    if (!interceptorPathOk) {
-      LOG.trace('Discard interceptor because path does not match.', '(Interceptor segments)', intPaths, '(URL segments)', uriPaths);
     }
     if (interceptorPathOk) {
       if (interceptor.query) {
@@ -1244,10 +1284,6 @@ export abstract class BackendService {
           if (!interceptorQueryOk) {
             break;
           }
-        }
-        if (!interceptorPathOk) {
-          LOG.trace('Discard interceptor because query does not match.',
-            '(Interceptor query)', interceptor.query, '(URL query)', uriQuery.size > 0 ? uriQuery : undefined);
         }
       }
     }
@@ -1266,8 +1302,6 @@ export abstract class BackendService {
       const interceptors = this.config.defaultInterceptors.filter(value => {
         return value.applyToPath === applyToPath;
       });
-      LOG.trace('Number of default interceptors that has filtered with applyToPath value.',
-        '(applyToPath)', applyToPath, '(Quantity)', interceptors.length);
       const interceptor = interceptors.find(value => {
         return this.compareDefaultRequestInterceptor(value, method, uriPaths, interceptorIds);
       });
@@ -1297,8 +1331,6 @@ export abstract class BackendService {
   ): boolean {
     let interceptorPathOk = true;
 
-    LOG.trace('Interceptor info to compare. (Interceptor)', interceptor, '(Method)', method, '(URL segments)', uriPaths);
-
     if (interceptor.method.toLowerCase() !== method.toLowerCase()) {
       return false;
     }
@@ -1312,21 +1344,15 @@ export abstract class BackendService {
         // Se é um segmento 'coriga' descarta o mesmo.
         // Utilizado para interceptar urls tipo: /api/parent/:id/child/:id/action
         if (intPaths[i] === '**') {
-          LOG.trace('Discarding wildcard segment. (Interceptor segment)', intPaths[i], '(URL segment)', uriPaths[i]);
           continue;
         }
         if (interceptorIds && interceptorIds instanceof Array &&
           (intPaths[i] === ':id' || (intPaths[i].startsWith('{') && intPaths[i].endsWith('}')))) {
           interceptorIds.push(uriPaths[i]);
-          LOG.trace('Collecting id by interceptor. (Interceptor segment)', intPaths[i],
-            '(URL segment)', uriPaths[i], '(IDs)', interceptorIds);
           continue;
         }
         interceptorPathOk = intPaths[i] === uriPaths[i];
       }
-    }
-    if (!interceptorPathOk) {
-      LOG.trace('Discard interceptor because path does not match.', '(Interceptor segments)', intPaths, '(URL segments)', uriPaths);
     }
     return interceptorPathOk;
   }
@@ -1463,7 +1489,7 @@ export abstract class BackendService {
       parsed.query = query;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
-        LOG.debug('Has %ccomplete%c interceptor to the path.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
+        LOG.debug('Has %ccomplete%c interceptor to the path.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
@@ -1495,12 +1521,12 @@ export abstract class BackendService {
       parsed.resourceUrl = urlRoot + parsed.apiBase + parsed.collectionName + '/';
 
       if (this.hasRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, query, intInfo)) {
-        LOG.debug('Has %cbeforeId%c interceptor to the collection name.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
+        LOG.debug('Has %cbeforeId%c interceptor to the collection name.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
       if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, intInfo)) {
-        LOG.debug('Has %cbeforeId%c interceptor to the configuration database.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
+        LOG.debug('Has %cbeforeId%c interceptor to the configuration database.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
@@ -1508,13 +1534,13 @@ export abstract class BackendService {
       LOG.debug('Defined collection id, and remove it from URL segments. (Collection id)',
         parsed.id, '(URL segments)', pathSegments);
 
-      if (pathSegments.length >= 0) {
+      if (parsed.id) {
         if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, query, intInfo)) {
-          LOG.debug('Has %cafterId%c interceptor to the collection name.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
+          LOG.debug('Has %cafterId%c interceptor to the collection name.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
         if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, intInfo)) {
-          LOG.debug('Has %cafterId%c interceptor to the configuration database.', style, '(Parsed)', parsed, '(Interceptor)', intInfo);
+          LOG.debug('Has %cafterId%c interceptor to the configuration database.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
       }

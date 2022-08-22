@@ -37,6 +37,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       put204: false,
       returnItemIn201: true,
       delay: 0

@@ -55,6 +55,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
     let dbService: MemoryDbService;
 
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       returnItemIn201: true, // return the item in body after POST
       put204: false, // return the item in body after PUT
       pageEncapsulation: false,
@@ -102,7 +103,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       })().then(() => done());
     })
 
-    fit(`Deve chamar o método PUT mesmo passando uma requisição de POST por Segmento URL.`, (done: DoneFn) => {
+    it(`Deve chamar o método PUT mesmo passando uma requisição de POST por Segmento URL.`, (done: DoneFn) => {
       // given
       const expectedCustomer = cloneDeep(customers[0]);
       expectedCustomer.name = 'Cliente 01 nome alterado';

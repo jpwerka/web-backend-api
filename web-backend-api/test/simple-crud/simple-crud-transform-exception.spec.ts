@@ -18,6 +18,7 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       appendExistingPost: false,
       appendPut: false,
       returnItemIn201: true,
