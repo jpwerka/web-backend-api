@@ -75,8 +75,6 @@
     "@typescript-eslint/parser": "^5.46.1",
     "codelyzer": "^6.0.0",
     "eslint": "^8.2.0",
-    "fs-jetpack": "^2.2.2",
-    "inline-css": "^1.0.4",
     "jasmine-core": "^3.8.0",
     "jasmine-data-provider-ts": "^1.4.1",
     "json5": "^2.1.1",
