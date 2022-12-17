@@ -10,6 +10,7 @@ import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
 import 'json.date-extensions';
+import { Logger, LoggerLevel } from '../utils/logger';
 
 export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
 
@@ -62,6 +63,9 @@ export function paramParser(rawParams: string): Map<string, string[]> {
   return mapParam;
 }
 
+export const LOG: Logger = new Logger();
+export const cssBIB = 'font-style: italic; font-weight: bold; color: brown';
+export const cssBIG = 'font-style: italic; font-weight: bold; color: darkgreen';
 export abstract class BackendService {
 
   protected loadsFn: Array<LoadFn> = [];
@@ -103,6 +107,11 @@ export abstract class BackendService {
         sub.unsubscribe();
       }
     });
+    if (typeof this.config.log === 'boolean') {
+      LOG.level = this.config.log ? LoggerLevel.TRACE : LoggerLevel.ERROR;
+    } else {
+      LOG.level = this.config.log;
+    }
   }
 
   backendUtils(value: IBackendUtils): void {
@@ -247,8 +256,11 @@ export abstract class BackendService {
 
     const index = this.requestInterceptors.findIndex((item) => this.isEqualsInterceptor(requestInterceptor, item));
     if (index >= 0) {
+      LOG.debug('Replace existing interceptor. (Existing Interceptor)',
+        this.requestInterceptors[index], '(New interceptor)', requestInterceptor);
       return this.requestInterceptors.splice(index, 1, requestInterceptor)[0];
     } else {
+      LOG.debug('Add new interceptor. (New interceptor)', requestInterceptor);
       this.requestInterceptors.push(requestInterceptor);
       return null;
     }
@@ -428,15 +440,11 @@ export abstract class BackendService {
   }
 
   protected logRequest(request: IRequestCore<IExtendEntity>): void {
-    if (this.config.log) {
-      console.log(request);
-    }
+    LOG.info(request);
   }
 
   protected logResponse(response: IHttpResponse<unknown> | IHttpErrorResponse): void {
-    if (this.config.log) {
-      console.log(response);
-    }
+    LOG.info(response);
   }
 
   protected convertResponse(response: IHttpResponse<unknown>): IHttpResponse<unknown> {
@@ -445,6 +453,7 @@ export abstract class BackendService {
       const body = response.body;
       if (contentType === 'application/json' && body) {
         response.body = JSON.parse(JSON.stringify(body), JSON['dateParser']);
+        LOG.trace('Body has parsed to convert possibles dates to Date Object. (Body)', response.body);
       }
     }
     return response;
@@ -481,12 +490,14 @@ export abstract class BackendService {
       if (response$) {
         return response$;
       } else if (this.config.passThruUnknownUrl) {
+        LOG.debug('Has one complete interceptor, but it does not has a valid response and dispatch request to real backend server.');
         return this.getPassThruBackend().handle(req);
       } else {
         const error: IErrorMessage = {
           message: `Interceptor path '${intInfo.interceptor.path}' does not return a valid response.`,
           detailedMessage: 'Implement a valid response or configure service to dispatch to real backend. (config.passThruUnknownUrl)'
         };
+        LOG.error('Has one complete interceptor, but it does not has a valid response.', error);
         return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_IMPLEMENTED, error));
       }
     }
@@ -513,6 +524,7 @@ export abstract class BackendService {
     if (this.hasCollection(parsed.collectionName)) {
       return this.collectionHandler(reqInfo);
     } else if (this.config.passThruUnknownUrl) {
+      LOG.debug('Has no collection in database, then dispatch request to real backend server');
       // Caso não tenha a collection, repassa a requisição para o backend verdadeiro
       return this.getPassThruBackend().handle(req);
     } else {
@@ -521,6 +533,8 @@ export abstract class BackendService {
         detailedMessage: 'Implement interceptor to complete path or configure ' +
           'service to dispatch to real backend. (config.passThruUnknownUrl)'
       };
+      const message = 'Has no collection in database, and not dispatch request to real backend server';
+      LOG.error(message, error)
       return throwError(this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error));
     }
   }
@@ -547,6 +561,7 @@ export abstract class BackendService {
           message: `Method ${reqInfo.method.toUpperCase()} not allowed`,
           detailedMessage: 'Only methods GET, POST, PUT and DELETE are allowed'
         };
+        LOG.error('Has received a method not allowed', error);
         response$ = throwError(this.utils.createErrorResponseOptions(reqInfo.url, STATUS.METHOD_NOT_ALLOWED, error));
         break;
       }
@@ -849,12 +864,24 @@ export abstract class BackendService {
   protected pagefy(
     queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
   ): IQueryResult<IExtendEntity> | { data: IExtendEntity[] } | IExtendEntity[] {
+    if (queryParams.page || this.config.pageEncapsulation) {
+      LOG.trace('Body will be returned as QueryResult (hasNext: boolean, items: unknow[])');
+    } else if (this.config.dataEncapsulation) {
+      LOG.trace('Body will be returned as Data (data: unknow[])');
+    } {
+      LOG.trace('Body will be returned as Array (unknow[])');
+    }
     return (queryParams.page || this.config.pageEncapsulation) ?
       queryResults : this.config.dataEncapsulation ?
         { data: queryResults.items } : queryResults.items;
   }
 
   protected bodify<T>(data: T): { data: T } | T {
+    if (this.config.dataEncapsulation) {
+      LOG.trace('Body will be returned as Data (data: unknow)');
+    } {
+      LOG.trace('Body will be returned as simple JSON (unknow)');
+    }
     return this.config.dataEncapsulation ? { data } : data;
   }
 
@@ -897,6 +924,7 @@ export abstract class BackendService {
     let ok = true;
     let i = conditions.length;
     let cond: IQueryFilter;
+    LOG.trace('Applying the filters on the item with AND conditions only. (Item)', item);
     while (ok && i) {
       i -= 1;
       cond = conditions[i];
@@ -907,6 +935,11 @@ export abstract class BackendService {
         ok = cond.rx.test(fieldValue as string);
       }
     }
+    if (ok) {
+      LOG.trace('Filters applied to the item match and the item will be returned in the query');
+    } else {
+      LOG.trace('Filters applied to the item not match and the item will be discarded by the field:', cond.name);
+    }
     return ok;
   }
 
@@ -915,6 +948,7 @@ export abstract class BackendService {
     let okAnd = true;
     let i = conditions.length;
     let cond: IQueryFilter;
+    LOG.trace('Applying the filters on the item with AND and OR conditions. (Item)', item);
     while (okAnd && i) {
       i -= 1;
       cond = conditions[i];
@@ -927,6 +961,9 @@ export abstract class BackendService {
             okOr = cond.rx.test(fieldValue as string);
           }
         }
+        if (okOr) {
+          LOG.trace('Condition OR pass to item at the field:', cond.name);
+        }
       } else {
         if (cond.fn) {
           okAnd = cond.fn.call(this, item) as boolean;
@@ -934,7 +971,16 @@ export abstract class BackendService {
           const fieldValue = this.getFieldValue(item, cond.name);
           okAnd = cond.rx.test(fieldValue as string);
         }
+        if (!okAnd) {
+          LOG.trace('Condition AND not pass to item at the field:', cond.name);
+        }
       }
+    }
+    if (!okOr) {
+      LOG.trace('No OR condition passed for the item to fields:', conditions.filter(cond => cond.or).map(cond => cond.name));
+    }
+    if (okOr && okAnd) {
+      LOG.trace('Filters applied to the item match and the item will be returned in the query');
     }
     return okOr && okAnd;
   }
@@ -1017,26 +1063,33 @@ export abstract class BackendService {
     } else if (typeof this.config.caseSensitiveSearch === 'boolean' && this.config.caseSensitiveSearch) {
       caseSensitive = '';
     }
+    LOG.debug(`Filters and orders in database is ${caseSensitive === 'i' ? 'not ' : ''} case sensitive`);
     query.forEach((value: string[], name: string) => {
-      if (name === 'page') {
+      if (name === 'fields' || name === '$filter' || name === 'expand') {
+        LOG.debug(`Param %c${name}%c is not supported by the library`, cssBIB, '');
+      } else if (name === 'page') {
         queryParams['page'] = parseInt(value[0], 10);
       } else if (name === 'pageSize') {
         queryParams['pageSize'] = parseInt(value[0], 10);
-      } else if (quickFilter && quickFilter.term === name && value[0]) {
-        const fields = quickFilter.fields;
-        if (fields !== undefined) {
-          if (queryParams['conditions'] === undefined) {
-            queryParams['conditions'] = [];
+      } else if (quickFilter && quickFilter.term === name) {
+        if (value[0]) {
+          const message = `Query will be %cfiltered%c by quick filter term %c${quickFilter.term}%c applying this with OR to the fields.`;
+          LOG.debug(message, cssBIB, '', cssBIG, '', '(Value)', value[0], '(Fields)', quickFilter.fields);
+          const fields = quickFilter.fields;
+          if (fields !== undefined) {
+            if (queryParams['conditions'] === undefined) {
+              queryParams['conditions'] = [];
+            }
+            queryParams.conditions.push(...fields.map<IQueryFilter>((field) => {
+              return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
+            }));
           }
-          queryParams.conditions.push(...fields.map<IQueryFilter>((field) => {
-            return { name: field, rx: new RegExp(value[0], caseSensitive), or: true };
-          }));
         }
       } else if (name === 'order') {
         queryParams['orders'] = new Array<IQueryOrder>();
         value.forEach(field => {
           if (field.includes('.')) {
-            console.warn('Don\'t support order by child property yet');
+            LOG.warn('Don\'t support order by child property yet. (Field)', field);
           } else {
             if (field.charAt(0) === '-') {
               queryParams.orders.push({ name: field.substring(1), order: 'desc', caseSensitive });
@@ -1045,8 +1098,9 @@ export abstract class BackendService {
             }
           }
         })
-      } else if ((!quickFilter || (quickFilter && quickFilter.term !== name)) &&
-        (name !== 'fields' && name !== '$filter' && name !== 'expand')) {
+        const message = `Query will be %cordered%c by fields: `;
+        LOG.debug(message, cssBIB, '', queryParams.orders);
+      } else {
         if (queryParams['conditions'] === undefined) {
           queryParams['conditions'] = [];
         }
@@ -1054,12 +1108,18 @@ export abstract class BackendService {
         const filterFn = this.getFieldFilterMap(collectionName, name);
         if (filterFn !== undefined && typeof filterFn === 'function') {
           condition['fn'] = this.createFilterFn(value.length > 1 ? value : value[0], filterFn);
+          LOG.debug(`Field %c${name}%c to be filtered by provided function.`, cssBIB, '',
+            '(Value)', value.length > 1 ? value : value[0], '(Function)', filterFn);
         } else if (filterFn !== undefined && typeof filterFn === 'string' && value.length === 1) {
           condition['fn'] = this.createFilterOpFn(name, value[0], filterFn, caseSensitive);
+          LOG.debug(`Field %c${name}%c to be filtered by operators. `, cssBIB, '', '(Value)', value, '(Operator)', filterFn);
         } else if (value.length > 1) {
           condition['fn'] = this.createFilterArrayFn(name, value, caseSensitive);
+          const message = `Field %c${name}%c to be filtered by array function (Array.includes OR Array.findIndex case field is string).`;
+          LOG.debug(message, cssBIB, '', '(Filter array values)', value);
         } else {
           condition['rx'] = new RegExp(value[0], caseSensitive);
+          LOG.debug(`Field %c${name}%c to be filtered by regex: `, cssBIB, '', condition['rx']);
         }
         queryParams.conditions.push(condition);
       }
@@ -1083,6 +1143,7 @@ export abstract class BackendService {
         count: 0,
         conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
       };
+      LOG.debug('Query will be filtered on the root and children with pagination. (Root)', root, '(Children)', children);
     } else if (hasMultiLevelFilter) {
       children = {
         count: 0,
@@ -1092,8 +1153,10 @@ export abstract class BackendService {
         count: 0,
         conditions: queryParams.conditions.filter(cond => !cond.name.includes('.'))
       };
+      LOG.debug('Query will be filtered on the root and children without pagination. (Root)', root, '(Children)', children);
     } else {
       root = queryParams;
+      LOG.debug('Query will be filtered only at the root by applying the following parameters:', queryParams);
     }
     return { root, children };
   }
@@ -1298,6 +1361,7 @@ export abstract class BackendService {
   private processInterceptResponse(
     interceptor: IRequestInterceptor, utils: IInterceptorUtils
   ): Observable<IHttpResponse<unknown>> {
+    LOG.trace('Response will be processed by the interceptor.', '(Interceptor Utils)', utils);
     const response = this.interceptResponse(interceptor, utils);
     if (response instanceof Observable) {
       return response;
@@ -1312,6 +1376,7 @@ export abstract class BackendService {
         }
       });
     }
+    LOG.trace('Response of interceptor is undefined. Processing default response.');
     return undefined;
   }
 
@@ -1320,8 +1385,10 @@ export abstract class BackendService {
     let response: IHttpResponse<unknown>;
     if (interceptor.response) {
       if (interceptor.response instanceof Function) {
+        LOG.trace('That interceptor response is one function and call that. (Function)', interceptor.response);
         response = interceptor.response.call(this, utils) as IHttpResponse<unknown>;
       } else {
+        LOG.trace('That interceptor response is one JSON then clone it. (JSON)', interceptor.response);
         response = clone(interceptor.response);
       }
     }
@@ -1333,11 +1400,13 @@ export abstract class BackendService {
    */
   private getLocation(url: string): IUriInfo {
     if (!url.startsWith('http')) {
+      const originalUrl = url;
       // get the document iff running in browser
       const doc: Document = (typeof document === 'undefined') ? undefined : document;
       // add host info to url before parsing.  Use a fake host when not in browser.
       const base = doc ? doc.location.protocol + '//' + doc.location.host : 'http://fake';
       url = url.startsWith('/') ? base + url : base + '/' + url;
+      LOG.trace('Does not HTTP url request. Parsing URL usind discovered URL. (Original URL, Discover URL)', originalUrl, url);
     }
     return parseUri(url);
   }
@@ -1349,6 +1418,7 @@ export abstract class BackendService {
       for (const segments of replaces) {
         let i = 0;
         match = true;
+        // TODO - TRACE - Log segments x pathSegments to compare
         for (; i < segments.length && match; i++) {
           if (i >= (pathSegments.length)) {
             match = false;
@@ -1359,7 +1429,9 @@ export abstract class BackendService {
           }
         }
         if (match) {
-          pathSegments.splice(0, i, item[0]);
+          const deteted = pathSegments.splice(0, i, item[0]);
+          LOG.debug('Applying replace URL segments map. (Deleted segments)',
+            deteted, '(Replace segment)', item[0], '(URL segments)', pathSegments);
           break;
         }
       }
@@ -1396,6 +1468,7 @@ export abstract class BackendService {
         query: undefined,
         resourceUrl: undefined,
       };
+      LOG.debug('Start parser URL: %s for METHOD: %s', url, method);
       const loc = this.getLocation(url);
       let drop = this.config.rootPath.length;
       let urlRoot = '';
@@ -1404,14 +1477,19 @@ export abstract class BackendService {
         // assume it's collection is actually here too.
         drop = 1; // the leading slash
         urlRoot = loc.protocol + '//' + loc.host + '/';
+        LOG.debug('Request host is diferent from configuration host.', '(Req Host)', loc.host, '(Config Host)', this.config.host);
       }
       const path = loc.path.substring(drop);
+      LOG.debug('Path after discard host and rootPath. (Path)', path);
       const query = paramParser(loc.query);
+      if (query.size > 0) {
+        LOG.debug('Query params received to the request. (Query)', query);
+      }
       let pathSegments = path.split('/').filter(value => value.trim().length > 0);
-      let segmentIx = 0;
       parsed.query = query;
 
       if (this.hasRequestInterceptor('complete', method, null, pathSegments, query, intInfo)) {
+        LOG.debug('Has %ccomplete%c interceptor to the path.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
@@ -1421,51 +1499,63 @@ export abstract class BackendService {
       // Does NOT care what the api base chars actually are.
       // eslint-disable-next-line eqeqeq
       if (this.config.apiBase == undefined) {
-        parsed.apiBase = pathSegments[segmentIx++];
+        parsed.apiBase = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
+        LOG.debug('Assuming the first segment as the Base API, and remove it from URL segments. (Base API)',
+          parsed.apiBase, '(URL segments)', pathSegments);
       } else {
         parsed.apiBase = removeLeftSlash(removeRightSlash(this.config.apiBase.trim()));
         if (parsed.apiBase) {
-          segmentIx = parsed.apiBase.split('/').length;
-        } else {
-          segmentIx = 0; // no api base at all; unwise but allowed.
+          pathSegments.splice(0, parsed.apiBase.split('/').length);
         }
+        LOG.debug('Defined Base API, and remove it from URL segments. (Base API)', parsed.apiBase, '(URL segments)', pathSegments);
       }
       parsed.apiBase += '/';
 
-      pathSegments = this.applyReplaceMap(pathSegments.slice(segmentIx));
-      segmentIx = 0;
-      parsed.collectionName = pathSegments[segmentIx++];
+
+      pathSegments = this.applyReplaceMap(pathSegments);
+      parsed.collectionName = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
       // ignore anything after a '.' (e.g.,the "json" in "customers.json")
       parsed.collectionName = parsed.collectionName && parsed.collectionName.split('.')[0];
+      LOG.debug('Defined collection name, and remove it from URL segments. (Collection name)',
+        parsed.collectionName, '(URL segments)', pathSegments);
       parsed.resourceUrl = urlRoot + parsed.apiBase + parsed.collectionName + '/';
 
-      if (this.hasRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
+      if (this.hasRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, query, intInfo)) {
+        LOG.debug('Has %cbeforeId%c interceptor to the collection name.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
-      if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
+      if (this.hasDefaultRequestInterceptor('beforeId', method, parsed.collectionName, pathSegments, intInfo)) {
+        LOG.debug('Has %cbeforeId%c interceptor to the configuration database.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
         return parsed;
       }
 
-      parsed.id = pathSegments[segmentIx++];
+      parsed.id = pathSegments.splice(0, 1)[0]; // pathSegments[segmentIx++];
+      LOG.debug('Defined collection id, and remove it from URL segments. (Collection id)',
+        parsed.id, '(URL segments)', pathSegments);
 
-      if (pathSegments.length >= segmentIx) {
-        if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), query, intInfo)) {
+      if (parsed.id) {
+        if (this.hasRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, query, intInfo)) {
+          LOG.debug('Has %cafterId%c interceptor to the collection name.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
-        if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments.slice(segmentIx), intInfo)) {
+        if (this.hasDefaultRequestInterceptor('afterId', method, parsed.collectionName, pathSegments, intInfo)) {
+          LOG.debug('Has %cafterId%c interceptor to the configuration database.', cssBIB, '(Parsed)', parsed, '(Interceptor)', intInfo);
           return parsed;
         }
       }
 
-      const extras = pathSegments.length > segmentIx ? pathSegments.slice(segmentIx).join('/') : undefined;
+      const extras = pathSegments.length > 0 ? pathSegments.join('/') : undefined;
       if (extras) {
         parsed['extras'] = extras;
+        LOG.debug('Defined extras paths for the request. (Extras)', extras);
       }
 
+      LOG.debug('Defined parsed object for the request . (Parsed)', parsed);
       return parsed;
 
     } catch (err) {
+      LOG.error(`Unable to parse url '${url}'; original error:`, err);
       const msg = `Unable to parse url '${url}'; original error: ${(err as Error).message}`;
       throw new Error(msg);
     }
@@ -1484,16 +1574,28 @@ export abstract class BackendService {
           case 'urlSegment': {
             const segments = urlExtras ? urlExtras.split('/').filter(value => value.trim().length > 0) : [];
             found = segments.reverse().filter(segment => segment === postToOtherMethod.value).length > 0;
+            if (found) {
+              LOG.debug('Has one config mapping to POST to other method by url segment',
+                '(Segment)', postToOtherMethod.value, '(Other METHOD)', postToOtherMethod.otherMethod);
+            }
             break;
           }
           case 'queryParam': {
             const queryParam = query ? query.get(postToOtherMethod.param) : undefined;
             found = queryParam && queryParam.length > 0 && queryParam[0] === postToOtherMethod.value;
+            if (found) {
+              LOG.debug('Has one config mapping to POST to other method by query parameter',
+                '(Query param)', postToOtherMethod.param, '(Param value)', postToOtherMethod.value,
+                '(Other METHOD)', postToOtherMethod.otherMethod);
+            }
             break;
           }
           case 'bodyParam': {
             found = body && body[postToOtherMethod.param] && body[postToOtherMethod.param] === postToOtherMethod.value;
             if (found) {
+              LOG.debug('Has one config mapping to POST to other method by body parameter',
+                '(Body param)', postToOtherMethod.param, '(Param value)', postToOtherMethod.value,
+                '(Other METHOD)', postToOtherMethod.otherMethod)
               delete body[postToOtherMethod.param];
             }
             break;

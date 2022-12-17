@@ -18,6 +18,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       post409: true,
       put404: true,
       delete404: true,
@@ -54,7 +55,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<null> = {
         method: 'GET',
-        url: `http:://localhost/${collectionCustomers}/99`,
+        url: `http://localhost/${collectionCustomers}/99`,
       };
       // when
       dbService.handleRequest(req).subscribe({
@@ -72,7 +73,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/98`,
+        url: `http://localhost/${collectionCustomers}/98`,
         body: {
           id: 99,
           name: 'Novo cliente 99',
@@ -94,7 +95,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}/1`,
+        url: `http://localhost/${collectionCustomers}/1`,
         body: {
           name: 'Aterando cliente 01',
         }
@@ -119,7 +120,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Aterando cliente 01',
         }
@@ -139,7 +140,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/99`,
+        url: `http://localhost/${collectionCustomers}/99`,
         body: {
           id: 98,
           name: 'Aterando cliente 01',
@@ -164,7 +165,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'PUT',
-        url: `http:://localhost/${collectionCustomers}/90`,
+        url: `http://localhost/${collectionCustomers}/90`,
         body: {
           id: 90,
           name: 'Aterando cliente 90',
@@ -189,7 +190,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<null> = {
         method: 'DELETE',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
       };
       // when
       dbService.handleRequest(req).subscribe({
@@ -206,7 +207,7 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       // given
       const req: IRequestCore<null> = {
         method: 'DELETE',
-        url: `http:://localhost/${collectionCustomers}/90`,
+        url: `http://localhost/${collectionCustomers}/90`,
       };
       const responseError = {
         message: `Error to find ${collectionCustomers} with id (${90})`,

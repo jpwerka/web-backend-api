@@ -1,3 +1,4 @@
+import { LoggerLevel } from '../utils/logger';
 import { IDefaultInterceptor, IPostToOtherMethod } from './interceptor.interface';
 
 /**
@@ -83,9 +84,13 @@ export abstract class BackendConfigArgs {
    */
   defaultInterceptors?: IDefaultInterceptor[];
   /**
-   * false (default) log request and response to console
+   * false (default) log request and response to console.
+   * LOG levels can be defined when passed a `LoggerLevel` enum value
+   * INFO - Log only requests and responses
+   * DEBUG - Log parser requests and responses
+   * TRACE - Log all information about the request and responses
    */
-  log?: boolean;
+  log?: boolean | LoggerLevel;
   /**
    * false (default) apply `JSON.parse()` with transform String dates in Date objetcs
    */

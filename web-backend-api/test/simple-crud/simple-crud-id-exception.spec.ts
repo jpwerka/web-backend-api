@@ -13,6 +13,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       strategyId: 'provided',
       delay: 0
     })
@@ -47,7 +48,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Cliente sem ID informado'
         }
@@ -69,6 +70,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
   describe('Testes para ID incremental em memória', () => {
     let dbService: MemoryDbService;
     const backendConfig = new BackendConfig({
+      apiBase: '/',
       returnItemIn201: true,
       delay: 0
     })
@@ -96,7 +98,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
       // given
       const req: IRequestCore<Partial<ICustomer>> = {
         method: 'POST',
-        url: `http:://localhost/${collectionCustomers}`,
+        url: `http://localhost/${collectionCustomers}`,
         body: {
           name: 'Cliente sem ID informado'
         }
@@ -121,7 +123,7 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
         // given
         const req: IRequestCore<Partial<ICustomer>> = {
           method: 'POST',
-          url: `http:://localhost/${collectionCustomers}`,
+          url: `http://localhost/${collectionCustomers}`,
           body: {
             name: 'Cliente sem ID informado'
           }
