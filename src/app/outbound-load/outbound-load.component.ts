@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, UntypedFormArray, UntypedFormBuilder, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { from, of } from 'rxjs';
 import { concatMap } from 'rxjs/operators';
 import { IModalAction, ModalComponent } from '../components/modal/modal.component';
@@ -50,37 +50,37 @@ export class OutboundLoadComponent implements OnInit {
   @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
   @ViewChild('modalDocs', { static: true }) modalDocs: ModalComponent;
 
-  outboundLoadForm: FormGroup;
+  outboundLoadForm: UntypedFormGroup;
 
   get id(): AbstractControl { return this.outboundLoadForm.get('id'); }
 
   get identifier(): AbstractControl { return this.outboundLoadForm.get('identifier'); }
 
   constructor(
-    private fb: FormBuilder,
+    private fb: UntypedFormBuilder,
     private outboundLoadService: OutboundLoadService,
   ) {
   }
 
   ngOnInit() {
-    this.outboundLoadForm = new FormGroup({
-      id: new FormControl(''),
-      identifier: new FormControl('', [Validators.required]),
+    this.outboundLoadForm = new UntypedFormGroup({
+      id: new UntypedFormControl(''),
+      identifier: new UntypedFormControl('', [Validators.required]),
       documents: this.fb.array([])
     });
 
     this.outboundLoadService.getAll().subscribe(outboundLoads => this.outboundLoads = outboundLoads);
   }
 
-  get documents(): FormArray {
-    return this.outboundLoadForm.get('documents') as FormArray;
+  get documents(): UntypedFormArray {
+    return this.outboundLoadForm.get('documents') as UntypedFormArray;
   }
 
   document(index: number): AbstractControl {
     return this.documents.at(index).get('document');
   }
 
-  newDocument(document: IOutboundDocument): FormGroup {
+  newDocument(document: IOutboundDocument): UntypedFormGroup {
     return this.fb.group({
       document: [document, Validators.required],
     });
@@ -122,7 +122,7 @@ export class OutboundLoadComponent implements OnInit {
 
   confirmForm(): void {
     if (this.documents.controls.length > 0) {
-      this.documents.controls.forEach((form: FormGroup) => {
+      this.documents.controls.forEach((form: UntypedFormGroup) => {
         form.get('document').markAsDirty({ onlySelf: true });
       });
     } else {

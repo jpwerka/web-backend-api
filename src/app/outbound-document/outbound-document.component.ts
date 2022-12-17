@@ -2,7 +2,7 @@ import { Component, ViewChild, OnInit } from '@angular/core';
 import { IOutboundDocument, IOutboundDocumentItems } from '../entities/outbound-document/outbound-document.interface';
 import { OutboundDocumentService } from '../services/outbound-document/outbound-document.service';
 import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { FormGroup, FormControl, Validators, FormBuilder, FormArray, AbstractControl } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormControl, Validators, UntypedFormBuilder, UntypedFormArray, AbstractControl } from '@angular/forms';
 import { CustomerService } from '../services/customer/customer-service';
 import { ICustomer } from '../entities/customer/customer.interface';
 import { ProductService } from '../services/product/product-service';
@@ -54,7 +54,7 @@ export class OutboundDocumentComponent implements OnInit {
   @ViewChild('modalForm', { static: true }) modalForm: ModalComponent;
   @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
 
-  outboundDocumentForm: FormGroup;
+  outboundDocumentForm: UntypedFormGroup;
 
   get id(): AbstractControl { return this.outboundDocumentForm.get('id'); }
 
@@ -63,7 +63,7 @@ export class OutboundDocumentComponent implements OnInit {
   get customerId(): AbstractControl { return this.outboundDocumentForm.get('customerId'); }
 
   constructor(
-    private fb: FormBuilder,
+    private fb: UntypedFormBuilder,
     private outboundDocumentService: OutboundDocumentService,
     private customerService: CustomerService,
     private productService: ProductService,
@@ -71,10 +71,10 @@ export class OutboundDocumentComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.outboundDocumentForm = new FormGroup({
-      id: new FormControl(''),
-      identifier: new FormControl('', [Validators.required]),
-      customerId: new FormControl('', [Validators.required]),
+    this.outboundDocumentForm = new UntypedFormGroup({
+      id: new UntypedFormControl(''),
+      identifier: new UntypedFormControl('', [Validators.required]),
+      customerId: new UntypedFormControl('', [Validators.required]),
       items: this.fb.array([])
     });
 
@@ -83,8 +83,8 @@ export class OutboundDocumentComponent implements OnInit {
     this.productService.getAll({ active: 'true' }).subscribe(products => this.products = products);
   }
 
-  get items(): FormArray {
-    return this.outboundDocumentForm.get('items') as FormArray;
+  get items(): UntypedFormArray {
+    return this.outboundDocumentForm.get('items') as UntypedFormArray;
   }
 
   productId(index: number): AbstractControl {
@@ -95,7 +95,7 @@ export class OutboundDocumentComponent implements OnInit {
     return this.items.at(index).get('quantity');
   }
 
-  newItem(item: IOutboundDocumentItems): FormGroup {
+  newItem(item: IOutboundDocumentItems): UntypedFormGroup {
     return this.fb.group({
       productId: [item.productId, Validators.required],
       quantity: [item.quantity, Validators.compose([Validators.required, nonZero])],
@@ -152,7 +152,7 @@ export class OutboundDocumentComponent implements OnInit {
   confirmForm(): void {
     this.customerId.markAsDirty({ onlySelf: true });
     if (this.items.controls.length > 0) {
-      this.items.controls.forEach((form: FormGroup) => {
+      this.items.controls.forEach((form: UntypedFormGroup) => {
         form.get('productId').markAsDirty({ onlySelf: true });
         form.get('quantity').markAsDirty({ onlySelf: true });
       });

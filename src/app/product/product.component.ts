@@ -2,7 +2,7 @@ import { Component, ViewChild, OnInit } from '@angular/core';
 import { IProduct } from '../entities/product/product.interface';
 import { ProductService } from '../services/product/product-service';
 import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormControl, Validators, AbstractControl } from '@angular/forms';
 
 @Component({
   selector: 'app-product',
@@ -35,7 +35,7 @@ export class ProductComponent implements OnInit {
   @ViewChild('modalForm', { static: true }) modalForm: ModalComponent;
   @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
 
-  productForm: FormGroup;
+  productForm: UntypedFormGroup;
 
   get id(): AbstractControl { return this.productForm.get('id'); }
 
@@ -49,23 +49,23 @@ export class ProductComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.productForm = new FormGroup({
-      id: new FormControl(''),
-      code: new FormControl('', {
+    this.productForm = new UntypedFormGroup({
+      id: new UntypedFormControl(''),
+      code: new UntypedFormControl('', {
         validators: [
           Validators.required
         ],
         updateOn: 'blur'
       }),
-      description: new FormControl('', {
+      description: new UntypedFormControl('', {
         validators: [
           Validators.required,
           Validators.minLength(4)
         ],
         updateOn: 'blur'
       }),
-      codBar: new FormControl(''),
-      active: new FormControl(true)
+      codBar: new UntypedFormControl(''),
+      active: new UntypedFormControl(true)
     });
 
     this.productService.getAll().subscribe(products => this.products = products);

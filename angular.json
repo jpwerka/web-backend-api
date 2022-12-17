@@ -189,7 +189,6 @@
       }
     }
   },
-  "defaultProject": "web-backend-api-sample",
   "cli": {
     "analytics": false
   }
