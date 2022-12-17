@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormControl, FormGroup, Validators } from '@angular/forms';
-import { DownloadDataService, ITypescriptInfo } from 'web-backend-api/src';
+import { DownloadDataService, GetDataType, ITypescriptInfo } from 'web-backend-api/angular';
 
 @Component({
   selector: 'app-download-data',
@@ -17,9 +17,9 @@ export class DownloadDataComponent implements OnInit {
     this.collections = this.downloadService.listCollections();
   }
 
-  get collectionName(): AbstractControl { return this.downloadForm.get('collectionName'); }
+  get collectionName(): AbstractControl<string> { return this.downloadForm.get('collectionName'); }
 
-  get downloadType(): AbstractControl { return this.downloadForm.get('downloadType'); }
+  get downloadType(): AbstractControl<GetDataType> { return this.downloadForm.get('downloadType'); }
 
   ngOnInit() {
     this.downloadForm = new FormGroup({
@@ -27,7 +27,7 @@ export class DownloadDataComponent implements OnInit {
         validators: [Validators.required],
         updateOn: 'blur'
       }),
-      downloadType: new FormControl('json5')
+      downloadType: new FormControl<GetDataType>('json5')
     });
   }
 

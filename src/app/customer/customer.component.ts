@@ -2,7 +2,7 @@ import { Component, ViewChild, OnInit } from '@angular/core';
 import { ICustomer } from '../entities/customer/customer.interface';
 import { CustomerService } from '../services/customer/customer-service';
 import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormControl, Validators, AbstractControl } from '@angular/forms';
 
 @Component({
   selector: 'app-customer',
@@ -35,7 +35,7 @@ export class CustomerComponent implements OnInit {
   @ViewChild('modalForm', { static: true }) modalForm: ModalComponent;
   @ViewChild('modalQuestion', { static: true }) modalQuestion: ModalComponent;
 
-  customerForm: FormGroup;
+  customerForm: UntypedFormGroup;
 
   get id(): AbstractControl { return this.customerForm.get('id'); }
 
@@ -45,16 +45,16 @@ export class CustomerComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.customerForm = new FormGroup({
-      id: new FormControl(''),
-      name: new FormControl('', {
+    this.customerForm = new UntypedFormGroup({
+      id: new UntypedFormControl(''),
+      name: new UntypedFormControl('', {
         validators: [
           Validators.required,
           Validators.minLength(4)
         ],
         updateOn: 'blur'
       }),
-      active: new FormControl(true)
+      active: new UntypedFormControl(true)
     });
 
     this.customerService.getAll().subscribe(customers => this.customers = customers);
