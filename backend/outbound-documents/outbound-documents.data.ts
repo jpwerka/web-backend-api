@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { dataService, IBackendService, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/src';
+import { dataService, IBackendService, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/database';
 import { collectionName, outboundDocuments, transformPost, transformPut } from './outbound-documents.mock';
 import { IOutboundDocument } from 'src/app/entities/outbound-document/outbound-document.interface';
 import { collectionName as customerCollection } from '../customers/customers.mock';
 import { map } from 'rxjs/operators';
 import { ICustomer } from '../../src/app/entities/customer/customer.interface';
+import { from } from 'rxjs';
 
 const transformGetEntity = (document: IOutboundDocument, dbService: IBackendService) => {
-  return dbService.getInstance$(customerCollection, document.customerId).pipe(
+  return from(dbService.getInstance$(customerCollection, document.customerId)).pipe(
     map((customer: ICustomer) => {
       document['customer'] = customer;
       return document;

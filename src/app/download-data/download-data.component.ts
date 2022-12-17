@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { AbstractControl, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
-import { DownloadDataService, ITypescriptInfo } from 'web-backend-api/src';
+import { AbstractControl, FormControl, FormGroup, Validators } from '@angular/forms';
+import { DownloadDataService, GetDataType, ITypescriptInfo } from 'web-backend-api/angular';
 
 @Component({
   selector: 'app-download-data',
@@ -11,23 +11,23 @@ export class DownloadDataComponent implements OnInit {
 
   collections: string[];
 
-  downloadForm: UntypedFormGroup;
+  downloadForm: FormGroup;
 
   constructor(private downloadService: DownloadDataService) {
     this.collections = this.downloadService.listCollections();
   }
 
-  get collectionName(): AbstractControl { return this.downloadForm.get('collectionName'); }
+  get collectionName(): AbstractControl<string> { return this.downloadForm.get('collectionName'); }
 
-  get downloadType(): AbstractControl { return this.downloadForm.get('downloadType'); }
+  get downloadType(): AbstractControl<GetDataType> { return this.downloadForm.get('downloadType'); }
 
   ngOnInit() {
-    this.downloadForm = new UntypedFormGroup({
-      collectionName: new UntypedFormControl('', {
+    this.downloadForm = new FormGroup({
+      collectionName: new FormControl('', {
         validators: [Validators.required],
         updateOn: 'blur'
       }),
-      downloadType: new UntypedFormControl('json5')
+      downloadType: new FormControl<GetDataType>('json5')
     });
   }
 

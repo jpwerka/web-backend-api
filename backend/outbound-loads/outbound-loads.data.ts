@@ -2,7 +2,7 @@
 import { from, Observable, of } from 'rxjs';
 import { concatMap, mergeMap } from 'rxjs/operators';
 import { IOutboundLoad } from 'src/app/entities/outbound-load/outbound-load.interface';
-import { dataService, IBackendService, IHttpResponse, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/src';
+import { dataService, IBackendService, IHttpResponse, IInterceptorUtils, ResponseInterceptorFn } from 'web-backend-api/database';
 import { collectionName as collectionDocuments } from '../outbound-documents/outbound-documents.mock';
 import { collectionName, outboundLoads, transformPost, transformPut } from './outbound-loads.mock';
 
@@ -50,7 +50,7 @@ dataService(collectionName, (dbService: IBackendService) => {
   });
 
   const responseDocuments: ResponseInterceptorFn = (utils: IInterceptorUtils) => {
-    return dbService.getInstance$(collectionName, utils.id).pipe(
+    return from(dbService.getInstance$(collectionName, utils.id)).pipe(
       mergeMap((load: IOutboundLoad) => {
         const query = new Map<string, any[]>();
         query.set('id', load.documentsId);
@@ -96,7 +96,7 @@ dataService(collectionName, (dbService: IBackendService) => {
   });
 
   const responseAddDocument: ResponseInterceptorFn = (utils: IInterceptorUtils & { body: { documentId: number } }) => {
-    return dbService.getInstance$(collectionName, utils.id).pipe(
+    return from(dbService.getInstance$(collectionName, utils.id)).pipe(
       concatMap((outboundLoad: IOutboundLoad) => {
         outboundLoad.documentsId.push(utils.body.documentId);
         return dbService.post$(collectionName, utils.id, outboundLoad, utils.url).pipe(
@@ -119,7 +119,7 @@ dataService(collectionName, (dbService: IBackendService) => {
   });
 
   const responseRemoveDocument: ResponseInterceptorFn = (utils: IInterceptorUtils & { body: { documentId: number } }) => {
-    return dbService.getInstance$(collectionName, utils.id).pipe(
+    return from(dbService.getInstance$(collectionName, utils.id)).pipe(
       concatMap((outboundLoad: IOutboundLoad) => {
         // tslint:disable-next-line: triple-equals
         const index = outboundLoad.documentsId.findIndex(item => item == utils.body.documentId);
@@ -147,7 +147,7 @@ dataService(collectionName, (dbService: IBackendService) => {
 
   const responseDeleteOutboundLoad: ResponseInterceptorFn = (utils: IInterceptorUtils) => {
     return new Observable(observer => {
-      dbService.getInstance$(collectionName, utils.id).subscribe((outboundLoad: IOutboundLoad) => {
+      from(dbService.getInstance$(collectionName, utils.id)).subscribe((outboundLoad: IOutboundLoad) => {
         dbService.delete$(collectionName, utils.id, utils.url).subscribe(response => {
           from(outboundLoad.documentsId).pipe(
             mergeMap(documentId => dbService.put$(collectionDocuments, documentId.toString(), { isLoaded: false }, utils.url))

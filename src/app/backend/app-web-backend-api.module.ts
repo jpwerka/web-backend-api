@@ -1,5 +1,5 @@
 import { ModuleWithProviders, NgModule } from '@angular/core';
-import { WebBackendApiModule } from 'web-backend-api/src';
+import { WebBackendApiModule } from 'web-backend-api/angular';
 
 @NgModule({})
 export class AppWebBackendApiModule {

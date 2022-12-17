@@ -6,7 +6,7 @@ import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
-import { setupBackend, BackendConfigArgs } from 'web-backend-api/src';
+import { setupBackend, BackendConfigArgs } from 'web-backend-api/database';
 
 
 if (environment.production) {
@@ -21,7 +21,7 @@ const context = require.context('../backend/', true, /\.data\.ts$/);
 context.keys().map(context);
 
 const config: BackendConfigArgs = {
-  post204: false, // return the item in body after POST
+  returnItemIn201: false, // return the item in body after POST
   put204: false, // return the item in body after PUT
   pageEncapsulation: false,
   log: true
