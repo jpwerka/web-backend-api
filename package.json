@@ -1,6 +1,6 @@
 {
   "name": "web-backend-api",
-  "version": "4.0.1",
+  "version": "5.0.0",
   "private": false,
   "description": "API para simular um backend em memoria para ser usado em aplicações angular",
   "readmeFilename": "README.md",
@@ -23,7 +23,8 @@
   },
   "license": "MIT",
   "engines": {
-    "node": ">=10.0.0"
+    "node": "^16.0.0",
+    "npm": "^8.0.0"
   },
   "scripts": {
     "ng": "ng",
