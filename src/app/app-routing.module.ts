@@ -43,9 +43,8 @@ const routes: Routes = [
   imports: [RouterModule.forRoot(
     routes,
     {
-      enableTracing: false,
-      relativeLinkResolution: 'corrected'
-    }
+    enableTracing: false
+}
   )],
   exports: [RouterModule]
 })
