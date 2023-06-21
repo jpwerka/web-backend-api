@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { cloneDeep } from 'lodash';
 import { throwError } from 'rxjs';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { IBackendService, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IRequestCore, IRequestInterceptor, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
-import { collectionCustomers, customers, ICustomer } from './interceptors.mock';
+import { ICustomer, collectionCustomers, customers } from './interceptors.mock';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 dataServiceFn.set(collectionCustomers, [(dbService: IBackendService) => {

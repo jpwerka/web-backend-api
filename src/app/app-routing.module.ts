@@ -1,10 +1,10 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { ProductComponent } from './product/product.component';
 import { CustomerComponent } from './customer/customer.component';
+import { DownloadDataComponent } from './download-data/download-data.component';
 import { OutboundDocumentComponent } from './outbound-document/outbound-document.component';
 import { OutboundLoadComponent } from './outbound-load/outbound-load.component';
-import { DownloadDataComponent } from './download-data/download-data.component';
+import { ProductComponent } from './product/product.component';
 
 const routes: Routes = [
   {
@@ -42,9 +42,7 @@ const routes: Routes = [
 @NgModule({
   imports: [RouterModule.forRoot(
     routes,
-    {
-    enableTracing: false
-}
+    { enableTracing: false }
   )],
   exports: [RouterModule]
 })

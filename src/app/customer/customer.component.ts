@@ -1,8 +1,9 @@
-import { Component, ViewChild, OnInit } from '@angular/core';
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { AbstractControl, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
+import { IModalAction, ModalComponent } from '../components/modal/modal.component';
 import { ICustomer } from '../entities/customer/customer.interface';
 import { CustomerService } from '../services/customer/customer-service';
-import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { UntypedFormGroup, UntypedFormControl, Validators, AbstractControl } from '@angular/forms';
 
 @Component({
   selector: 'app-customer',

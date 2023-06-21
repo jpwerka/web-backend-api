@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
+import { BackendTypeArgs, IBackendService, IHttpResponse, IJoinField, IndexedDbService, LoadFn, MemoryDbService } from '../../database/public-api';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { clone } from '../../database/src/data-service/backend.service';
-import { BackendTypeArgs, IBackendService, IHttpResponse, IJoinField, IndexedDbService, LoadFn, MemoryDbService } from '../../database/public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
-import { collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, ICustomer, IOutboundDocument, IOutboundLoad, IProduct, loads, products } from './join-fields.mock';
+import { ICustomer, IOutboundDocument, IOutboundLoad, IProduct, collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, loads, products } from './join-fields.mock';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
