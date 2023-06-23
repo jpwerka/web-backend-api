@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { cloneDeep } from 'lodash';
 import { Observable, throwError } from 'rxjs';
 import { v4 } from 'uuid';

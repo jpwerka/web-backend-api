@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { cloneDeep } from 'lodash';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { IBackendService, IHttpResponse, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
-import { collectionDocuments, documents, IOutboundDocument } from './filters.mock';
+import { IOutboundDocument, collectionDocuments, documents } from './filters.mock';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 dataServiceFn.set(collectionDocuments, [(dbService: IBackendService) => {

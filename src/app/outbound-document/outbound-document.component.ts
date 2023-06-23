@@ -1,12 +1,13 @@
-import { Component, ViewChild, OnInit } from '@angular/core';
-import { IOutboundDocument, IOutboundDocumentItems } from '../entities/outbound-document/outbound-document.interface';
-import { OutboundDocumentService } from '../services/outbound-document/outbound-document.service';
-import { ModalComponent, IModalAction } from '../components/modal/modal.component';
-import { UntypedFormGroup, UntypedFormControl, Validators, UntypedFormBuilder, UntypedFormArray, AbstractControl } from '@angular/forms';
-import { CustomerService } from '../services/customer/customer-service';
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { AbstractControl, UntypedFormArray, UntypedFormBuilder, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
+import { IModalAction, ModalComponent } from '../components/modal/modal.component';
 import { ICustomer } from '../entities/customer/customer.interface';
-import { ProductService } from '../services/product/product-service';
+import { IOutboundDocument, IOutboundDocumentItems } from '../entities/outbound-document/outbound-document.interface';
 import { IProduct } from '../entities/product/product.interface';
+import { CustomerService } from '../services/customer/customer-service';
+import { OutboundDocumentService } from '../services/outbound-document/outbound-document.service';
+import { ProductService } from '../services/product/product-service';
 
 function nonZero(control: AbstractControl): { [key: string]: unknown; } {
   if (Number(control.value) <= 0) {

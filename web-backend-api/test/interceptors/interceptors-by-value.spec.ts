@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { IBackendService, IHttpErrorResponse, IHttpResponse, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';

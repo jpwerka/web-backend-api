@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { BackendConfigArgs, BackendTypeArgs, dataService, getBackendService, IBackendService, IHttpResponse, IndexedDbService, IRequestCore, setupBackend } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';

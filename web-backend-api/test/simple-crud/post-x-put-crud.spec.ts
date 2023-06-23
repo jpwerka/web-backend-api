@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
 import { BackendConfig } from '../../database/src/data-service/backend-config';

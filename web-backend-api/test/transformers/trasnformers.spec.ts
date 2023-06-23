@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
 import { defer, of } from 'rxjs';
@@ -5,7 +6,7 @@ import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { getDateWithoutSeconds } from '../utils/date-utils';
-import { collectionProducts, IProduct, products } from './transformers.mock';
+import { IProduct, collectionProducts, products } from './transformers.mock';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 

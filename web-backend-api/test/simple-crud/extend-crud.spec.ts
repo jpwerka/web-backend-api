@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { IBackendService, IHttpResponse, IPostToOtherMethod, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
-import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
+import { ICustomer, collectionCustomers, customers } from './simple-crud.mock';
 
 const postsToOtherMethod: IPostToOtherMethod[] = [
   {

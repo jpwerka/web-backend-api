@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { cloneDeep } from 'lodash';
 import { Observable, throwError } from 'rxjs';
