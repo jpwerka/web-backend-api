@@ -21,7 +21,7 @@ module.exports = function (config) {
     coverageReporter: {
       type : 'html',
       dir : require('path').join(__dirname, './../coverage'),
-      subdir: ''
+      subdir: '/'
     },
     reporters: ['progress', 'kjhtml', 'coverage'],
     port: 9876,
