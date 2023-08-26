@@ -28,17 +28,10 @@
   },
   "scripts": {
     "ng": "ng",
-    "serve": "ng serve",
-    "serve:backend": "ng serve --configuration=backend --poll=2000",
-    "build": "ng build",
-    "test": "ng test",
-    "test:coverage": "ng test --code-coverage",
-    "lint": "ng lint",
-    "e2e": "ng e2e",
-    "build:lib": "ng build web-backend-api --configuration production",
-    "test:lib": "ng test web-backend-api",
-    "test:lib:coverage": "ng test web-backend-api --code-coverage",
-    "lint:lib": "ng lint web-backend-api"
+    "build": "ng build web-backend-api --configuration production",
+    "test": "ng test web-backend-api",
+    "test:coverage": "ng test web-backend-api --code-coverage",
+    "lint": "ng lint web-backend-api"
   },
   "dependencies": {
     "@angular/animations": "15.2.9",
