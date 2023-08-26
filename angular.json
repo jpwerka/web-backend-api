@@ -3,171 +3,38 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "web-backend-api-sample": {
-      "projectType": "application",
-      "schematics": {},
+    "web-backend-api": {
+      "projectType": "library",
       "root": "",
       "sourceRoot": "src",
-      "prefix": "app",
+      "prefix": "lib",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:browser",
+          "builder": "@angular-devkit/build-angular:ng-packagr",
           "options": {
-            "outputPath": "dist",
-            "index": "src/index.html",
-            "main": "src/main.ts",
-            "polyfills": "src/polyfills.ts",
-            "tsConfig": "tsconfig.app.json",
-            "assets": ["src/favicon.ico", "src/assets"],
-            "styles": ["src/styles.css"],
-            "scripts": [],
-            "allowedCommonJsDependencies": ["uuid", "json5", "lodash"],
-            "vendorChunk": true,
-            "extractLicenses": false,
-            "buildOptimizer": false,
-            "sourceMap": true,
-            "optimization": false,
-            "namedChunks": true
+            "tsConfig": "tsconfig.lib.json",
+            "project": "ng-package.json"
           },
           "configurations": {
             "production": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                },
-                {
-                  "replace": "src/app/backend/app-web-backend-api.module.ts",
-                  "with": "src/app/shared/app-web-backend-api.module.ts"
-                }
-              ],
-              "optimization": true,
-              "outputHashing": "all",
-              "sourceMap": false,
-              "namedChunks": false,
-              "extractLicenses": true,
-              "vendorChunk": false,
-              "buildOptimizer": true,
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "2mb",
-                  "maximumError": "5mb"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "6kb"
-                }
-              ]
-            },
-            "backend": {
-              "budgets": [
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "6kb"
-                }
-              ],
-              "main": "src/main-mem.ts",
-              "tsConfig": "tsconfig.mem.json",
-              "outputHashing": "all",
-              "namedChunks": false,
-              "aot": false,
-              "extractLicenses": true,
-              "vendorChunk": false,
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.back.ts"
-                }
-              ]
+              "tsConfig": "tsconfig.lib.prod.json"
             }
-          },
-          "defaultConfiguration": ""
-        },
-        "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "options": {
-            "browserTarget": "web-backend-api-sample:build"
-          },
-          "configurations": {
-            "production": {
-              "browserTarget": "web-backend-api-sample:build:production"
-            },
-            "backend": {
-              "browserTarget": "web-backend-api-sample:build:backend"
-            }
-          }
-        },
-        "extract-i18n": {
-          "builder": "@angular-devkit/build-angular:extract-i18n",
-          "options": {
-            "browserTarget": "web-backend-api-sample:build"
           }
         },
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
             "main": "src/test.ts",
-            "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.spec.json",
-            "karmaConfig": "karma.conf.js",
-            "assets": ["src/favicon.ico", "src/assets"],
-            "styles": ["src/styles.css"],
-            "scripts": []
-          }
-        },
-        "lint": {
-          "builder": "@angular-eslint/builder:lint",
-          "options": {
-            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
-          }
-        },
-        "e2e": {
-          "builder": "@angular-devkit/build-angular:protractor",
-          "options": {
-            "protractorConfig": "e2e/protractor.conf.js",
-            "devServerTarget": "web-backend-api-sample:serve"
-          },
-          "configurations": {
-            "production": {
-              "devServerTarget": "web-backend-api-sample:serve:production"
-            }
-          }
-        }
-      }
-    },
-    "web-backend-api": {
-      "projectType": "library",
-      "root": "web-backend-api",
-      "sourceRoot": "web-backend-api/src",
-      "prefix": "lib",
-      "architect": {
-        "build": {
-          "builder": "@angular-devkit/build-angular:ng-packagr",
-          "options": {
-            "tsConfig": "web-backend-api/tsconfig.lib.json",
-            "project": "web-backend-api/ng-package.json"
-          },
-          "configurations": {
-            "production": {
-              "tsConfig": "web-backend-api/tsconfig.lib.prod.json"
-            }
-          }
-        },
-        "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "main": "web-backend-api/src/test.ts",
-            "tsConfig": "web-backend-api/tsconfig.spec.json",
-            "karmaConfig": "web-backend-api/karma.conf.js"
+            "karmaConfig": "karma.conf.js"
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [
-              "web-backend-api/**/*.ts",
-              "web-backend-api/**/*.html"
+              "**/*.ts",
+              "**/*.html"
             ]
           }
         }
