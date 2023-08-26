@@ -4,11 +4,7 @@
   "private": false,
   "description": "API para simular um backend em memoria para ser usado em aplicações angular",
   "readmeFilename": "README.md",
-  "keywords": [
-    "backend",
-    "angular",
-    "mock"
-  ],
+  "keywords": [ ],
   "tags": [
     "backend",
     "mock"
