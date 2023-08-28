@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { cloneDeep } from 'lodash';
-import { Observable, throwError } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
@@ -27,7 +26,6 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
   createDatabase(): Promise<boolean> {
     const self = this;
-    this.dbReadySubject.next(false);
     return new Promise<boolean>((resolve, reject) => {
       const request = window.indexedDB.open(self.dbName, 1);
 
@@ -50,7 +48,6 @@ export class IndexedDbService extends BackendService implements IBackendService 
   }
 
   deleteDatabase(): Promise<boolean> {
-    this.dbReadySubject.next(false);
     return new Promise<boolean>((resolve, reject) => {
       const request = window.indexedDB.deleteDatabase(this.dbName);
 
@@ -98,7 +95,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         });
       } else {
         console.warn('[WebBackendApi]', 'There is not collection in data service!');
-        self.dbReadySubject.next(true);
+        self.dbReadyFn(true);
         resolve(true);
       }
 
@@ -106,7 +103,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
         self.loadsFn.forEach(fn => {
           fn.call(null, self);
         });
-        self.dbReadySubject.next(true);
+        self.dbReadyFn(true);
         resolve(true);
       };
       objectStore.transaction.onerror = (event: Event) => {
@@ -183,9 +180,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]> {
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Observable<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Promise<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable = true): Promise<unknown[]> | Observable<unknown[]> {
+
     const self = this;
-    return new Observable((observer) => {
+    const ret = new Promise<unknown[]>((resolve, reject) => {
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const request = objectStore.openCursor();
       const queryParams: IQueryParams = { count: 0, conditions };
@@ -194,14 +194,15 @@ export class IndexedDbService extends BackendService implements IBackendService 
       request.onsuccess = (event) => {
         const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
         if (self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queryParams)) {
-          observer.next(queryResults.items);
-          observer.complete();
+          resolve(queryResults.items);
         }
       };
       request.onerror = (event) => {
-        observer.error((event.target as IEventTargetError).error);
+        reject((event.target as IEventTargetError).error);
       };
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
   count$(collectionName: string): Promise<number> {
@@ -220,8 +221,45 @@ export class IndexedDbService extends BackendService implements IBackendService 
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: boolean
+    caseSensitiveSearch?: boolean,
+    asObservable?: boolean
   ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  >;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: boolean,
+    asObservable?: boolean
+  ): Promise<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  >;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: boolean,
+    asObservable = true
+  ): Promise<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  > | Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
     IHttpResponse<unknown[]> |
@@ -229,7 +267,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     IHttpResponse<IQueryResult<unknown>>
   > {
     const self = this;
-    return new Observable((observer) => {
+    const ret = new Promise((resolve, reject) => {
       let request: IDBRequest<unknown>;
       let isCursor = false;
       let queryParams: IQueryParams = { count: 0 };
@@ -262,15 +300,14 @@ export class IndexedDbService extends BackendService implements IBackendService 
             item => {
               if (item) {
                 const response = self.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
-                observer.next(response);
-                observer.complete();
+                resolve(response);
               } else {
                 // eslint-disable-next-line max-len
                 const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
-                observer.error(response);
+                reject(response);
               }
             },
-            (error) => this.dispatchErrorToResponse(observer, url, error)
+            (error) => this.dispatchErrorToResponse(reject, url, error)
           );
         } else {
           const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
@@ -305,10 +342,9 @@ export class IndexedDbService extends BackendService implements IBackendService 
           })().then(
             () => {
               const response = self.utils.createResponseOptions(url, STATUS.OK, self.pagefy(queryResults, queryParams));
-              observer.next(response);
-              observer.complete();
+              resolve(response);
             },
-            (error) => self.dispatchErrorToResponse(observer, url, error)
+            (error) => self.dispatchErrorToResponse(reject, url, error)
           );
         }
       };
@@ -316,9 +352,11 @@ export class IndexedDbService extends BackendService implements IBackendService 
       request.onerror = (event) => {
         // eslint-disable-next-line max-len
         const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, (event.target as IEventTargetError).error);
-        observer.error(response);
+        reject(response);
       };
     });
+    // FIXME Remove this code when clear deprecated return
+    return (asObservable ? from(ret) : ret);
   }
 
   private getAllItemsToArray(cursor: IQueryCursor<IExtendEntity>, items: IExtendEntity[]): boolean {
@@ -333,9 +371,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return retorna;
   }
 
-  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
+  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string, asObservable = true):
+    Promise<IHttpResponse<unknown>> | Observable<IHttpResponse<unknown>> {
     const self = this;
-    return new Observable((observer) => {
+    const ret = new Promise((resolve, reject) => {
 
       let findId = id ? self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
       if (item.id) {
@@ -352,7 +393,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
       if (findId && item.id && findId !== item.id) {
         const error = `Request id (${findId}) does not match item.id (${item.id})`;
         const response = self.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
-        observer.error(response);
+        reject(response);
         return;
       } else {
         findId = item.id ? item.id : findId;
@@ -387,9 +428,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
                     return response;
                   }
                 })().then(response => {
-                  observer.next(response);
-                  observer.complete();
-                }, error => this.dispatchErrorToResponse(observer, url, error));
+                  resolve(response);
+                }, error => this.dispatchErrorToResponse(reject, url, error));
               }
             };
 
@@ -399,9 +439,9 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 detailedMessage: (event.target as IEventTargetError).error
               };
               const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-              observer.error(response);
+              reject(response);
             };
-          }, error => this.dispatchErrorToResponse(observer, url, error));
+          }, error => this.dispatchErrorToResponse(reject, url, error));
 
         } else if (self.config.post409) {
           const error = {
@@ -409,7 +449,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
             detailedMessage: 'Use PUT instead.'
           };
           const response = self.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
-          observer.error(response);
+          reject(response);
         } else { // if item already exists in collection
 
           void (async () => {
@@ -437,9 +477,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
-                observer.next(response);
-                observer.complete();
-              }, error => this.dispatchErrorToResponse(observer, url, error));
+                resolve(response);
+              }, error => this.dispatchErrorToResponse(reject, url, error));
 
             };
 
@@ -449,10 +488,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 detailedMessage: (event.target as IEventTargetError).error
               };
               const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-              observer.error(response);
+              reject(response);
             };
 
-          }, error => this.dispatchErrorToResponse(observer, url, error));
+          }, error => this.dispatchErrorToResponse(reject, url, error));
         }
       };
 
@@ -462,36 +501,43 @@ export class IndexedDbService extends BackendService implements IBackendService 
           detailedMessage: (event.target as IEventTargetError).error
         };
         const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-        observer.error(response);
+        reject(response);
       };
 
       if (!findId) { // fake request
         requestGet.onsuccess(null);
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return (asObservable ? from(ret) : ret);
   }
 
-  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
-    // eslint-disable-next-line eqeqeq
-    if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
-    }
-
-    if (item.id) {
-      item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
-    }
-
-    const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
-    if (item.id && item.id !== findId) {
-      const error = {
-        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
-        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-      };
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
-    }
-
+  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string, asObservable = true):
+    Promise<IHttpResponse<unknown>> | Observable<IHttpResponse<unknown>> {
     const self = this;
-    return new Observable((observer) => {
+    const ret = new Promise((resolve, reject) => {
+      // eslint-disable-next-line eqeqeq
+      if (id == undefined) {
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
+        return;
+      }
+
+      if (item.id) {
+        item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      }
+
+      const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
+      if (item.id && item.id !== findId) {
+        const error = {
+          message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+        };
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
+        return;
+      }
+
       const requestGet = self.db.transaction(collectionName, 'readonly').objectStore(collectionName).get(findId);
 
       requestGet.onsuccess = () => {
@@ -522,9 +568,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
-                observer.next(response);
-                observer.complete();
-              }, error => this.dispatchErrorToResponse(observer, url, error));
+                resolve(response);
+              }, error => this.dispatchErrorToResponse(reject, url, error));
             };
 
             requestPut.onerror = (event) => {
@@ -533,9 +578,9 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 detailedMessage: (event.target as IEventTargetError).error
               };
               const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-              observer.error(response);
+              reject(response);
             };
-          }, error => this.dispatchErrorToResponse(observer, url, error));
+          }, error => this.dispatchErrorToResponse(reject, url, error));
 
         } else if (self.config.put404) {
           const error = {
@@ -543,7 +588,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
             detailedMessage: 'Use POST instead.'
           };
           const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
-          observer.error(response);
+          reject(response);
         } else {
           void (async () => {
             const transformfn = this.transformPostMap.get(collectionName);
@@ -570,9 +615,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
                     return response;
                   }
                 })().then(response => {
-                  observer.next(response);
-                  observer.complete();
-                }, error => this.dispatchErrorToResponse(observer, url, error));
+                  resolve(response);
+                }, error => this.dispatchErrorToResponse(reject, url, error));
               }
             };
 
@@ -582,9 +626,9 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 detailedMessage: (event.target as IEventTargetError).error
               };
               const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-              observer.error(response);
+              reject(response);
             };
-          }, error => this.dispatchErrorToResponse(observer, url, error));
+          }, error => this.dispatchErrorToResponse(reject, url, error));
         }
       };
 
@@ -594,25 +638,31 @@ export class IndexedDbService extends BackendService implements IBackendService 
           detailedMessage: (event.target as IEventTargetError).error
         };
         const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-        observer.error(response);
+        reject(response);
       };
     });
+    // FIXME Remove this code when clear deprecated return
+    return (asObservable ? from(ret) : ret);
   }
 
-  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
-    // eslint-disable-next-line eqeqeq
-    if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
-    }
+  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Observable<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Promise<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string, asObservable = true):
+    Promise<IHttpResponse<null>> | Observable<IHttpResponse<null>> {
     const self = this;
-    return new Observable((observer) => {
+    const ret = new Promise((resolve, reject) => {
+      // eslint-disable-next-line eqeqeq
+      if (id == undefined) {
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
+        return;
+      }
+
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
 
       const onsuccess = () => {
         const response = self.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-        observer.next(response as IHttpResponse<null>);
-        observer.complete();
+        resolve(response);
       };
 
       const onerror = (event: Event) => {
@@ -621,7 +671,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           detailedMessage: (event.target as IEventTargetError).error
         };
         const response = self.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, error);
-        observer.error(response);
+        reject(response);
       };
 
       if (self.config.delete404) {
@@ -635,7 +685,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           } else {
             const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
             const response = self.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
-            observer.error(response);
+            reject(response);
           }
         };
 
@@ -646,6 +696,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
         request.onerror = onerror;
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return (asObservable ? from(ret) : ret);
   }
 
   private generateStrategyId(url?: string): string | number {

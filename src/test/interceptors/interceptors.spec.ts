@@ -2,7 +2,7 @@
 import { cloneDeep } from 'lodash';
 import { throwError } from 'rxjs';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
-import { IBackendService, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IRequestCore, IRequestInterceptor, LoadFn, MemoryDbService, STATUS } from '../../public-api';
+import { IBackendService, IHttpErrorResponse, IInterceptorUtils, IRequestCore, IRequestInterceptor, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { ICustomer, collectionCustomers, customers } from './interceptors.mock';
 
@@ -18,7 +18,7 @@ describe('Testes para cenários de intercptação de respostas', () => {
 
   let dbService: MemoryDbService;
 
-  beforeAll((done: DoneFn) => {
+  beforeAll(async () => {
     dbService = new MemoryDbService(new BackendConfig({
       apiBase: 'api/v1',
       host: 'myhost.com',
@@ -27,16 +27,11 @@ describe('Testes para cenários de intercptação de respostas', () => {
       returnItemIn201: true
     }));
     configureBackendUtils(dbService);
-    dbService.createDatabase().then(
-      () => dbService.createObjectStore(dataServiceFn).then(
-        () => done(),
-        error => done.fail(error)
-      ),
-      error => done.fail(error)
-    );
+    await dbService.createDatabase();
+    await dbService.createObjectStore(dataServiceFn);
   });
 
-  it('Deve responder a interceptor com um path completo', (done: DoneFn) => {
+  it('Deve responder a interceptor com um path completo', async () => {
     // given
     interface IUser { userId: number, userName: string }
     const user: IUser = { userId: 1, userName: 'Fulano de tal' };
@@ -52,14 +47,9 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: `/api/users/1`
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<IUser>) => {
-        // then
-        expect(response.body).toEqual(user);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<IUser>(req);
+    // then
+    expect(response.body).toEqual(user);
   });
 
   it('Deve lançar erro ao tentar adicionar um interceptor que não seja caminho completo sem a coleção', () => {
@@ -74,7 +64,7 @@ describe('Testes para cenários de intercptação de respostas', () => {
       .toThrowError('For no complete interceptor paths, must be informed collectionName in interceptor.');
   });
 
-  it('Deve responder a interceptor depois do ID respondendo com um Observable', (done: DoneFn) => {
+  it('Deve responder a interceptor depois do ID respondendo com um Observable', async () => {
     // given
     const updatedAt = new Date();
     const intercetor: IRequestInterceptor = {
@@ -93,17 +83,12 @@ describe('Testes para cenários de intercptação de respostas', () => {
     };
     const expectedCustomer = Object.assign({}, customers[0], { active: false, updatedAt });
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<ICustomer>) => {
-        // then
-        expect(response.body).toEqual(expectedCustomer);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<ICustomer>(req);
+    // then
+    expect(response.body).toEqual(expectedCustomer);
   });
 
-  it('Deve responder a um interceptor com path vazio, aplicando replace path', (done: DoneFn) => {
+  it('Deve responder a um interceptor com path vazio, aplicando replace path', async () => {
     // given
     dbService.addReplaceUrl(collectionCustomers, 'query/customers');
     const intercetor: IRequestInterceptor = {
@@ -121,18 +106,12 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: `/api/v1/query/customers`
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<{ interceptdCustomers: ICustomer[] }>) => {
-        // then
-        expect(response.body).toEqual({ interceptdCustomers: customers });
-        dbService.clearReplaceUrl(collectionCustomers);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<{ interceptdCustomers: ICustomer[]}>(req);
+    // then
+    expect(response.body).toEqual({ interceptdCustomers: customers });
   });
 
-  it('Deve processar um interceptor mas retornar pela biblioteca, quando intercetor retornar undefined', (done: DoneFn) => {
+  it('Deve processar um interceptor mas retornar pela biblioteca, quando intercetor retornar undefined', async () => {
     // given
     class TestInterceptorUndefined {
       static process(utils: IInterceptorUtils): void {
@@ -160,18 +139,13 @@ describe('Testes para cenários de intercptação de respostas', () => {
       body: Object.assign({}, customers[4], { active: false, updatedAt, propertyAdd: 'Add via PUT in Lib' })
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<ICustomer & { propertyAdd: string }>) => {
-        // then
-        expect(response.body).toEqual(expectedCustomer);
-        expect(TestInterceptorUndefined.process).toHaveBeenCalledWith(jasmine.objectContaining({
-          url: '/api/v1/core/customers/5'
-        }));
-        dbService.clearReplaceUrl(collectionCustomers);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<ICustomer & { propertyAdd: string }>(req);
+    // then
+    expect(response.body).toEqual(expectedCustomer);
+    expect(TestInterceptorUndefined.process).toHaveBeenCalledWith(jasmine.objectContaining({
+      url: '/api/v1/core/customers/5'
+    }));
+    dbService.clearReplaceUrl(collectionCustomers);
   });
 
   it('Deve retornar erro quando interceptor retornar a propriedade error na resposta', (done: DoneFn) => {
@@ -191,7 +165,7 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: `/api/v1/customers/error`,
     };
     // when
-    dbService.handleRequest(req).subscribe(
+    dbService.handleRequest(req).then(
       () => done.fail('Não deve retornar no Observable.next'),
       (error: IHttpErrorResponse) => {
         // then
@@ -219,7 +193,7 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: `/api/v1/customers/throwError`,
     };
     // when
-    dbService.handleRequest(req).subscribe(
+    dbService.handleRequest(req).then(
       () => done.fail('Não deve retornar no Observable.next'),
       (error: IHttpErrorResponse) => {
         // then
@@ -230,7 +204,7 @@ describe('Testes para cenários de intercptação de respostas', () => {
     );
   });
 
-  it('Deve processar um interceptor completo parseando os ids entre chaves', (done: DoneFn) => {
+  it('Deve processar um interceptor completo parseando os ids entre chaves', async () => {
     // given
     const intercetor: IRequestInterceptor = {
       method: 'GET',
@@ -246,17 +220,12 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/parent/123/child/456/action'
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<{ interceptorIds: string[] }>) => {
-        // then
-        expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<{ interceptorIds: string[] }>(req);
+    // then
+    expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
   });
 
-  it('Deve processar um interceptor completo parseando os ids pelo :id', (done: DoneFn) => {
+  it('Deve processar um interceptor completo parseando os ids pelo :id', async () => {
     // given
     const intercetor: IRequestInterceptor = {
       method: 'DELETE',
@@ -273,16 +242,12 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/v1/customers/123/sub-collection/456/detete'
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<{ interceptorIds: string[] }>) => {
-        expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<{ interceptorIds: string[] }>(req);
+    // then
+    expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
   });
 
-  it('Deve processar um interceptor completo ignorando um path coringa', (done: DoneFn) => {
+  it('Deve processar um interceptor completo ignorando um path coringa', async () => {
     // given
     const intercetor: IRequestInterceptor = {
       method: 'GET',
@@ -298,27 +263,19 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/interceptors/123/um-path-coringa/456/action'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<{ interceptorIds: string[] }>) => {
-        // then
-        expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
-        const req2: IRequestCore<null> = {
-          method: 'GET',
-          url: 'api/interceptors/987/outro-path-coringa/654/action'
-        };
-        dbService.handleRequest(req2).subscribe(
-          (response: IHttpResponse<{ interceptorIds: string[] }>) => {
-            expect(response.body).toEqual({ interceptorIds: ['987', '654'] });
-            done();
-          },
-          error => done.fail(error)
-        );
-      },
-      error => done.fail(error)
-    );
+    let response = await dbService.handleRequest<{ interceptorIds: string[] }>(req1);
+    // then
+    expect(response.body).toEqual({ interceptorIds: ['123', '456'] });
+    const req2: IRequestCore<null> = {
+      method: 'GET',
+      url: 'api/interceptors/987/outro-path-coringa/654/action'
+    };
+    response = await dbService.handleRequest(req2);
+    // then
+    expect(response.body).toEqual({ interceptorIds: ['987', '654'] });
   });
 
-  it('Deve processar um interceptor parcial depois do ID ignorando um path coringa via path param', (done: DoneFn) => {
+  it('Deve processar um interceptor parcial depois do ID ignorando um path coringa via path param', async () => {
     // given
     dbService.addReplaceUrl(collectionCustomers, ['core', 'customers']);
     dbService.addReplaceUrl(collectionCustomers, ['query', 'customers']);
@@ -342,36 +299,29 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/v1/core/customers/123/um-path-coringa/456?ignoredParam=ignoredValue&param1=value1&param2=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.body).toEqual({
-          id: '123',
-          interceptorIds: ['456'],
-          query: new Map<string, string[]>().set('ignoredParam', ['ignoredValue']).set('param1', ['value1']).set('param2', ['value2'])
-        });
-        const req2: IRequestCore<null> = {
-          method: 'GET',
-          url: 'api/v1/query/customers/987/outro-path-coringa/654?param1=value1&param2=value2'
-        };
-        dbService.handleRequest(req2).subscribe(
-          (response: IHttpResponse<unknown>) => {
-            expect(response.body).toEqual({
-              id: '987',
-              interceptorIds: ['654'],
-              query: new Map<string, string[]>().set('param1', ['value1']).set('param2', ['value2'])
-            });
-            dbService.clearReplaceUrl(collectionCustomers);
-            done();
-          },
-          error => done.fail(error)
-        );
-      },
-      error => done.fail(error)
-    );
+    let response = await dbService.handleRequest(req1);
+    // then
+    expect(response.body).toEqual({
+      id: '123',
+      interceptorIds: ['456'],
+      query: new Map<string, string[]>().set('ignoredParam', ['ignoredValue']).set('param1', ['value1']).set('param2', ['value2'])
+    });
+    const req2: IRequestCore<null> = {
+      method: 'GET',
+      url: 'api/v1/query/customers/987/outro-path-coringa/654?param1=value1&param2=value2'
+    };
+    // when
+    response = await dbService.handleRequest(req2);
+    // then
+    expect(response.body).toEqual({
+      id: '987',
+      interceptorIds: ['654'],
+      query: new Map<string, string[]>().set('param1', ['value1']).set('param2', ['value2'])
+    });
+    dbService.clearReplaceUrl(collectionCustomers);
   });
 
-  it('Deve processar um interceptor completo via path param com Map', (done: DoneFn) => {
+  it('Deve processar um interceptor completo via path param com Map', async () => {
     // given
     const intercetor: IRequestInterceptor = {
       method: 'GET',
@@ -390,20 +340,15 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/v1/products/list?ignoredParam=ignoredValue&multiValueParam=value1&multiValueParam=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.body).toEqual({
-          interceptorIds: [],
-          query: new Map<string, string[]>().set('ignoredParam', ['ignoredValue']).set('multiValueParam', ['value1', 'value2'])
-        });
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1);
+    // then
+    expect(response.body).toEqual({
+      interceptorIds: [],
+      query: new Map<string, string[]>().set('ignoredParam', ['ignoredValue']).set('multiValueParam', ['value1', 'value2'])
+    });
   });
 
-  it('Deve processar um interceptor completo via path param com Objeto', (done: DoneFn) => {
+  it('Deve processar um interceptor completo via path param com Objeto', async () => {
     // given
     const intercetor: IRequestInterceptor = {
       method: 'GET',
@@ -422,18 +367,12 @@ describe('Testes para cenários de intercptação de respostas', () => {
       url: 'api/v1/documents/123456789?param1=value1&param2=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.body).toEqual({
-          interceptorIds: ['123456789'],
-          query: new Map<string, string[]>().set('param1', ['value1']).set('param2', ['value2'])
-        });
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1)
+    // then
+    expect(response.body).toEqual({
+      interceptorIds: ['123456789'],
+      query: new Map<string, string[]>().set('param1', ['value1']).set('param2', ['value2'])
+    });
   });
-
 
 });

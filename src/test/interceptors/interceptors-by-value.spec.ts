@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { BackendConfig } from '../../database/src/data-service/backend-config';
-import { IBackendService, IHttpErrorResponse, IHttpResponse, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
+import { IBackendService, IHttpErrorResponse, IRequestCore, LoadFn, MemoryDbService, STATUS } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers } from './interceptors.mock';
 
@@ -16,7 +16,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
 
   let dbService: MemoryDbService;
 
-  beforeAll((done: DoneFn) => {
+  beforeAll(async () => {
     dbService = new MemoryDbService(new BackendConfig({
       apiBase: 'api/v1',
       host: 'myhost.com',
@@ -25,13 +25,8 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       returnItemIn201: true
     }));
     configureBackendUtils(dbService);
-    dbService.createDatabase().then(
-      () => dbService.createObjectStore(dataServiceFn).then(
-        () => done(),
-        error => done.fail(error)
-      ),
-      error => done.fail(error)
-    );
+    await dbService.createDatabase();
+    await dbService.createObjectStore(dataServiceFn);
   });
 
   it('Deve lançar erro ao tentar adicionar interceptor via string com JSON inválido', () => {
@@ -62,7 +57,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       .toThrowError('For no complete interceptor paths, must be informed collectionName in interceptor.');
   });
 
-  it('Deve responder a interceptor com um path completo', (done: DoneFn) => {
+  it('Deve responder a interceptor com um path completo', async () => {
     // given
     interface IUser { userId: number, userName: string }
     const user: IUser = { userId: 1, userName: 'Fulano de tal' };
@@ -76,14 +71,9 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: `/api/users/1`
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<IUser>) => {
-        // then
-        expect(response.body).toEqual(user);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<IUser>(req);
+    // then
+    expect(response.body).toEqual(user);
   });
 
   it('Deve responder com um erro, caso o response contenha a propriedade error', (done: DoneFn) => {
@@ -98,7 +88,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: `api/v5/error`
     };
     // when
-    dbService.handleRequest(req).subscribe(
+    dbService.handleRequest(req).then(
       () => done.fail('Não deve retornar no Observable.next'),
       (error: IHttpErrorResponse) => {
         // then
@@ -109,7 +99,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
     );
   });
 
-  it('Deve responder OK, com o conteúdo do BODY', (done: DoneFn) => {
+  it('Deve responder OK, com o conteúdo do BODY', async () => {
     // given
     const intercetor = {
       path: 'api/response/withBody',
@@ -121,18 +111,13 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/response/withBody',
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<{ property1: string }>) => {
-        // then
-        expect(response.status).toEqual(STATUS.OK);
-        expect(response.body).toEqual({ property1: 'value1' });
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest<{ property1: string }>(req);
+    // then
+    expect(response.status).toEqual(STATUS.OK);
+    expect(response.body).toEqual({ property1: 'value1' });
   });
 
-  it('Deve responder NO_CONTENT, caso o response não contenha o BODY nem o STATUS', (done: DoneFn) => {
+  it('Deve responder NO_CONTENT, caso o response não contenha o BODY nem o STATUS', async () => {
     // given
     const intercetor = {
       path: 'api/response/nobody',
@@ -144,18 +129,13 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/response/nobody',
     };
     // when
-    dbService.handleRequest(req).subscribe(
-      (response: IHttpResponse<null>) => {
-        // then
-        expect(response.status).toEqual(STATUS.NO_CONTENT);
-        expect(response.body).toEqual({});
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req);
+    // then
+    expect(response.status).toEqual(STATUS.NO_CONTENT);
+    expect(response.body).toEqual({});
   });
 
-  it('Deve processar um interceptor completo via path param com String', (done: DoneFn) => {
+  it('Deve processar um interceptor completo via path param com String', async () => {
     // given
     const intercetor = {
       method: 'GET',
@@ -169,17 +149,12 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/v1/documents/123456789?param1=value1&param2=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.status).toEqual(STATUS.OK);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1);
+    // then
+    expect(response.status).toEqual(STATUS.OK);
   });
 
-  it('Deve processar um interceptor completo via path param com Map', (done: DoneFn) => {
+  it('Deve processar um interceptor completo via path param com Map', async () => {
     // given
     const intercetor = {
       method: 'GET',
@@ -193,17 +168,12 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/v1/multiValueParam/values?multiValueParam=value1&multiValueParam=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.status).toEqual(STATUS.MULTIPLE_CHOICES);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1);
+    // then
+    expect(response.status).toEqual(STATUS.MULTIPLE_CHOICES);;
   });
 
-  it('Deve processar um interceptor completo via path param com Objeto', (done: DoneFn) => {
+  it('Deve processar um interceptor completo via path param com Objeto', async () => {
     // given
     const intercetor = {
       method: 'GET',
@@ -217,17 +187,12 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/v1/documents/123456789?param1=value1&param2=value2'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.status).toEqual(STATUS.OK);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1);
+    // then
+    expect(response.status).toEqual(STATUS.OK);
   });
 
-  it('Deve processar um interceptor para uma coleção mesmo sendo passado via value', (done: DoneFn) => {
+  it('Deve processar um interceptor para uma coleção mesmo sendo passado via value', async () => {
     // given
     const intercetor = `{
       "method": "GET",
@@ -241,16 +206,10 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       url: 'api/v1/customers/99'
     };
     // when
-    dbService.handleRequest(req1).subscribe(
-      (response: IHttpResponse<unknown>) => {
-        // then
-        expect(response.body).toEqual(customers[0]);
-        expect(response.status).toEqual(STATUS.NOT_MODIFIED);
-        done();
-      },
-      error => done.fail(error)
-    );
+    const response = await dbService.handleRequest(req1);
+    // then
+    expect(response.body).toEqual(customers[0]);
+    expect(response.status).toEqual(STATUS.NOT_MODIFIED);
   });
-
 
 });

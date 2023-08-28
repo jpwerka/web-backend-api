@@ -76,32 +76,22 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
 
     }]);
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       dbService = new MemoryDbService(backendConfig);
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase();
+      await dbService.createObjectStore(dataServiceFn);
     });
 
-    afterAll((done: DoneFn) => {
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+    afterAll(async () => {
+      await dbService.deleteDatabase();
     })
 
-    beforeEach((done: DoneFn) => {
-      void (async (): Promise<void> => {
-        await dbService.clearData(collectionCustomers);
-        for (const customer of customers) {
-          await dbService.storeData(collectionCustomers, cloneDeep(customer));
-        }
-      })().then(() => done());
+    beforeEach(async () => {
+      await dbService.clearData(collectionCustomers);
+      for (const customer of customers) {
+        await dbService.storeData(collectionCustomers, cloneDeep(customer));
+      }
     })
 
     it(`Deve chamar o método PUT mesmo passando uma requisição de POST por Segmento URL.`, (done: DoneFn) => {
@@ -118,7 +108,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
 
       const spyPut$ = spyOn(dbService, 'put$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -142,7 +132,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyPut$ = spyOn(dbService, 'put$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -167,7 +157,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyPut$ = spyOn(dbService, 'put$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -187,7 +177,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = spyOn(dbService, 'delete$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();
@@ -206,7 +196,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = spyOn(dbService, 'delete$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();
@@ -228,7 +218,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = spyOn(dbService, 'delete$').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();

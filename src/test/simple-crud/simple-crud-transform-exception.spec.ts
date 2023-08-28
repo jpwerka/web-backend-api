@@ -27,30 +27,22 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
       delay: 0
     })
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       if (dbType.dbtype === 'memory') {
         dbService = new MemoryDbService(backendConfig);
       } else {
         dbService = new IndexedDbService(backendConfig);
       }
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase();
+      await dbService.createObjectStore(dataServiceFn);
     });
 
-    afterAll((done: DoneFn) => {
+    afterAll(async () => {
       if (dbService instanceof IndexedDbService) {
         dbService.closeDatabase();
       }
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+      await dbService.deleteDatabase();
     })
 
     beforeEach(() => {
@@ -72,14 +64,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformGetById';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer GET All e ser lançado exception no TransformGetAll. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -96,14 +88,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw new Error('Erro no TransformGetAll');
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer POST e ser lançado exception no TransformPost. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -123,14 +115,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw responseError;
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer PUT e ser lançado exception no TransformPut. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -156,14 +148,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         };
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer POST para atualizar um item e ser lançado exception no TransformPut. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -183,14 +175,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 123456789;
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer PUT para criar um item e ser lançado exception no TransformPost. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -209,14 +201,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformPost';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer POST e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -235,14 +227,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformGetById';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer POST atualizando um registro e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -261,14 +253,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformGetById';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer PUT e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -287,14 +279,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformGetById';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar erro ao fazer PUT e ser lançado exception no TransformGet. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -313,14 +305,14 @@ describe('Testes de falha de uma aplicação CRUD com excptions nas funções de
         throw 'Erro no TransformGetById';
       });
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.INTERNAL_SERVER_ERROR);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
   });

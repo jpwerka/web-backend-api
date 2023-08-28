@@ -324,5 +324,5 @@ export interface IPassThruBackend {
    * Handle an HTTP request and return an Observable of HTTP response
    * Both the request type and the response type are determined by the supporting HTTP library.
    */
-  handle(req: IRequestCore<unknown>): Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
+  handle(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown> | IHttpErrorResponse>;
 }

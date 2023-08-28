@@ -52,7 +52,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'GET',
           url: `http://localhost/${collectionCustomers}`
         };
-        dbService.handleRequest(req).subscribe(
+        dbService.handleRequest(req).then(
           (response: IHttpResponse<ICustomer[]>) => {
             expect(response.body).toEqual(customers);
             done();
@@ -75,7 +75,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           url: `http://localhost/${collectionCustomers}`,
           urlWithParams: `http://localhost/${collectionCustomers}?name=23451`
         };
-        dbService.handleRequest(req).subscribe(
+        dbService.handleRequest(req).then(
           (response: IHttpResponse<ICustomer[]>) => {
             expect(response.body).toEqual(expectedCustomers);
             done();
@@ -97,7 +97,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'GET',
           url: `http://localhost/${collectionCustomers}/5`,
         };
-        dbService.handleRequest(req).subscribe(
+        dbService.handleRequest(req).then(
           (response: IHttpResponse<ICustomer>) => {
             expect(response.body).toEqual(expectedCustomer);
             done();
@@ -118,7 +118,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         url: `http://localhost/${collectionCustomers}`,
         body: expectedCustomer
       };
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (responsePost: IHttpResponse<ICustomer>) => {
           expect(responsePost.body).toEqual(expectedCustomer);
           dbService.get$(collectionCustomers, '1000', undefined, collectionCustomers).subscribe(
@@ -143,7 +143,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         url: `http://localhost/${collectionCustomers}`,
         body: expectedCustomer
       };
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (responsePost: IHttpResponse<ICustomer>) => {
           expect(responsePost.body).toEqual(jasmine.objectContaining(expectedCustomer));
           expectedCustomer = Object.assign(expectedCustomer, { id: responsePost.body.id });
@@ -171,7 +171,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           url: `http://localhost/${collectionCustomers}/1`,
           body: { name: 'Alterado nome cliente 1' }
         };
-        dbService.handleRequest(req).subscribe(
+        dbService.handleRequest(req).then(
           (responsePost: IHttpResponse<ICustomer>) => {
             expect(responsePost.body).toEqual(jasmine.objectContaining({ name: 'Alterado nome cliente 1' }));
             const expectedCustomer = Object.assign({}, customers[0], { name: 'Alterado nome cliente 1' });
@@ -199,7 +199,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'DELETE',
           url: `http://localhost/${collectionCustomers}/5`,
         };
-        dbService.handleRequest(req).subscribe(
+        dbService.handleRequest(req).then(
           (responseDelete: IHttpResponse<ICustomer>) => {
             expect(responseDelete).toEqual(jasmine.objectContaining({ url: `http://localhost/${collectionCustomers}/5`, status: 204 }));
             dbService.get$(collectionCustomers, '5', undefined, collectionCustomers).subscribe(

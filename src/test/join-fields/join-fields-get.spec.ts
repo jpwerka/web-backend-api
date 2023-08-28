@@ -41,20 +41,15 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       if (dbType.dbtype === 'memory') {
         dbService = new MemoryDbService(new BackendConfig({ pageEncapsulation: false, strategyId: 'uuid' }));
       } else {
         dbService = new IndexedDbService(new BackendConfig({ pageEncapsulation: false, strategyId: 'uuid' }));
       }
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase();
+      await dbService.createObjectStore(dataServiceFn);
     });
 
     beforeEach(() => {
@@ -62,14 +57,11 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       dbService.clearFieldFilterMap(collectionDocuments);
     });
 
-    afterAll((done: DoneFn) => {
+    afterAll(async () => {
       if (dbService instanceof IndexedDbService) {
         dbService.closeDatabase();
       }
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+      await dbService.deleteDatabase();
     });
 
     it(`Deve buscar um documento pelo id fazendo a junção dos campos. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
