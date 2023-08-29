@@ -3,7 +3,7 @@ import { XhrFactory } from '@angular/common';
 import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
 import { Inject, Injectable, InjectionToken, Optional } from '@angular/core';
 import { ErrorResponseFn, getStatusText, IBackendService, IErrorMessage, IPassThruBackend, ResponseFn, STATUS } from '../../database';
-import { Observable, throwError } from 'rxjs';
+import { Observable, from, throwError } from 'rxjs';
 
 export const BACKEND_SERVICE = new InjectionToken<IBackendService>('backend.service');
 
@@ -23,8 +23,7 @@ export class HttpClientBackendService implements HttpBackend {
 
   handle(req: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return this.dbService.handleRequest(req) as any;
+      return from(this.dbService.handleRequest<HttpEvent<unknown>>(req));
     } catch (error) {
       const err: unknown = (error as Error).message || error;
       const resOptions = this.createErrorResponseOptions(req.url, STATUS.INTERNAL_SERVER_ERROR, err);

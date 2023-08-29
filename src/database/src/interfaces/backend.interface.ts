@@ -97,6 +97,7 @@ export interface IBackendService {
    * @param req Requisição HTTP a ser processada
    * @returns Uma Promise com uma resposta HTTP indicando sucesso ou erro na operação.
    */
+  handleRequest<T>(req: IRequestCore<unknown>): Promise<T>;
   handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
   handleRequest(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown>>;
 
