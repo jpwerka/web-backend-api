@@ -4,9 +4,9 @@ import { IQueryFilter, FilterFn, FilterOp } from './query.interface';
 export interface IHeadersCore {
   set(name: string, value: string | string[]): void | unknown;
   append(name: string, value: string | string[]): void | unknown;
-  keys(): string[] | Iterator<string>;
+  // keys(): string[] | Iterator<string>;
   get(name: string): string | string[] | null;
-  getAll?(name: string): string | string[] | null;
+  // getAll?(name: string): string | string[] | null;
 }
 
 export interface IRequestCore<T> {
@@ -100,45 +100,49 @@ export type ConditionsFn = (conditions: IConditionsParam) => IQueryFilter[];
  *   });
  */
 export type ResponseInterceptorFn = (utils: IInterceptorUtils) =>
-  IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
+  IHttpResponse<unknown> | IHttpErrorResponse |
+  Promise<IHttpResponse<unknown> | IHttpErrorResponse> |
+  /** @deprecated */ Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
 
- /**
-  * Type for a default response function that will be applied to a request interceptor.
-  * in all collections that has a match path with configuration.
-  * When returns a `Observable` the result of a observer must be a valid `HttpResponse`
-  * @example
-  * const config: BackendConfigArgs = {
-  *  . . . ,
-  *   defaultInterceptors: [
-  *     // add default interceptor to return then count for all collections
-  *     {
-  *       applyToPath: 'beforeId',
-  *       method: 'GET',
-  *       path: `count`,
-  *       responseFn: (colectionName: string, utils: IInterceptorUtils) =>
-  *         new Observable(observer => {
-  *           (async () => {
-  *             const dbService = getBackendService();
-  *             const count = await dbService.count$(colectionName);
-  *             observer.next(utils.fn.response(utils.url, 200, { count }));
-  *           })();
-  *         })
-  *     },
-  *     // add default interceptor for activate all collections
-  *     {
-  *        applyToPath: 'afterId',
-  *        method: 'PUT',
-  *        path: 'activate',
-  *        responseFn: (colectionName: string, utils: IInterceptorUtils) => {
-  *          const dbService = getBackendService();
-  *          return dbService.put$(colectionName, utils.id, { active: true }, utils.url);
-  *        }
-  *      }
-  *   ]
-  * }
-  */
+/**
+ * Type for a default response function that will be applied to a request interceptor.
+ * in all collections that has a match path with configuration.
+ * When returns a `Observable` the result of a observer must be a valid `HttpResponse`
+ * @example
+ * const config: BackendConfigArgs = {
+ *  . . . ,
+ *   defaultInterceptors: [
+ *     // add default interceptor to return then count for all collections
+ *     {
+ *       applyToPath: 'beforeId',
+ *       method: 'GET',
+ *       path: `count`,
+ *       responseFn: (colectionName: string, utils: IInterceptorUtils) =>
+ *         new Observable(observer => {
+ *           (async () => {
+ *             const dbService = getBackendService();
+ *             const count = await dbService.count$(colectionName);
+ *             observer.next(utils.fn.response(utils.url, 200, { count }));
+ *           })();
+ *         })
+ *     },
+ *     // add default interceptor for activate all collections
+ *     {
+ *        applyToPath: 'afterId',
+ *        method: 'PUT',
+ *        path: 'activate',
+ *        responseFn: (colectionName: string, utils: IInterceptorUtils) => {
+ *          const dbService = getBackendService();
+ *          return dbService.put$(colectionName, utils.id, { active: true }, utils.url);
+ *        }
+ *      }
+ *   ]
+ * }
+ */
 export type DefaultResponseInterceptorFn = (colectionName: string, utils: IInterceptorUtils) =>
-  IHttpResponse<unknown> | IHttpErrorResponse | Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
+  IHttpResponse<unknown> | IHttpErrorResponse |
+  Promise<IHttpResponse<unknown> | IHttpErrorResponse> |
+  /** @deprecated */ Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
 
 /**
  * Mapping interface for requests interceptions
@@ -324,5 +328,5 @@ export interface IPassThruBackend {
    * Handle an HTTP request and return an Observable of HTTP response
    * Both the request type and the response type are determined by the supporting HTTP library.
    */
-  handle(req: IRequestCore<unknown>): Observable<IHttpResponse<unknown> | IHttpErrorResponse>;
+  handle(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown> | IHttpErrorResponse>;
 }

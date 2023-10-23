@@ -2,23 +2,23 @@
 import { TestCase } from 'jasmine-data-provider-ts';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IJoinField, IndexedDbService, LoadFn, MemoryDbService } from '../../database/public-api';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
-import { clone } from '../../database/src/data-service/backend.service';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { ICustomer, IOutboundDocument, IOutboundLoad, IProduct, collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, loads, products } from './join-fields.mock';
+import deepClone from 'clonedeep';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
 dataServiceFn.set(collectionLoads, [(dbService: IBackendService) => {
 
   loads.forEach(load => {
-    void dbService.storeData(collectionLoads, clone(load)).then(() => null);
+    void dbService.storeData(collectionLoads, deepClone(load)).then(() => null);
   });
 }]);
 
 dataServiceFn.set(collectionDocuments, [(dbService: IBackendService) => {
 
   documents.forEach(document => {
-    void dbService.storeData(collectionDocuments, clone(document)).then(() => null);
+    void dbService.storeData(collectionDocuments, deepClone(document)).then(() => null);
   })
 }]);
 
@@ -41,20 +41,15 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       if (dbType.dbtype === 'memory') {
         dbService = new MemoryDbService(new BackendConfig({ pageEncapsulation: false, strategyId: 'uuid' }));
       } else {
         dbService = new IndexedDbService(new BackendConfig({ pageEncapsulation: false, strategyId: 'uuid' }));
       }
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase();
+      await dbService.createObjectStore(dataServiceFn);
     });
 
     beforeEach(() => {
@@ -62,21 +57,18 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       dbService.clearFieldFilterMap(collectionDocuments);
     });
 
-    afterAll((done: DoneFn) => {
+    afterAll(async () => {
       if (dbService instanceof IndexedDbService) {
         dbService.closeDatabase();
       }
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+      await dbService.deleteDatabase();
     });
 
     it(`Deve buscar um documento pelo id fazendo a junção dos campos. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { customer: customers.find(item => item.id === documents[0].customerId) }
       );
       expectedDocument.items = expectedDocument.items.map(item => Object.assign(
@@ -107,7 +99,7 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       // given
       const expectedDocuments = documents.map(document => Object.assign(
         {},
-        clone(document),
+        deepClone(document),
         { customer: customers.find(item => item.id === document.customerId) }
       ));
       expectedDocuments.forEach(document => {
@@ -143,7 +135,7 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       // given
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { documentCustomer: customers.find(item => item.id === documents[0].customerId) }
       );
       delete expectedDocument.customerId;
@@ -184,7 +176,7 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { customer: mapCustomer(customers.find(item => item.id === documents[0].customerId)) }
       );
       delete expectedDocument.customerId;
@@ -225,7 +217,7 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
       // given
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
-      const expectedDocuments = clone(documents).map(document => {
+      const expectedDocuments = deepClone(documents).map(document => {
         document = Object.assign(
           {},
           document,
@@ -271,9 +263,9 @@ describe('Testes para JOIN de várias coleções com aplicação customizada par
 
     it(`Deve aplicar o sub-join pré configurado na collection. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
-      const expectedLoad = clone(loads[0]);
+      const expectedLoad = deepClone(loads[0]);
       expectedLoad.documents = expectedLoad.documentsId.map(id => {
-        let document = clone(documents.find(doc => doc.id === id));
+        let document = deepClone(documents.find(doc => doc.id === id));
         document = Object.assign(
           {},
           document,

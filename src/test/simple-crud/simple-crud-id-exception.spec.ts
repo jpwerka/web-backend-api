@@ -55,15 +55,15 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           // then
           expect(erro.status).toEqual(STATUS.BAD_REQUEST);
           expect(erro.error).toEqual('Id strategy is set as `provided` and id not provided.');
           done();
         }
-      });
+      );
     });
 
   });
@@ -106,14 +106,14 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
       };
       void dbService.clearData(collectionCustomers);
       // when
-      dbService.handleRequest(req).subscribe({
+      dbService.handleRequest(req).then(
         // then
-        next: (response: IHttpResponse<ICustomer>) => {
+        (response: IHttpResponse<ICustomer>) => {
           expect(response.body).toEqual({ id: 1, name: 'Cliente sem ID informado' });
           done();
         },
-        error: (erro) => done.fail(erro)
-      });
+        (erro) => done.fail(erro)
+      );
     });
 
     it(`Deve retornar erro ao tentar criar um item com ID numérico, sem saber como incrementar`, (done: DoneFn) => {
@@ -130,16 +130,16 @@ describe('Testes de falha de uma aplicação CRUD com exceptions na configuraç�
           }
         };
         // when
-        dbService.handleRequest(req).subscribe({
-          next: () => done.fail('Do not have return in Observable.next in this request'),
-          error: (erro: IHttpErrorResponse) => {
+        dbService.handleRequest(req).then(
+          () => done.fail('Do not have return in Observable.next in this request'),
+          (erro: IHttpErrorResponse) => {
             // then
             const message = `Collection ${collectionCustomers} id type is non-numeric or unknown. Can only generate numeric ids.`;
             expect(erro.status).toEqual(STATUS.BAD_REQUEST);
             expect(erro.error).toEqual(message);
             done();
           }
-        });
+        );
       });
     });
 

@@ -15,16 +15,18 @@ export type LoadFn = (dbService: IBackendService) => void;
  * Este tipo será utilizado para fazer os mapeamentos nos endpoints de GetAll e GetById
  * @param item - Instância do item da coleção conforme está `persistido` no backend
  * @param dbService - Instância do serviço de backend
+ * @deprecated Depreciado o retorno como Observable
  */
-export type TransformGetFn = (item: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
+export type TransformGetFn = (item: unknown, dbService: IBackendService) => unknown | Promise<unknown> | /** @deprecated */ Observable<unknown>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
  * Este tipo será utilizado para fazer os mapeamentos nos endpoints de Post ou Put quando `config.put404 = false`
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
+ * @deprecated Depreciado o retorno como Observable
  */
-export type TransformPostFn = (body: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
+export type TransformPostFn = (body: unknown, dbService: IBackendService) => unknown | Promise<unknown> | /** @deprecated */ Observable<unknown>;
 
 /**
  * Tipo para uma assinatura de função de callback a ser aplicada sobre um item a ser persistido no backend.
@@ -32,8 +34,9 @@ export type TransformPostFn = (body: unknown, dbService: IBackendService) => unk
  * @param item - Instância do item da coleção conforme está `persistido` no backend
  * @param body - Conteúdo do corpo da requisição
  * @param dbService - Instância do serviço de backend
+ * @deprecated Depreciado o retorno como Observable
  */
-export type TransformPutFn = (item: unknown, body: unknown, dbService: IBackendService) => unknown | Observable<unknown>;
+export type TransformPutFn = (item: unknown, body: unknown, dbService: IBackendService) => unknown | Promise<unknown> | /** @deprecated */ Observable<unknown>;
 
 /**
  * Interface que permite o mapeamento dos JOINs a serem feitos ao recuperar um item da coleção
@@ -92,21 +95,23 @@ export interface IBackendService {
   /**
    * Efetua o processamento da requisição HTTP
    * @param req Requisição HTTP a ser processada
-   * @returns Um observable com uma resposta HTTP indicando sucesso ou erro na operação.
+   * @returns Uma Promise com uma resposta HTTP indicando sucesso ou erro na operação.
    */
-  handleRequest(req: IRequestCore<unknown>): Observable<IHttpResponse<unknown>>;
+  handleRequest<T>(req: IRequestCore<unknown>): Promise<T>;
+  handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
+  handleRequest(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown>>;
 
   /* set */ backendUtils(value: IBackendUtils): void;
 
   /**
    * Efetua a criação do banco de dados conforme a necessidade.
-   * @return Uma Promisse que devolve um boleano indicando sucesso ou fracasso da operação.
+   * @return Uma Promise que devolve um boleano indicando sucesso ou fracasso da operação.
    */
   createDatabase(): Promise<boolean>;
 
   /**
    * Efetua a exclusão do banco de dados conforme a necessidade.
-   * @return Uma Promisse que devolve um boleano indicando sucesso ou fracasso da operação.
+   * @return Uma Promise que devolve um boleano indicando sucesso ou fracasso da operação.
    */
   deleteDatabase(): Promise<boolean>;
 
@@ -114,6 +119,7 @@ export interface IBackendService {
    * Efetua a criação das colecões de itens utilizando como nomes as chaves do mapeamento.
    * Quando passado uma instancia de função válida no valor do mapeamento irá disparar
    * esta função para a coleção ao final do processo de criação de todas as coleções.
+   * @return Uma Promise que devolve um boleano indicando sucesso ou fracasso da operação.
    */
   createObjectStore(dataServiceFn: Map<string, LoadFn[]>): Promise<boolean>;
 
@@ -133,14 +139,14 @@ export interface IBackendService {
    * Grava um registro na coleção retornando o seu respectivo ID
    * @param collectionName - Nome da coleção a qual se deseja adicionar dados
    * @param data - Dado (objeto) que se deseja adicionar a coleção
-   * @return Uma Promisse que devolve o id da entidade armazenada.
+   * @return Uma Promise que devolve o id da entidade armazenada.
    */
   storeData(collectionName: string, data: unknown): Promise<string | number>;
 
   /**
    * Limpa todos os registro de uma determinada coleção
    * @param collectionName - Nome da coleção a qual se deseja limpar dados
-   * @return Uma Promisse que devolve um boleano indicando sucesso ou fracasso da operação.
+   * @return Uma Promise que devolve um boleano indicando sucesso ou fracasso da operação.
    */
   clearData(collectionName: string): Promise<boolean>;
 
@@ -412,9 +418,15 @@ export interface IBackendService {
    * o item não será submetido a função de transformação mapeada, caso esta exista.
    * @param collectionName - Nome da coleção a qual se deseja buscar o item
    * @param conditions - Lista de condições a serem aplicadas para filtar os itens
-   * @returns Um observable que retorna a listagem dos itens quando completo.
+   * @param asObservable - Compatibilidade, permite já expandir para retornar como Promise, caso seja passado `false`
+   * @returns Uma Promise ou observable (deprecated) que retorna a listagem dos itens quando completo.
+   * @deprecated Depreciado o método que retorna um Observable
+   * 
+   * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
+   * no último parametro o retorno já será uma Promise
    */
   getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Promise<unknown[]>;
 
   /**
    * Permite retornar a quantidade de registros da coleção.
@@ -437,7 +449,11 @@ export interface IBackendService {
    * @param url URl a ser utilizada na resposta
    * @param getJoinFields Configuração de JOIN para ser utilizada ao recuperar os itens da coleção
    * @param caseSensitiveSearch Indica se a pesquisa deve ser case sensitive.
-   * @returns Um observable que retorna uma resposta HTTP contendo o item ou os itens no corpo da mesma
+   * @returns Uma Promise ou observable (deprecated) que retorna uma resposta HTTP contendo o item ou os itens no corpo da mesma
+   * @deprecated Depreciado o método que retorna um Observable
+   * 
+   * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
+   * no último parametro o retorno já será uma Promise
    */
   get$(
     collectionName: string,
@@ -447,6 +463,21 @@ export interface IBackendService {
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: boolean
   ): Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  >;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: boolean,
+    asObservable?: boolean
+  ): Promise<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
     IHttpResponse<unknown[]> |
@@ -464,10 +495,15 @@ export interface IBackendService {
    * @param id Identificador do item que se deseja criar (Opcional)
    * @param item Conteúdo do corpo da requisição HTTP
    * @param url URl a ser utilizada na resposta
-   * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
+   * @returns Uma Promise ou um observable (deprecated) que retorna uma resposta HTTP indicando sucesso ou erro na operação
    * @alias BackendConfigArgs
+   * @deprecated Depreciado o método que retorna um Observable
+   * 
+   * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
+   * no último parametro o retorno já será uma Promise
    */
   post$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
 
   /**
    * Permite atualizar ou criar um item na coleção
@@ -479,10 +515,15 @@ export interface IBackendService {
    * @param id Identificador do item que se deseja atualizar
    * @param item Conteúdo do corpo da requisição HTTP
    * @param url URl a ser utilizada na resposta
-   * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
+   * @returns Uma Promise ou um observable (deprecated) que retorna uma resposta HTTP indicando sucesso ou erro na operação
    * @alias BackendConfigArgs
+   * @deprecated Depreciado o método que retorna um Observable
+   * 
+   * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
+   * no último parametro o retorno já será uma Promise
    */
   put$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
 
   /**
    * Permite excluir um item de uma determinada coleção.
@@ -491,9 +532,16 @@ export interface IBackendService {
    * @param collectionName Nome da coleação a qual se deseja buscar o/os item/itens
    * @param id Identificador do item que se deseja excluir
    * @param url URl a ser utilizada na resposta
-   * @returns Um observable que retorna uma resposta HTTP indicando sucesso ou erro na operação
+   * @returns Uma Promise ou um observable (deprecated) que retorna uma resposta HTTP indicando sucesso ou erro na operação
+   * @deprecated Depreciado o método que retorna um Observable
+   * 
+   * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
+   * no último parametro o retorno já será uma Promise
    */
   delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Promise<IHttpResponse<null>>;
+
+  createFetchBackend(): IPassThruBackend;
 
 }
 

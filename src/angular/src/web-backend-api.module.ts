@@ -1,16 +1,14 @@
 
-import { XhrFactory } from '@angular/common';
 import { HttpBackend } from '@angular/common/http';
 import { ModuleWithProviders, NgModule } from '@angular/core';
-import { getBackendService, IBackendService } from '../../database';
+import { IBackendService, getBackendService } from '../../database';
 import { DownloadDataService } from './download-data.service';
 import { BACKEND_SERVICE, HttpClientBackendService } from './http-client-backend.service';
 
-export function httpClientBackendServiceFactory(
+function httpClientBackendServiceFactory(
   dbService: IBackendService,
-  xhrFactory: XhrFactory,
 ): HttpBackend {
-  return new HttpClientBackendService(dbService, xhrFactory);
+  return new HttpClientBackendService(dbService);
 }
 
 @NgModule({})
@@ -23,7 +21,7 @@ export class WebBackendApiModule {
         { provide: BACKEND_SERVICE, useFactory: getBackendService },
         { provide: HttpBackend,
           useFactory: httpClientBackendServiceFactory,
-          deps: [BACKEND_SERVICE, XhrFactory]
+          deps: [BACKEND_SERVICE]
         },
         DownloadDataService,
       ]

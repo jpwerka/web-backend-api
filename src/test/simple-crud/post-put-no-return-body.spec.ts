@@ -36,30 +36,22 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
       delay: 0
     })
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       if (dbType.dbtype === 'memory') {
         dbService = new MemoryDbService(backendConfig);
       } else {
         dbService = new IndexedDbService(backendConfig);
       }
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase()
+      await dbService.createObjectStore(dataServiceFn);
     });
 
-    afterAll((done: DoneFn) => {
+    afterAll(async () => {
       if (dbService instanceof IndexedDbService) {
         dbService.closeDatabase();
       }
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+      await dbService.deleteDatabase();
     })
 
     it(`Deve retornar o location com o ID ao ser CREATED com POST e sem body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -72,14 +64,14 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: (response: (IHttpResponse<void> & { location: string })) => {
+      dbService.handleRequest(req).then(
+        (response: (IHttpResponse<void> & { location: string })) => {
           expect(response.status).toEqual(STATUS.CREATED);
           expect(response.body).toBeUndefined();
           expect(response.location).toContain('Location ID:');
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar o location com o ID ao ser CREATED com PUT e sem body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -93,18 +85,18 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: (response: (IHttpResponse<void> & { location: string })) => {
+      dbService.handleRequest(req).then(
+        (response: (IHttpResponse<void> & { location: string })) => {
           expect(response.status).toEqual(STATUS.CREATED);
           expect(response.body).toBeUndefined();
           expect(response.location).toEqual(`Location ID: ${id}`);
           done();
         },
-        error: (erro) => {
+        (erro) => {
           console.log("ERRO NO PUT CREATED", erro);
           done.fail(erro);
         }
-      });
+      );
     });
 
     it(`Deve retornar NO_CONTENT ao atualizar com POST e sem body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -117,13 +109,13 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: (response: IHttpResponse<void>) => {
+      dbService.handleRequest(req).then(
+        (response: IHttpResponse<void>) => {
           expect(response.status).toEqual(STATUS.NO_CONTENT);
           expect(response.body).toBeUndefined();
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar NO_CONTENT ao atualizar com PUT e sem body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -136,13 +128,13 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: (response: IHttpResponse<void>) => {
+      dbService.handleRequest(req).then(
+        (response: IHttpResponse<void>) => {
           expect(response.status).toEqual(STATUS.NO_CONTENT);
           expect(response.body).toBeUndefined();
           done();
         }
-      });
+      );
     });
 
   });

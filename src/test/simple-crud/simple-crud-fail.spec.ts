@@ -26,30 +26,22 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
       delay: 0
     })
 
-    beforeAll((done: DoneFn) => {
+    beforeAll(async () => {
       if (dbType.dbtype === 'memory') {
         dbService = new MemoryDbService(backendConfig);
       } else {
         dbService = new IndexedDbService(backendConfig);
       }
       configureBackendUtils(dbService);
-      dbService.createDatabase().then(
-        () => dbService.createObjectStore(dataServiceFn).then(
-          () => done(),
-          error => done.fail(error)
-        ),
-        error => done.fail(error)
-      );
+      await dbService.createDatabase();
+      await dbService.createObjectStore(dataServiceFn);
     });
 
-    afterAll((done: DoneFn) => {
+    afterAll(async () => {
       if (dbService instanceof IndexedDbService) {
         dbService.closeDatabase();
       }
-      dbService.deleteDatabase().then(
-        () => done(),
-        (error) => done.fail(error)
-      );
+      await dbService.deleteDatabase();
     })
 
     it(`Deve retornar NOT_FOUND ao fazer a busca por um id inexistente. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -59,15 +51,15 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         url: `http://localhost/${collectionCustomers}/99`,
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           // then
           expect(erro.status).toEqual(STATUS.NOT_FOUND);
           expect(erro.error).toEqual(`Request id does not match item with id: ${99}`);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar BAD_REQUEST ao tentar fazer POST com ID diferente do body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -81,15 +73,15 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           // then
           expect(erro.status).toEqual(STATUS.BAD_REQUEST);
           expect(erro.error).toEqual(`Request id (${98}) does not match item.id (${99})`);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar CONFLICT ao tentar fazer POST para atualizar item existente. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -106,15 +98,15 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         detailedMessage: 'Use PUT instead.'
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           // then
           expect(erro.status).toEqual(STATUS.CONFLICT);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar BAD_REQUEST ao tentar fazer PUT sem informar o ID. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -127,14 +119,14 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         }
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.BAD_REQUEST);
           expect(erro.error).toEqual(`Missing ${collectionCustomers} id`);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar BAD_REQUEST ao tentar fazer PUT com ID diferente do body. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -152,14 +144,14 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.BAD_REQUEST);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar NOT_FOUND ao tentar fazer PUT para ID inexistente. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -177,14 +169,14 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         detailedMessage: 'Use POST instead.'
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.NOT_FOUND);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar BAD_REQUEST ao tentar fazer DELETE sem informar o ID. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -194,14 +186,14 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         url: `http://localhost/${collectionCustomers}`,
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.BAD_REQUEST);
           expect(erro.error).toEqual(`Missing ${collectionCustomers} id`);
           done();
         }
-      });
+      );
     });
 
     it(`Deve retornar NOT_FOUND ao tentar fazer DELETE para ID inexistente. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
@@ -215,14 +207,14 @@ describe('Testes de falha de uma aplicação CRUD simples', () => {
         detailedMessage: 'Id não encontrado.'
       };
       // when
-      dbService.handleRequest(req).subscribe({
-        next: () => done.fail('Do not have return in Observable.next in this request'),
-        error: (erro: IHttpErrorResponse) => {
+      dbService.handleRequest(req).then(
+        () => done.fail('Do not have return in Observable.next in this request'),
+        (erro: IHttpErrorResponse) => {
           expect(erro.status).toEqual(STATUS.NOT_FOUND);
           expect(erro.error).toEqual(responseError);
           done();
         }
-      });
+      );
     });
 
   });

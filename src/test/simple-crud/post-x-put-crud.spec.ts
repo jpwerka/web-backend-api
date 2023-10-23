@@ -92,7 +92,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
       };
       const spyPut$ = spyOn(TransformersFn, 'transformePut').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('Testes para uma aplicação CRUD com POST como PUT e PUT como POST', (
       };
       const spyPost$ = spyOn(TransformersFn, 'transformePost').and.callThrough();
       // when
-      dbService.handleRequest(req).subscribe(
+      dbService.handleRequest(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPost$).toHaveBeenCalled();

@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { cloneDeep } from 'lodash';
-import { Observable, throwError } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
@@ -8,6 +6,7 @@ import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.inter
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
+import deepClone from 'clonedeep';
 
 export class MemoryDbService extends BackendService implements IBackendService {
 
@@ -18,7 +17,6 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   createDatabase(): Promise<boolean> {
-    this.dbReadySubject.next(false);
     return new Promise<boolean>((resolve) => {
       this.db = new Map<string, IExtendEntity[]>();
       resolve(true);
@@ -26,7 +24,6 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
   deleteDatabase(): Promise<boolean> {
-    this.dbReadySubject.next(false);
     return new Promise<boolean>((resolve) => {
       this.db = undefined;
       resolve(true);
@@ -49,7 +46,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       } else {
         console.warn('[WebBackendApi]', 'There is not collection in data service!');
       }
-      this.dbReadySubject.next(true);
+      this.dbReadyFn(true);
       resolve(true);
     });
   }
@@ -89,15 +86,17 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        resolve(cloneDeep(this.findById(objectStore, id)) as unknown as T);
+        resolve(deepClone(this.findById(objectStore, id)) as unknown as T);
       } else {
         reject('Não foi passado o id');
       }
     });
   }
 
-  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]> {
-    return new Observable((observer) => {
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Observable<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Promise<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable = true): Promise<unknown[]> | Observable<unknown[]> {
+    const ret = new Promise<unknown[]>((resolve) => {
       const objectStore = this.db.get(collectionName);
       const queryParams: IQueryParams = { count: 0, conditions };
       const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
@@ -108,14 +107,15 @@ export class MemoryDbService extends BackendService implements IBackendService {
         continue: (): void => null
       };
       while (cursor.index <= objectStore.length) {
-        cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
+        cursor.value = (cursor.index < objectStore.length) ? deepClone(objectStore[cursor.index++]) : null;
         if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
-          observer.next(queryResults.items);
-          observer.complete();
+          resolve(queryResults.items);
           break;
         }
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
   count$(collectionName: string): Promise<number> {
@@ -129,22 +129,59 @@ export class MemoryDbService extends BackendService implements IBackendService {
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: boolean
+    caseSensitiveSearch?: boolean,
+    asObservable?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
     IHttpResponse<unknown[]> |
     IHttpResponse<{ data: unknown[] }> |
     IHttpResponse<IQueryResult<unknown>>
+  >;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: boolean,
+    asObservable?: boolean
+  ): Promise<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  >;
+  get$(
+    collectionName: string,
+    id: string,
+    query: Map<string, string[]>,
+    url: string,
+    getJoinFields?: IJoinField[],
+    caseSensitiveSearch?: boolean,
+    asObservable = true
+  ): Promise<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
+  > | Observable<
+    IHttpResponse<unknown> |
+    IHttpResponse<{ data: unknown }> |
+    IHttpResponse<unknown[]> |
+    IHttpResponse<{ data: unknown[] }> |
+    IHttpResponse<IQueryResult<unknown>>
   > {
-    return new Observable((observer) => {
+    const ret = new Promise((resolve, reject) => {
       const objectStore = this.db.get(collectionName);
 
       if (id !== undefined && id !== '') {
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
-        item = item ? cloneDeep(item) : item;
+        item = item ? deepClone(item) : item;
 
         (async (itemAsync: IExtendEntity) => {
           if (itemAsync) {
@@ -155,15 +192,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
           itemAsync => {
             if (itemAsync) {
               const response = this.utils.createResponseOptions(url, STATUS.OK, this.bodify(itemAsync));
-              observer.next(response as (IHttpResponse<unknown> | IHttpResponse<{ data: unknown }>));
-              observer.complete();
+              resolve(response as (IHttpResponse<unknown> | IHttpResponse<{ data: unknown }>));
             } else {
               // eslint-disable-next-line max-len
               const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, `Request id does not match item with id: ${id}`);
-              observer.error(response);
+              reject(response);
             }
           },
-          (error) => this.dispatchErrorToResponse(observer, url, error)
+          (error) => this.dispatchErrorToResponse(reject, url, error)
         );
       } else {
         let queryParams: IQueryParams = { count: 0 };
@@ -182,7 +218,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           items = this.orderItems(collectionName, items, queryParams.orders);
         }
         while (cursor.index <= items.length) {
-          cursor.value = (cursor.index < items.length) ? cloneDeep(items[cursor.index++]) : null;
+          cursor.value = (cursor.index < items.length) ? deepClone(items[cursor.index++]) : null;
           if (this.getAllItems((cursor.value ? cursor : null), queryResults, queriesParams.root)) {
             break;
           }
@@ -198,16 +234,20 @@ export class MemoryDbService extends BackendService implements IBackendService {
           () => {
             const response = this.utils.createResponseOptions(url, STATUS.OK, this.pagefy(queryResults, queryParams));
             // eslint-disable-next-line max-len
-            observer.next(response as (IHttpResponse<unknown[]> | IHttpResponse<{ data: unknown[] }> | IHttpResponse<IQueryResult<unknown>>));
-            observer.complete();
+            resolve(response as (IHttpResponse<unknown[]> | IHttpResponse<{ data: unknown[] }> | IHttpResponse<IQueryResult<unknown>>));
           },
-          (error) => this.dispatchErrorToResponse(observer, url, error));
+          (error) => this.dispatchErrorToResponse(reject, url, error));
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
-  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
-    return new Observable((observer) => {
+  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: IExtendEntity, url: string, asObservable = true):
+    Promise<IHttpResponse<unknown>> | Observable<IHttpResponse<unknown>> {
+    const ret = new Promise((resolve, reject) => {
       const objectStore = this.db.get(collectionName);
 
       let findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
@@ -220,7 +260,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       if (findId && item.id && findId !== item.id) {
         const error = `Request id (${findId}) does not match item.id (${item.id})`;
         const response = this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error);
-        observer.error(response);
+        reject(response);
         return;
       } else {
         findId = item.id ? item.id : findId;
@@ -238,7 +278,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           if (this.config.returnItemIn201) {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {
             const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -246,16 +286,15 @@ export class MemoryDbService extends BackendService implements IBackendService {
             return response;
           }
         })().then(response => {
-          observer.next(response);
-          observer.complete();
-        }, error => this.dispatchErrorToResponse(observer, url, error));
+          resolve(response);
+        }, error => this.dispatchErrorToResponse(reject, url, error));
       } else if (this.config.post409) {
         const error = {
           message: `'${collectionName}' item with id='${id}' exists and may not be updated with POST.`,
           detailedMessage: 'Use PUT instead.'
         };
         const response = this.utils.createErrorResponseOptions(url, STATUS.CONFLICT, error);
-        observer.error(response);
+        reject(response);
       } else {
         (async () => {
           const transformfn = this.transformPutMap.get(collectionName);
@@ -272,37 +311,43 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
-          observer.next(response);
-          observer.complete();
-        }, error => this.dispatchErrorToResponse(observer, url, error));
+          resolve(response);
+        }, error => this.dispatchErrorToResponse(reject, url, error));
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
-  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Observable<IHttpResponse<unknown>> {
-    // eslint-disable-next-line eqeqeq
-    if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
-    }
+  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: IExtendEntity, url: string, asObservable = true):
+    Promise<IHttpResponse<unknown>> | Observable<IHttpResponse<unknown>> {
+    const ret = new Promise((resolve, reject) => {
+      // eslint-disable-next-line eqeqeq
+      if (id == undefined) {
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
+        return;
+      }
 
-    if (item.id) {
-      item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
-    }
+      if (item.id) {
+        item.id = this.config.strategyId === 'autoincrement' && typeof item.id !== 'number' ? parseInt(item.id, 10) : item.id;
+      }
 
-    const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
-    if (item.id && item.id !== findId) {
-      const error = {
-        message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
-        detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
-      };
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
-    }
+      const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
+      if (item.id && item.id !== findId) {
+        const error = {
+          message: `Request for ${collectionName} id (${id}) does not match item.id (${item.id})`,
+          detailedMessage: `Don't provide item.id in body or provide same id in both (url, body).`
+        };
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, error));
+        return;
+      }
 
-    return new Observable((observer) => {
       const objectStore = this.db.get(collectionName);
       const existingIx = this.indexOf(objectStore, findId);
 
@@ -326,13 +371,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
-          observer.next(response);
-          observer.complete();
-        }, error => this.dispatchErrorToResponse(observer, url, error));
+          resolve(response);
+        }, error => this.dispatchErrorToResponse(reject, url, error));
 
       } else if (this.config.put404) {
         const error = {
@@ -340,7 +384,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           detailedMessage: 'Use POST instead.'
         };
         const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
-        observer.error(response);
+        reject(response);
       } else {
         if (!item.id) {
           item['id'] = findId;
@@ -355,7 +399,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           if (this.config.returnItemIn201) {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {
             const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -363,31 +407,38 @@ export class MemoryDbService extends BackendService implements IBackendService {
             return response;
           }
         })().then(response => {
-          observer.next(response);
-          observer.complete();
-        }, error => this.dispatchErrorToResponse(observer, url, error));
+          resolve(response);
+        }, error => this.dispatchErrorToResponse(reject, url, error));
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
-  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>> {
-    // eslint-disable-next-line eqeqeq
-    if (id == undefined) {
-      return throwError(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
-    }
-    return new Observable((observer) => {
+  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Observable<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Promise<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string, asObservable = true):
+    Promise<IHttpResponse<null>> | Observable<IHttpResponse<null>> {
+    const ret = new Promise((resolve, reject) => {
+      // eslint-disable-next-line eqeqeq
+      if (id == undefined) {
+        reject(this.utils.createErrorResponseOptions(url, STATUS.BAD_REQUEST, `Missing ${collectionName} id`));
+        return;
+      }
+
       const objectStore = this.db.get(collectionName);
       const findId = this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
       if (this.removeById(objectStore, findId) || !this.config.delete404) {
         const response = this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
-        observer.next(response as IHttpResponse<null>);
-        observer.complete();
+        resolve(response as IHttpResponse<null>);
       } else {
         const error = { message: `Error to find ${collectionName} with id (${id})`, detailedMessage: 'Id não encontrado.' };
         const response = this.utils.createErrorResponseOptions(url, STATUS.NOT_FOUND, error);
-        observer.error(response);
+        reject(response);
       }
     });
+    // FIXME Remove this code when clear deprecated return
+    return asObservable ? from(ret) : ret;
   }
 
   private generateStrategyId(collection: IExtendEntity[], collectionName: string, url?: string): string | number {
@@ -460,7 +511,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return low;
   }
 
-  createPassThruBackend(): IPassThruBackend {
-    throw new Error('Method not implemented.');
+  createFetchBackend(): IPassThruBackend {
+    return super.createFetchBackend();
   }
 }

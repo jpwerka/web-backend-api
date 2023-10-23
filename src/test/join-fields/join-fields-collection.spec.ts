@@ -1,24 +1,24 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
-import { clone } from '../../database/src/data-service/backend.service';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { ICustomer, IOutboundDocument, IOutboundLoad, IProduct, collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, loads, products } from './join-fields.mock';
+import deepClone from 'clonedeep';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
 dataServiceFn.set(collectionLoads, [(dbService: IBackendService) => {
 
   loads.forEach(load => {
-    void dbService.storeData(collectionLoads, clone(load)).then(() => null);
+    void dbService.storeData(collectionLoads, deepClone(load)).then(() => null);
   });
 }]);
 
 dataServiceFn.set(collectionDocuments, [(dbService: IBackendService) => {
 
   documents.forEach(document => {
-    void dbService.storeData(collectionDocuments, clone(document)).then(() => null);
+    void dbService.storeData(collectionDocuments, deepClone(document)).then(() => null);
   })
 }]);
 
@@ -78,7 +78,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       // given
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { customer: customers.find(item => item.id === documents[0].customerId) }
       );
       expectedDocument.items = expectedDocument.items.map(item => Object.assign(
@@ -110,7 +110,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       // given
       const expectedDocuments = documents.map(document => Object.assign(
         {},
-        clone(document),
+        deepClone(document),
         { customer: customers.find(item => item.id === document.customerId) }
       ));
       expectedDocuments.forEach(document => {
@@ -147,7 +147,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       // given
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { documentCustomer: customers.find(item => item.id === documents[0].customerId) }
       );
       delete expectedDocument.customerId;
@@ -189,7 +189,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const expectedDocument = Object.assign(
         {},
-        clone(documents[0]),
+        deepClone(documents[0]),
         { customer: mapCustomer(customers.find(item => item.id === documents[0].customerId)) }
       );
       delete expectedDocument.customerId;
@@ -234,7 +234,7 @@ describe('Testes para JOIN de várias coleções com a configuração através d
         const customer = customers.find(item => item.id === document.customerId);
         const result = Object.assign(
           {},
-          clone(document),
+          deepClone(document),
           { customerName: customer.name }
         );
         result.items = result.items.map(item => {
@@ -281,8 +281,8 @@ describe('Testes para JOIN de várias coleções com a configuração através d
 
     it(`Deve fazer a junção em uma colection de array de ids. DbType: ${dbType.dbtype}`, (done: DoneFn) => {
       // given
-      const expectedLoad = clone(loads[0]);
-      expectedLoad.documents = expectedLoad.documentsId.map(id => clone(documents.find(doc => doc.id === id)));
+      const expectedLoad = deepClone(loads[0]);
+      expectedLoad.documents = expectedLoad.documentsId.map(id => deepClone(documents.find(doc => doc.id === id)));
       // expectedLoad.createdAt = new Date(expectedLoad.createdAt);
       delete expectedLoad.documentsId;
       // To test addJoinGetAllMap by both method
@@ -309,9 +309,9 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       // given
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
-      const expectedLoad = clone(loads[0]);
+      const expectedLoad = deepClone(loads[0]);
       expectedLoad.documents = expectedLoad.documentsId.map(id => {
-        let document = clone(documents.find(doc => doc.id === id));
+        let document = deepClone(documents.find(doc => doc.id === id));
         document = Object.assign(
           {},
           document,
@@ -361,10 +361,10 @@ describe('Testes para JOIN de várias coleções com a configuração através d
       // given
       const mapCustomer = ({ id, name }: ICustomer) => ({ id, name });
       const mapProduct = ({ id, code, description }: IProduct) => ({ id, code, description });
-      const expectedLoads = clone(loads);
+      const expectedLoads = deepClone(loads);
       expectedLoads.forEach(load => {
         load.documents = load.documentsId.map(id => {
-          let document = clone(documents.find(doc => doc.id === id));
+          let document = deepClone(documents.find(doc => doc.id === id));
           document = Object.assign(
             {},
             document,

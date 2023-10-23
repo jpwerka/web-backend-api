@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { XhrFactory } from '@angular/common';
-import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse, HttpXhrBackend } from '@angular/common/http';
+import { HttpBackend, HttpErrorResponse, HttpEvent, HttpHeaders, HttpRequest, HttpResponse } from '@angular/common/http';
 import { Inject, Injectable, InjectionToken, Optional } from '@angular/core';
-import { ErrorResponseFn, getStatusText, IBackendService, IErrorMessage, IPassThruBackend, ResponseFn, STATUS } from '../../database';
-import { Observable, throwError } from 'rxjs';
+import { Observable, from, throwError } from 'rxjs';
+import { ErrorResponseFn, IBackendService, IErrorMessage, ResponseFn, STATUS, getStatusText } from '../../database';
 
 export const BACKEND_SERVICE = new InjectionToken<IBackendService>('backend.service');
 
@@ -11,11 +10,10 @@ export const BACKEND_SERVICE = new InjectionToken<IBackendService>('backend.serv
 export class HttpClientBackendService implements HttpBackend {
 
   constructor(
-    @Inject(BACKEND_SERVICE) @Optional() private dbService: IBackendService,
-    private xhrFactory: XhrFactory
+    @Inject(BACKEND_SERVICE) @Optional() private dbService: IBackendService
   ) {
     this.dbService.backendUtils({
-      createPassThruBackend: this.createPassThruBackend.bind(this) as () => IPassThruBackend,
+      createPassThruBackend: () => this.dbService.createFetchBackend(),
       createResponseOptions: this.createResponseOptions.bind(this) as ResponseFn,
       createErrorResponseOptions: this.createErrorResponseOptions.bind(this) as ErrorResponseFn
     });
@@ -23,22 +21,11 @@ export class HttpClientBackendService implements HttpBackend {
 
   handle(req: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return this.dbService.handleRequest(req) as any;
+      return from(this.dbService.handleRequest<HttpEvent<unknown>>(req));
     } catch (error) {
       const err: unknown = (error as Error).message || error;
       const resOptions = this.createErrorResponseOptions(req.url, STATUS.INTERNAL_SERVER_ERROR, err);
-      return throwError(resOptions);
-    }
-  }
-
-  private createPassThruBackend(): IPassThruBackend {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return new HttpXhrBackend(this.xhrFactory) as any;
-    } catch (ex) {
-      (ex as Error).message = `Cannot create passThru404 backend; ${(ex as Error).message || ''}`;
-      throw ex;
+      return throwError(() => resOptions);
     }
   }
 
