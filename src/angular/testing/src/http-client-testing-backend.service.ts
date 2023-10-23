@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { XhrFactory } from '@angular/common';
 import { HttpErrorResponse, HttpEvent, HttpRequest, HttpResponse } from '@angular/common/http';
 import { RequestMatch } from '@angular/common/http/testing';
 import { Inject, Injectable, Optional } from '@angular/core';
-import { IBackendService } from '../../../database';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { IBackendService } from '../../../database';
 import { BACKEND_SERVICE, HttpClientBackendService } from '../../src/http-client-backend.service';
 
 export interface IRequestResponse {
@@ -25,9 +24,9 @@ export class HttpClientTestingBackendService extends HttpClientBackendService {
   private requests: IRequestResponse[] = [];
 
   constructor(
-    @Inject(BACKEND_SERVICE) @Optional() dbService: IBackendService, xhrFactory: XhrFactory
+    @Inject(BACKEND_SERVICE) @Optional() dbService: IBackendService
   ) {
-    super(dbService, xhrFactory);
+    super(dbService);
   }
 
   handle(request: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {

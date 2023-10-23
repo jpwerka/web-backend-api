@@ -1,16 +1,15 @@
 
 import { HttpBackend } from '@angular/common/http';
 import { ModuleWithProviders, NgModule } from '@angular/core';
-import { getBackendService } from '../../../database';
+import { IBackendService, getBackendService } from '../../../database';
 import { BACKEND_SERVICE } from '../../src/http-client-backend.service';
 import { HttpClientTestingBackendService } from './http-client-testing-backend.service';
 
-// export function httpClientBackendServiceFactory(
-//   dbService: IBackendService,
-//   xhrFactory: XhrFactory,
-// ): HttpBackend {
-//   return new HttpClientTestingBackendService(dbService, xhrFactory);
-// }
+export function httpClientBackendServiceFactory(
+  dbService: IBackendService
+): HttpBackend {
+  return new HttpClientTestingBackendService(dbService);
+}
 
 @NgModule({})
 export class WebBackendApiTestingModule {
@@ -24,11 +23,11 @@ export class WebBackendApiTestingModule {
           provide: BACKEND_SERVICE,
           useFactory: getBackendService
         },
-        // {
-        //   provide: HttpClientTestingBackendService,
-        //   // useFactory: httpClientBackendServiceFactory,
-        //   deps: [BACKEND_SERVICE, XhrFactory]
-        // },
+        {
+          provide: HttpClientTestingBackendService,
+          useFactory: httpClientBackendServiceFactory,
+          deps: [BACKEND_SERVICE]
+        },
         {
           provide: HttpBackend,
           useExisting: HttpClientTestingBackendService

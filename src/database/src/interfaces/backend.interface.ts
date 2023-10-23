@@ -425,7 +425,7 @@ export interface IBackendService {
    * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
    * no último parametro o retorno já será uma Promise
    */
-  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Observable<unknown[]>;
+  getAllByFilter$(collectionName: string, conditions?: IQueryFilter[]): Observable<unknown[]>;
   getAllByFilter$(collectionName: string, conditions?: IQueryFilter[], asObservable?: boolean): Promise<unknown[]>;
 
   /**
@@ -461,8 +461,7 @@ export interface IBackendService {
     query: Map<string, string[]>,
     url: string,
     getJoinFields?: IJoinField[],
-    caseSensitiveSearch?: boolean,
-    asObservable?: boolean
+    caseSensitiveSearch?: boolean
   ): Observable<
     IHttpResponse<unknown> |
     IHttpResponse<{ data: unknown }> |
@@ -503,7 +502,7 @@ export interface IBackendService {
    * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
    * no último parametro o retorno já será uma Promise
    */
-  post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  post$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
   post$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
 
   /**
@@ -523,7 +522,7 @@ export interface IBackendService {
    * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
    * no último parametro o retorno já será uma Promise
    */
-  put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Observable<IHttpResponse<unknown>>;
+  put$(collectionName: string, id: string, item: unknown, url: string): Observable<IHttpResponse<unknown>>;
   put$(collectionName: string, id: string, item: unknown, url: string, asObservable?: boolean): Promise<IHttpResponse<unknown>>;
 
   /**
@@ -539,8 +538,10 @@ export interface IBackendService {
    * Para compatibilidade será mantido nesta versão o retorno como Observable, porém, caso seja passado `false`
    * no último parametro o retorno já será uma Promise
    */
-  delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Observable<IHttpResponse<null>>;
+  delete$(collectionName: string, id: string, url: string): Observable<IHttpResponse<null>>;
   delete$(collectionName: string, id: string, url: string, asObservable?: boolean): Promise<IHttpResponse<null>>;
+
+  createFetchBackend(): IPassThruBackend;
 
 }
 

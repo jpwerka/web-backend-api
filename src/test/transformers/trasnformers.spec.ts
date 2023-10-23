@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { TestCase } from 'jasmine-data-provider-ts';
 import { cloneDeep } from 'lodash';
-import { defer, of } from 'rxjs';
 import { BackendConfig } from '../../database/src/data-service/backend-config';
 import { BackendTypeArgs, IBackendService, IHttpResponse, IndexedDbService, LoadFn, MemoryDbService } from '../../public-api';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
@@ -34,7 +33,7 @@ const transformePut = (product: IProduct, body: Partial<IProduct>): IProduct => 
   return body as IProduct;
 }
 
-describe('Testes para as funções de trasnformação', () => {
+describe('Testes para as funções de transformação', () => {
 
   TestCase<BackendTypeArgs>([{ dbtype: 'memory' }, { dbtype: 'indexdb' }], (dbType) => {
     let dbService: MemoryDbService | IndexedDbService;
@@ -44,6 +43,7 @@ describe('Testes para as funções de trasnformação', () => {
       returnItemIn201: true,
       put204: false,
       strategyId: 'provided',
+      jsonParseWithDate: false,
       delay: 0
     })
 
@@ -153,9 +153,9 @@ describe('Testes para as funções de trasnformação', () => {
       );
     });
 
-    it('Deve aplicar a transformação no GetById com Observable', (done: DoneFn) => {
+    it('Deve aplicar a transformação no GetById com Promise', (done: DoneFn) => {
       // given
-      const transformeGet$ = (product: IProduct) => defer(() => of(transformeGet(product)));
+      const transformeGet$ = (product: IProduct) => new Promise(resolve => resolve(transformeGet(product)));
       dbService.addTransformGetByIdMap(collectionProducts, transformeGet$);
       const expectedProduct = transformeGet(transformePost(cloneDeep(products[0])));
       // when
@@ -169,9 +169,9 @@ describe('Testes para as funções de trasnformação', () => {
       );
     });
 
-    it('Deve aplicar a transformação no Post com Observable', (done: DoneFn) => {
+    it('Deve aplicar a transformação no Post com Promise', (done: DoneFn) => {
       // given
-      const transformePost$ = (product: IProduct) => defer(() => of(transformePost(product)));
+      const transformePost$ = (product: IProduct) => new Promise(resolve => resolve(transformePost(product)));
       dbService.addTransformPostMap(collectionProducts, transformePost$);
       const postProduct: IProduct = {
         id: '987654321',
@@ -191,9 +191,9 @@ describe('Testes para as funções de trasnformação', () => {
       );
     });
 
-    it('Deve aplicar a transformação no Put com Observable', (done: DoneFn) => {
+    it('Deve aplicar a transformação no Put com Promise', (done: DoneFn) => {
       // given
-      const transformePut$ = (product: IProduct, body: Partial<IProduct>) => defer(() => of(transformePut(product, body)));
+      const transformePut$ = (product: IProduct, body: Partial<IProduct>) => new Promise(resolve => resolve(transformePut(product, body)));
       dbService.addTransformPutMap(collectionProducts, transformePut$);
       const expectedProduct = transformePut(null, transformePost(cloneDeep(products[1])));
       expectedProduct.active = false;

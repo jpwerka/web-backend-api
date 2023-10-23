@@ -1,4 +1,3 @@
-import { cloneDeep } from 'lodash';
 import { Observable, from } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
@@ -7,6 +6,7 @@ import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.inter
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
+import deepClone from 'clonedeep';
 
 export class MemoryDbService extends BackendService implements IBackendService {
 
@@ -86,7 +86,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        resolve(cloneDeep(this.findById(objectStore, id)) as unknown as T);
+        resolve(deepClone(this.findById(objectStore, id)) as unknown as T);
       } else {
         reject('Não foi passado o id');
       }
@@ -107,7 +107,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         continue: (): void => null
       };
       while (cursor.index <= objectStore.length) {
-        cursor.value = (cursor.index < objectStore.length) ? cloneDeep(objectStore[cursor.index++]) : null;
+        cursor.value = (cursor.index < objectStore.length) ? deepClone(objectStore[cursor.index++]) : null;
         if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
           resolve(queryResults.items);
           break;
@@ -181,7 +181,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
         const findId = id ? this.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id : undefined;
         let item = this.findById(objectStore, findId);
 
-        item = item ? cloneDeep(item) : item;
+        item = item ? deepClone(item) : item;
 
         (async (itemAsync: IExtendEntity) => {
           if (itemAsync) {
@@ -218,7 +218,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           items = this.orderItems(collectionName, items, queryParams.orders);
         }
         while (cursor.index <= items.length) {
-          cursor.value = (cursor.index < items.length) ? cloneDeep(items[cursor.index++]) : null;
+          cursor.value = (cursor.index < items.length) ? deepClone(items[cursor.index++]) : null;
           if (this.getAllItems((cursor.value ? cursor : null), queryResults, queriesParams.root)) {
             break;
           }
@@ -278,7 +278,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           if (this.config.returnItemIn201) {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {
             const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -311,7 +311,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
@@ -371,7 +371,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           if (this.config.put204) {
             return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
           } else {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
           }
         })().then(response => {
@@ -399,7 +399,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
           objectStore.splice(this.sortedIndex(objectStore, item.id), 0, item);
 
           if (this.config.returnItemIn201) {
-            item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+            item = await this.applyTransformersGetById(collectionName, deepClone(item));
             return this.utils.createResponseOptions(url, STATUS.CREATED, this.bodify(item));
           } else {
             const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -511,7 +511,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return low;
   }
 
-  createPassThruBackend(): IPassThruBackend {
-    throw new Error('Method not implemented.');
+  createFetchBackend(): IPassThruBackend {
+    return super.createFetchBackend();
   }
 }

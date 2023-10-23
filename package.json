@@ -34,15 +34,10 @@
     "lint": "ng lint web-backend-api"
   },
   "dependencies": {
+    "clonedeep": "^2.0.0",
     "json.date-extensions": "^1.2.2",
     "tslib": "^2.0.0",
     "uuid": "^9.0.0"
-  },
-  "peerDependencies": {
-    "@angular/common": "13 - 15",
-    "@angular/core": "13 - 15",
-    "@types/uuid": "^9.0.0",
-    "rxjs": "^7.4.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^15.2.8",
@@ -60,7 +55,6 @@
     "@angular/language-service": "^15.2.9",
     "@types/jasmine": "~3.6.0",
     "@types/jasminewd2": "~2.0.3",
-    "@types/lodash-es": "^4.17.6",
     "@types/node": "^12.11.1",
     "@typescript-eslint/eslint-plugin": "^5.46.1",
     "@typescript-eslint/parser": "^5.46.1",

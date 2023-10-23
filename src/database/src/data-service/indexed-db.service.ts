@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { cloneDeep } from 'lodash';
 import { Observable, from } from 'rxjs';
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
@@ -8,6 +7,7 @@ import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.inter
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
+import deepClone from 'clonedeep';
 
 interface IEventTargetError extends EventTarget {
   error: unknown;
@@ -420,7 +420,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 item.id = requestAdd.result as (string | number);
                 (async () => {
                   if (this.config.returnItemIn201) {
-                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    item = await this.applyTransformersGetById(collectionName, deepClone(item));
                     return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                   } else {
                     const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -473,7 +473,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                  item = await this.applyTransformersGetById(collectionName, deepClone(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
@@ -564,7 +564,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 if (this.config.put204) {
                   return this.utils.createResponseOptions(url, STATUS.NO_CONTENT);
                 } else {
-                  item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                  item = await this.applyTransformersGetById(collectionName, deepClone(item));
                   return this.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
                 }
               })().then(response => {
@@ -607,7 +607,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
                 item.id = requestAdd.result as (string | number);
                 (async () => {
                   if (this.config.returnItemIn201) {
-                    item = await this.applyTransformersGetById(collectionName, cloneDeep(item));
+                    item = await this.applyTransformersGetById(collectionName, deepClone(item));
                     return self.utils.createResponseOptions(url, STATUS.CREATED, self.bodify(item));
                   } else {
                     const response = this.utils.createResponseOptions(url, STATUS.CREATED, { id: item.id });
@@ -713,7 +713,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     }
   }
 
-  createPassThruBackend(): IPassThruBackend {
-    throw new Error('Method not implemented.');
+  createFetchBackend(): IPassThruBackend {
+    return super.createFetchBackend();
   }
 }

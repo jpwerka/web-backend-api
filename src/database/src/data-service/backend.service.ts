@@ -8,6 +8,7 @@ import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
 import { parseUri } from '../utils/parse-uri';
 
+import deepClone from 'clonedeep';
 import 'json.date-extensions';
 import { Logger, LoggerLevel } from '../utils/logger';
 
@@ -31,10 +32,6 @@ interface IRequestInfo {
 interface IInterceptorInfo {
   interceptor?: IRequestInterceptor;
   interceptorIds?: string[];
-}
-
-export function clone<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data)) as T;
 }
 
 export function removeRightSlash(path: string): string {
@@ -297,9 +294,9 @@ export abstract class BackendService {
       if (typeof query === 'string') {
         params = paramParser(query);
       } else if (query instanceof Map) {
-        params = new Map(clone(Array.from(query)));
+        params = new Map(deepClone(Array.from(query)));
       } else {
-        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
+        params = new Map(deepClone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
       if (params && params.size > 0) {
         requestInterceptor['query'] = params;
@@ -384,9 +381,9 @@ export abstract class BackendService {
       if (typeof query === 'string') {
         params = paramParser(query);
       } else if (query instanceof Map) {
-        params = new Map(clone(Array.from(query)));
+        params = new Map(deepClone(Array.from(query)));
       } else {
-        params = new Map(clone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
+        params = new Map(deepClone(Array.from(Object.keys(query).map(key => [key, [query[key]]]))));
       }
       if (params && params.size > 0) {
         requestInterceptor['query'] = params;
@@ -457,17 +454,17 @@ export abstract class BackendService {
     return response;
   }
 
-  handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
+  async handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
   async handleRequest(req: IRequestCore<IExtendEntity>): Promise<IHttpResponse<unknown>> {
 
     await this.dbReadyPromise;
     this.logRequest(req);
-    
+
     let response: IHttpResponse<unknown>;
     try {
       response = await this.handleRequest_(req);
       this.logResponse(response);
-      response = this.convertResponse(response);      
+      response = this.convertResponse(response);
     } catch (error) {
       this.logResponse(error);
       throw error;
@@ -573,8 +570,8 @@ export abstract class BackendService {
 
   abstract getInstance$(collectionName: string, id: string | number): Promise<unknown>;
   abstract getAllByFilter$(
-    collectionName: string, 
-    conditions?: Array<IQueryFilter>, 
+    collectionName: string,
+    conditions?: Array<IQueryFilter>,
     asObservable?: boolean
   ): Promise<unknown[]> | /** @deprecated */ Observable<unknown[]>;
 
@@ -1398,7 +1395,7 @@ export abstract class BackendService {
   }
 
   private interceptResponse(interceptor: IRequestInterceptor, utils: IInterceptorUtils):
-    IHttpResponse<unknown> | IHttpErrorResponse | Promise<IHttpResponse<unknown>> | 
+    IHttpResponse<unknown> | IHttpErrorResponse | Promise<IHttpResponse<unknown>> |
     /** @deprecated */ Observable<IHttpResponse<unknown>> | undefined {
     let response: IHttpResponse<unknown>;
     if (interceptor.response) {
@@ -1407,7 +1404,7 @@ export abstract class BackendService {
         response = interceptor.response.call(this, utils) as IHttpResponse<unknown>;
       } else {
         LOG.trace('That interceptor response is one JSON then clone it. (JSON)', interceptor.response);
-        response = clone(interceptor.response);
+        response = deepClone(interceptor.response);
       }
     }
     return response;
@@ -1790,6 +1787,46 @@ export abstract class BackendService {
       }
     }
     return items.sort(sortBy(orders));
+  }
+
+  protected createFetchBackend(): IPassThruBackend {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
+    try {
+      return new class FetchBackend implements IPassThruBackend {
+
+        async handle(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown> | IHttpErrorResponse> {
+          const url = req.urlWithParams || req.url;
+          const init: RequestInit = {
+            method: req.method,
+            headers: req.headers as unknown as Headers,
+            body: undefined
+          }
+          if (req.body && typeof req.body == 'object') {
+            (init.headers as Headers).set('Content-Type', 'application/json');
+            init.body = JSON.stringify(req.body);
+          }
+
+          const response = await fetch(url, init);
+          if (response.ok) {
+
+            let body: any;
+            if (response.headers.get('Content-Type').includes('application/json')) {
+              body = await response.json();
+            } else {
+              body = await response.blob();
+            }
+            return self.utils.createResponseOptions(response.url, response.status, body);
+          } else {
+            throw response;
+          }
+        }
+      }
+    }
+    catch (ex) {
+      (ex as Error).message = `Cannot create passThru404 backend; ${(ex as Error).message || ''}`;
+      throw ex;
+    }
   }
 
 }
