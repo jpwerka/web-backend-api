@@ -1,7 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "outDir": "./dist",
     "sourceMap": true,
     "declaration": true,
@@ -29,9 +29,9 @@
     "skipLibCheck": true
   },
   "include": [
-    "./src/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
-    "./test/**/*.spec.ts"
+    "test/**/*.spec.ts"
   ]
 }

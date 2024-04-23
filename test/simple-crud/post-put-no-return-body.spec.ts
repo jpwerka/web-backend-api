@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { v4 } from 'uuid';
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
@@ -65,13 +66,14 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).then(
-        (response: (IHttpResponse<void> & { location: string })) => {
+      dbService.handleRequest<void>(req).then(
+        (response: (IHttpResponse<void> & { location?: string })) => {
           expect(response.status).toEqual(STATUS.CREATED);
           expect(response.body).toBeUndefined();
           expect(response.location).toContain('Location ID:');
           done();
-        }
+        },
+        (erro) => done(erro)
       );
     });
 
@@ -86,17 +88,14 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).then(
-        (response: (IHttpResponse<void> & { location: string })) => {
+      dbService.handleRequest<void>(req).then(
+        (response: (IHttpResponse<void> & { location?: string })) => {
           expect(response.status).toEqual(STATUS.CREATED);
           expect(response.body).toBeUndefined();
           expect(response.location).toEqual(`Location ID: ${id}`);
           done();
         },
-        (erro) => {
-          console.log("ERRO NO PUT CREATED", erro);
-          done(erro);
-        }
+        (erro) => done(erro)
       );
     });
 
@@ -110,12 +109,13 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<void>(req).then(
         (response: IHttpResponse<void>) => {
           expect(response.status).toEqual(STATUS.NO_CONTENT);
           expect(response.body).toBeUndefined();
           done();
-        }
+        },
+        (erro) => done(erro)
       );
     });
 
@@ -129,12 +129,13 @@ describe('Testes de uma aplicação CRUD com comandos POST e PUT sem retorno de 
         }
       };
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<void>(req).then(
         (response: IHttpResponse<void>) => {
           expect(response.status).toEqual(STATUS.NO_CONTENT);
           expect(response.body).toBeUndefined();
           done();
-        }
+        },
+        (erro) => done(erro)
       );
     });
 

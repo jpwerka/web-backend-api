@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
 import { IBackendService, IHttpResponse, IRequestCore, LoadFn } from '../../src/interfaces';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { getDateWithoutSeconds } from '../utils/date-utils';
 import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
-import * as cloneDeep from 'clonedeep';
+import { cloneDeep } from '../../src/utils/deep-clone';
 
 class TransformersFn {
   public static transformePost(customer: ICustomer): ICustomer {
@@ -16,7 +17,7 @@ class TransformersFn {
     return customer;
   }
 
-  public static transformePut(_customer: ICustomer, body: Partial<ICustomer>): ICustomer {
+  public static transformePut(_customer: ICustomer | null, body: Partial<ICustomer>): ICustomer {
     body.updatedAt = getDateWithoutSeconds();
     return body as ICustomer;
   }

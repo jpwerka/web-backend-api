@@ -1,5 +1,6 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-module.exports = {
+
+export default {
   preset: 'ts-jest',
   // All imported modules in your tests should be mocked automatically
   // automock: false,

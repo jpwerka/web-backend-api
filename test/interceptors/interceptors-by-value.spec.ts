@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
 import { IBackendService, IHttpErrorResponse, IRequestCore, LoadFn } from '../../src/interfaces';

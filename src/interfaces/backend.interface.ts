@@ -93,7 +93,6 @@ export interface IBackendService {
    * @param req Requisição HTTP a ser processada
    * @returns Uma Promise com uma resposta HTTP indicando sucesso ou erro na operação.
    */
-  handleRequest<T>(req: IRequestCore<unknown>): Promise<T>;
   handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
   handleRequest(req: IRequestCore<unknown>): Promise<IHttpResponse<unknown>>;
 
@@ -443,8 +442,8 @@ export interface IBackendService {
    */
   get$<T = unknown>(
     collectionName: string,
-    id: string,
-    query: Map<string, string[]>,
+    id: string | undefined,
+    query: Map<string, string[]> | undefined,
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: boolean

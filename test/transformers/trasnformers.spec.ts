@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
@@ -5,7 +6,7 @@ import { IBackendService, IHttpResponse, LoadFn } from '../../src/interfaces';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { getDateWithoutSeconds } from '../utils/date-utils';
 import { IProduct, collectionProducts, products } from './transformers.mock';
-import * as cloneDeep from 'clonedeep';
+import { cloneDeep } from '../../src/utils/deep-clone';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
@@ -76,7 +77,7 @@ describe('Testes para as funções de transformação', () => {
       dbService.addTransformGetByIdMap(collectionProducts, transformeGet);
       const expectedProduct = transformeGet(transformePost(cloneDeep(products[0])));
       // when
-      dbService.get$(collectionProducts, products[0].id, undefined, collectionProducts).then(
+      dbService.get$<IProduct>(collectionProducts, products[0].id, undefined, collectionProducts).then(
         (response: IHttpResponse<{ data: IProduct }>) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
@@ -97,7 +98,7 @@ describe('Testes para as funções de transformação', () => {
         dbService.addTransformGetAllMap(collectionProducts, transformeGet);
         const expectedProducts = products.map(product => transformeGet(transformePost(cloneDeep(product))));
         // when
-        dbService.get$(collectionProducts, undefined, undefined, collectionProducts).then(
+        dbService.get$<IProduct>(collectionProducts, undefined, undefined, collectionProducts).then(
           (response: IHttpResponse<{ data: IProduct[] }>) => {
             // then
             try {

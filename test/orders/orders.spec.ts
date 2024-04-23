@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
@@ -59,7 +60,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc => doc.createdAt);
+          const expectsCreatedAt = response.body?.map(doc => doc.createdAt);
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -77,7 +78,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc => doc.createdAt);
+          const expectsCreatedAt = response.body?.map(doc => doc.createdAt);
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -102,7 +103,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
+          const expectsCreatedAt = response.body?.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -127,7 +128,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
+          const expectsCreatedAt = response.body?.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -152,7 +153,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsCreatedAt = response.body.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
+          const expectsCreatedAt = response.body?.map(doc => ({ customerId: doc.customerId, identifier: doc.identifier }));
           expect(expectsCreatedAt).toEqual(expectedOrdered);
           done();
         },
@@ -172,7 +173,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsDescriptions = response.body.map(doc => doc.description);
+          const expectsDescriptions = response.body?.map(doc => doc.description);
           expect(expectsDescriptions).toEqual(expectedOrdered);
           done();
         },
@@ -192,7 +193,7 @@ describe('Testes para cenários de ordenação', () => {
       dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
         (response: IHttpResponse<IOutboundDocument[]>) => {
           // then
-          const expectsDescriptions = response.body.map(doc => doc.description);
+          const expectsDescriptions = response.body?.map(doc => doc.description);
           expect(expectsDescriptions).toEqual(expectedOrdered);
           done();
         },

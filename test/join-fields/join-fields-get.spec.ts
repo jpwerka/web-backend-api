@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
 import { IBackendService, IHttpResponse, IJoinField, LoadFn } from '../../src/interfaces';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { ICustomer, IOutboundDocument, IOutboundLoad, IProduct, collectionCustomers, collectionDocuments, collectionLoads, collectionProducts, customers, documents, loads, products } from './join-fields.mock';
-import * as cloneDeep from 'clonedeep';
+import { cloneDeep } from '../../src/utils/deep-clone';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 

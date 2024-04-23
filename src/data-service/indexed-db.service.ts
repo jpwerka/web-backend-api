@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { v4 } from 'uuid';
-import * as cloneDeep from 'clonedeep';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity, LOG } from './backend.service';
+import { cloneDeep } from '../utils/deep-clone';
 
 interface IEventTargetError extends EventTarget {
   error: unknown;
@@ -210,8 +211,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
   get$<T = unknown>(
     collectionName: string,
-    id: string,
-    query: Map<string, string[]>,
+    id: string | undefined,
+    query: Map<string, string[]> | undefined,
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: boolean,
@@ -488,7 +489,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
-              item = await this.applyTransformPut(requestGet.result, item, transformfn);
+              item = await this.applyTransformPut(requestGet.result as IExtendEntity, item, transformfn);
             }
           })().then(() => {
 

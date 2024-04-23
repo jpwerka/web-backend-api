@@ -3,13 +3,13 @@ import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { ConditionsFn, ErrorResponseFn, IConditionsParam, IDefaultInterceptor, IErrorMessage, IHttpErrorResponse, IHttpResponse, IInterceptorUtils, IPassThruBackend, IPostToOtherMethod, IRequestCore, IRequestInterceptor, ResponseFn } from '../interfaces/interceptor.interface';
 import { CaseSensitive, CompareFn, FieldFn, FilterFn, FilterOp, IQueryCursor, IQueryFilter, IQueryOrder, IQueryParams, IQueryResult, IQuickFilter } from '../interfaces/query.interface';
 import { IParsedRequestUrl, IUriInfo } from '../interfaces/url.interface';
+import { cloneDeep } from '../utils/deep-clone';
 import { delayResponse } from '../utils/delay-response';
 import { STATUS } from '../utils/http-status-codes';
+import { Logger, LoggerLevel } from '../utils/logger';
 import { parseUri } from '../utils/parse-uri';
-import * as cloneDeep from 'clonedeep';
 
 import 'json.date-extensions';
-import { Logger, LoggerLevel } from '../utils/logger';
 
 export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
 
@@ -97,7 +97,7 @@ export abstract class BackendService {
     this.config.host = this.config.host ? this.config.host : loc.host;     // default to app web server host
     this.config.rootPath = this.config.rootPath ? this.config.rootPath : loc.path; // default to path when app is served (e.g.'/')
     this.dbReadyPromise = new Promise<boolean>((resolve) => this.dbReadyFn = resolve);
-    this.onDbReadyAjustJoinFields();
+    void this.onDbReadyAjustJoinFields();
     if (typeof this.config.log === 'boolean') {
       LOG.level = this.config.log ? LoggerLevel.TRACE : LoggerLevel.ERROR;
     } else {
@@ -221,7 +221,7 @@ export abstract class BackendService {
   }
 
   addReplaceUrl(collectionName: string, replace: string | string[]): void {
-    let replaceAdd = [];
+    let replaceAdd: string[] = [];
     if (typeof replace === 'string') {
       replaceAdd = replace.split('/').filter(value => value.trim().length > 0);
     } else {
@@ -446,6 +446,7 @@ export abstract class BackendService {
       const contentType = response.headers ? response.headers.get('Content-Type') : undefined;
       const body = response.body;
       if (contentType === 'application/json' && body) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         response.body = JSON.parse(JSON.stringify(body), JSON['dateParser']);
         LOG.trace('Body has parsed to convert possibles dates to Date Object. (Body)', response.body);
       }
@@ -465,7 +466,7 @@ export abstract class BackendService {
       this.logResponse(response);
       response = this.convertResponse(response);
     } catch (error) {
-      this.logResponse(error);
+      this.logResponse(error as IHttpErrorResponse);
       throw error;
     }
 
@@ -485,7 +486,7 @@ export abstract class BackendService {
     if (intInfo.interceptor && intInfo.interceptor.applyToPath === 'complete') {
       const intUtils = this.createInterceptorUtils(url, undefined, intInfo.interceptorIds, parsed.query, req.body);
       response$ = this.processInterceptResponse(intInfo.interceptor, intUtils);
-      if (response$) {
+      if (response$ != undefined) {
         return response$;
       } else if (this.config.passThruUnknownUrl) {
         LOG.debug('Has one complete interceptor, but it does not has a valid response and dispatch request to real backend server.');
@@ -590,7 +591,7 @@ export abstract class BackendService {
     if (interceptor) {
       const intUtils = this.createInterceptorUtils(url, id, interceptorIds, query);
       response$ = this.processInterceptResponse(interceptor, intUtils);
-      if (response$) {
+      if (response$ != undefined) {
         return this.addDelay(response$, this.config.delay);
       }
     }
@@ -676,11 +677,11 @@ export abstract class BackendService {
           const ids = isCollectionField ? joinFieldValues.map(element => element[joinField.fieldId]) : joinFieldValue;
           const conditions: IQueryFilter[] = [{
             name: 'id',
-            fn: this.createFilterArrayFn('id', ids, null)
+            fn: this.createFilterArrayFn('id', ids as string[], null)
           }];
           const data = await (this.getAllByFilter$(joinField.collectionSource, conditions) as unknown) as IExtendEntity[];
           // Reordena na mesma ordem existente dos ids de busca
-          const dataAux = [];
+          const dataAux: IExtendEntity[] = [];
           ids.forEach((id, index) => {
             dataAux[index] = data.find(element => element.id === id);
           });
@@ -788,7 +789,7 @@ export abstract class BackendService {
     if (interceptor) {
       const intUtils = this.createInterceptorUtils(url, id, interceptorIds, undefined, body);
       response$ = this.processInterceptResponse(interceptor, intUtils);
-      if (response$) {
+      if (response$ != undefined) {
         return this.addDelay(response$, this.config.delay);
       }
     }
@@ -817,7 +818,7 @@ export abstract class BackendService {
     if (interceptor) {
       const intUtils = this.createInterceptorUtils(url, id, interceptorIds, undefined, body);
       response$ = this.processInterceptResponse(interceptor, intUtils);
-      if (response$) {
+      if (response$ != undefined) {
         return this.addDelay(response$, this.config.delay);
       }
     }
@@ -846,7 +847,7 @@ export abstract class BackendService {
     if (interceptor) {
       const intUtils = this.createInterceptorUtils(url, id, interceptorIds);
       response$ = this.processInterceptResponse(interceptor, intUtils);
-      if (response$) {
+      if (response$ != undefined) {
         return this.addDelay(response$, this.config.delay);
       }
     }
@@ -900,7 +901,7 @@ export abstract class BackendService {
     return useFilterOr ? this.filterItemOr(item, conditions) : this.filterItemAnd(item, conditions);
   }
 
-  private getFieldValue(item: IExtendEntity, name: string): IExtendEntity | unknown {
+  private getFieldValue(item: IExtendEntity, name: string): unknown {
     if (name.includes('.')) {
       const root = name.substring(0, name.indexOf('.'));
       const child = name.substring(name.indexOf('.') + 1);
@@ -1788,7 +1789,7 @@ export abstract class BackendService {
           const response = await fetch(url, init);
           if (response.ok) {
 
-            let body: any;
+            let body: unknown;
             if (response.headers.get('Content-Type').includes('application/json')) {
               body = await response.json();
             } else {

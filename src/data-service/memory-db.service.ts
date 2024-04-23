@@ -5,7 +5,8 @@ import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.inter
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
 import { BackendService, IExtendEntity } from './backend.service';
-import * as cloneDeep from 'clonedeep';
+import { cloneDeep } from '../utils/deep-clone';
+
 
 export class MemoryDbService extends BackendService implements IBackendService {
 
@@ -57,8 +58,8 @@ export class MemoryDbService extends BackendService implements IBackendService {
         if (!data['id']) {
           data['id'] = this.generateStrategyId(objectStore, collectionName);
         }
-        objectStore.splice(this.sortedIndex(objectStore, data['id']), 0, data as IExtendEntity);
-        resolve(data['id']);
+        objectStore.splice(this.sortedIndex(objectStore, data['id'] as string), 0, data as IExtendEntity);
+        resolve(data['id'] as string);
       } catch (error) {
         reject(error);
       }
@@ -121,8 +122,8 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   get$<T = unknown>(
     collectionName: string,
-    id: string,
-    query: Map<string, string[]>,
+    id: string | undefined,
+    query: Map<string, string[]> | undefined,
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: boolean

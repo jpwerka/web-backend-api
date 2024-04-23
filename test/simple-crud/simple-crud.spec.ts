@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { IndexedDbService, dataService, getBackendService, setupBackend } from '../../src/data-service';
 import { BackendConfigArgs, BackendTypeArgs, IBackendService, IHttpResponse, IRequestCore } from '../../src/interfaces';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { collectionCustomers, customers, ICustomer } from './simple-crud.mock';
-import * as cloneDeep from 'clonedeep';
+import { cloneDeep } from '../../src/utils/deep-clone';
 
 describe('Testes para uma aplicação CRUD pura e simples', () => {
 
@@ -50,7 +51,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'GET',
           url: `http://localhost/${collectionCustomers}`
         };
-        dbService.handleRequest(req).then(
+        dbService.handleRequest<ICustomer[]>(req).then(
           (response: IHttpResponse<ICustomer[]>) => {
             expect(response.body).toEqual(customers);
             done();
@@ -73,7 +74,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           url: `http://localhost/${collectionCustomers}`,
           urlWithParams: `http://localhost/${collectionCustomers}?name=23451`
         };
-        dbService.handleRequest(req).then(
+        dbService.handleRequest<ICustomer[]>(req).then(
           (response: IHttpResponse<ICustomer[]>) => {
             expect(response.body).toEqual(expectedCustomers);
             done();
@@ -95,7 +96,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'GET',
           url: `http://localhost/${collectionCustomers}/5`,
         };
-        dbService.handleRequest(req).then(
+        dbService.handleRequest<ICustomer>(req).then(
           (response: IHttpResponse<ICustomer>) => {
             expect(response.body).toEqual(expectedCustomer);
             done();
@@ -116,10 +117,10 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         url: `http://localhost/${collectionCustomers}`,
         body: expectedCustomer
       };
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<ICustomer>(req).then(
         (responsePost: IHttpResponse<ICustomer>) => {
           expect(responsePost.body).toEqual(expectedCustomer);
-          dbService.get$(collectionCustomers, '1000', undefined, collectionCustomers).then(
+          dbService.get$<ICustomer>(collectionCustomers, '1000', undefined, collectionCustomers).then(
             (responseGet: IHttpResponse<ICustomer>) => {
               expect(responseGet.body).toEqual(expectedCustomer);
               done();
@@ -141,12 +142,12 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         url: `http://localhost/${collectionCustomers}`,
         body: cloneDeep(expectedCustomer)
       };
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<ICustomer>(req).then(
         (responsePost: IHttpResponse<ICustomer>) => {
           const { name, active } = responsePost.body;
           expect({ name, active }).toEqual(expectedCustomer);
           expectedCustomer = Object.assign(expectedCustomer, { id: responsePost.body.id });
-          dbService.get$(collectionCustomers, responsePost.body.id.toString(), undefined, collectionCustomers).then(
+          dbService.get$<ICustomer>(collectionCustomers, responsePost.body.id.toString(), undefined, collectionCustomers).then(
             (responseGet: IHttpResponse<ICustomer>) => {
               expect(responseGet.body).toEqual(expectedCustomer);
               done();
@@ -170,7 +171,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           url: `http://localhost/${collectionCustomers}/1`,
           body: { name: 'Alterado nome cliente 1' }
         };
-        dbService.handleRequest(req).then(
+        dbService.handleRequest<ICustomer>(req).then(
           (responsePost: IHttpResponse<ICustomer>) => {
             const { name } = responsePost.body;
             expect({ name }).toEqual({ name: 'Alterado nome cliente 1' });
@@ -199,11 +200,11 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
           method: 'DELETE',
           url: `http://localhost/${collectionCustomers}/5`,
         };
-        dbService.handleRequest<IHttpResponse<void>>(req).then(
+        dbService.handleRequest<void>(req).then(
           (responseDelete: IHttpResponse<void>) => {
             const { url, status } = responseDelete;
             expect({ url, status }).toEqual({ url: `http://localhost/${collectionCustomers}/5`, status: 204 });
-            dbService.get$(collectionCustomers, '5', undefined, collectionCustomers).then(
+            dbService.get$<ICustomer>(collectionCustomers, '5', undefined, collectionCustomers).then(
               (responseGet: IHttpResponse<ICustomer>) => done(`Should not return a customer with id ${responseGet.body.id}`),
               error => {
                 expect(error).toEqual({ url: 'customers', status: 404, error: 'Request id does not match item with id: 5' });

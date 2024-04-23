@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
@@ -94,7 +95,7 @@ describe('Testes para cenários de filtros', () => {
   it('Deve aplicar um filtro com função customizada', (done) => {
     // given;
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', (value: string, item: IOutboundDocument): boolean => {
-      return item.customer.id === parseInt(value);
+      return item.customer?.id === parseInt(value);
     });
     const expectedDocuments = documents.filter(doc => doc.customerId === 2);
     const query = new Map<string, string[]>([['customerId', ['2']]]);
@@ -112,7 +113,7 @@ describe('Testes para cenários de filtros', () => {
   it('Deve aplicar um filtro com mais de uma função customizada', (done) => {
     // given
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', (value: string, item: IOutboundDocument): boolean => {
-      return item.customer.id === parseInt(value);
+      return item.customer?.id === parseInt(value);
     });
     dbService.addFieldFilterMap(collectionDocuments, 'isLoaded', (value: string, item: IOutboundDocument): boolean => {
       return item.isLoaded === ((value === 'true' ? true : false));

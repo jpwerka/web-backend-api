@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
 import { IBackendService, IHttpResponse, IPostToOtherMethod, IRequestCore, LoadFn } from '../../src/interfaces';
 import { STATUS } from '../../src/utils';
+import { cloneDeep } from '../../src/utils/deep-clone';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { ICustomer, collectionCustomers, customers } from './simple-crud.mock';
-import * as cloneDeep from 'clonedeep';
+
 
 const postsToOtherMethod: IPostToOtherMethod[] = [
   {
@@ -45,15 +47,11 @@ const postsToOtherMethod: IPostToOtherMethod[] = [
 ];
 
 describe('Testes para uma aplicação CRUD com extensões', () => {
-  interface ITestPostToOtherMethod {
-    whereIsConfig: 'database' | 'collection';
-    postsToOtherMethod: IPostToOtherMethod[];
-  }
 
   [
     { whereIsConfig: 'database', postsToOtherMethod },
     { whereIsConfig: 'collection', postsToOtherMethod }
-  ].forEach((postToOtherMethodConfig: ITestPostToOtherMethod) => {
+  ].forEach((postToOtherMethodConfig) => {
     let dbService: MemoryDbService;
 
     const backendConfig = new BackendConfig({
@@ -109,7 +107,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
 
       const spyPut$ = jest.spyOn(dbService, 'put$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<ICustomer>(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -134,7 +132,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
 
       const spyPut$ = jest.spyOn(dbService, 'put$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<ICustomer>(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -159,7 +157,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyPut$ = jest.spyOn(dbService, 'put$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<ICustomer>(req).then(
         (response: IHttpResponse<ICustomer>) => {
           // then
           expect(spyPut$).toHaveBeenCalled();
@@ -179,7 +177,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = jest.spyOn(dbService, 'delete$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<null>(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();
@@ -198,7 +196,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = jest.spyOn(dbService, 'delete$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<null>(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();
@@ -220,7 +218,7 @@ describe('Testes para uma aplicação CRUD com extensões', () => {
       };
       const spyDelete$ = jest.spyOn(dbService, 'delete$');
       // when
-      dbService.handleRequest(req).then(
+      dbService.handleRequest<null>(req).then(
         (response: IHttpResponse<null>) => {
           // then
           expect(spyDelete$).toHaveBeenCalled();
