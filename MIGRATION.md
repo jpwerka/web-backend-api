@@ -36,7 +36,7 @@ Foram as seguintes classes que deixaram de existir:
 
 ## Configuração do projeto
 
-Para fazer a configuração do projeto, cao ainda não esteja utilizando é recomendado fazer a configuração via `enviroment`.\
+Para fazer a configuração do projeto, caso ainda não esteja utilizando é recomendado fazer a configuração via `enviroment`.\
 Vide no [README](./README.md) na seção [Separate backend from production](./README.md#separate-backend-from-production)
 
 ## Migrando o código RxJs para Promise

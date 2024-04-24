@@ -31,6 +31,7 @@ Removido as classes que eram exclusivas do framework angular e colocadas
 apenas no projeto de exemplo.\
 Alterado para ser usado o webpack padrão para compilação e geração da biblioteca.\
 Alterado testes para usar Jest ao invés de Jasmine.\
+Atualizado biblioteca do Eslint e atualizado as regras do mesmo.\
 Criado arquivo de `CHANGELOG.md`.
 
 Para maiores detalhes de como fazer a migração acesso o arquivo [MIGRATION](./MIGRATION.md)

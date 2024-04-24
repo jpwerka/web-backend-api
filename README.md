@@ -196,7 +196,7 @@ $ ng serve --configuration="mock-backend"
 
 To separate backend from production is necessary create an environment in your application configuration that load web-backend-api when necessary and don't load it when unnecessary.
 
-In yours enviroments files, create a property with name `imports` and add de reference to the module use to load `web-backend-api.
+In yours enviroments files, create a property with name `imports` and add reference to the module use to load `web-backend-api.
 
 File `src/environments/environment.mock.ts` is the module used for simulate backend configuration.
 
