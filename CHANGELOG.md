@@ -31,7 +31,7 @@ Removido as classes que eram exclusivas do framework angular e colocadas
 apenas no projeto de exemplo.\
 Alterado para ser usado o webpack padrão para compilação e geração da biblioteca.\
 Alterado testes para usar Jest ao invés de Jasmine.\
-Atualizado biblioteca do Eslint e atualizado as regras do mesmo.\
+Atualizado biblioteca do ESLint e atualizado as regras do mesmo.\
 Criado arquivo de `CHANGELOG.md`.
 
 Para maiores detalhes de como fazer a migração acesso o arquivo [MIGRATION](./MIGRATION.md)
@@ -42,7 +42,6 @@ Para maiores detalhes de como fazer a migração acesso o arquivo [MIGRATION](./
 
 - Feat: Alterado retorno da biblioteca para suportar Promise (#54)
 
-Feat: Mudado forma da biblioteca para Promise\
 Alterado a biblioteca para retornar Promise ao invés de Observable\
 Depreciado retorno via Observable, mas mantido como padrão, para manter
 compatibilidade.\
