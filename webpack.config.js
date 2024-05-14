@@ -58,7 +58,6 @@ export default {
   },
   externals: [
     'uuid',
-    'clonedeep',
     'json.date-extensions'
   ],
 };
