@@ -2,16 +2,16 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./",
-    "outDir": "./dist/out-tsc",
+    "outDir": "./dist",
     "sourceMap": true,
-    "declaration": false,
-    "module": "es2020",
+    "declaration": true,
+    "module": "es2022",
     "moduleResolution": "node",
     "noUnusedLocals": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "es2022",
+    "target": "es2020",
     "typeRoots": [
       "node_modules/@types"
     ],
@@ -19,14 +19,19 @@
       "es2022",
       "dom"
     ],
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve",
+    "noImplicitAny": true,
+    "noUnusedParameters": true,
+    "removeComments": false,
+    "preserveConstEnums": true,
+    "skipLibCheck": true
   },
-  "angularCompilerOptions": {
-    "skipTemplateCodegen": true,
-    "strictMetadataEmit": true,
-    "fullTemplateTypeCheck": true,
-    "strictInjectionParameters": true,
-    "enableResourceInlining": true,
-    "strictTemplates": true
-  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "test/**/*.spec.ts"
+  ]
 }

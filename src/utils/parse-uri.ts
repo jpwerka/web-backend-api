@@ -1,0 +1,30 @@
+import { IUriInfo } from '../interfaces/url.interface';
+
+/** Return information (UriInfo) about a URI  */
+export function parseUri(str: string): IUriInfo {
+  // Adapted from parseuri package - http://blog.stevenlevithan.com/archives/parseuri
+  // eslint-disable-next-line max-len
+  const URL_REGEX = /^(?:(?![^:@]+:[^:@/]*@)([^:/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#/]*\.[^?#/.]+(?:[?#]|$)))*\/?)?([^?#/]*))(?:\?([^#]*))?(?:#(.*))?)/;
+  const m = URL_REGEX.exec(str);
+  const uri: IUriInfo = {
+    source: '',
+    protocol: '',
+    authority: '',
+    userInfo: '',
+    user: '',
+    password: '',
+    host: '',
+    port: '',
+    relative: '',
+    path: '',
+    directory: '',
+    file: '',
+    query: '',
+    anchor: ''
+  };
+  const keys = Object.keys(uri);
+  let i = keys.length;
+
+  while (i--) { (uri as unknown as { [key: string]: string })[keys[i]] = m[i] || ''; }
+  return uri;
+}

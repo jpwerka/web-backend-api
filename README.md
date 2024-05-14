@@ -1,6 +1,6 @@
 # Web Backend API
 
-Library to simulate a backend API for use in angular projects.
+Library to simulate a backend API for use in WEB projects.
 
 When using this mock library, it will not be necessary to run any other service or application to simulate the backend, since it will run together with the application at run time.
 
@@ -24,6 +24,7 @@ $ npm install web-backend-api --save
 To simulate backend is necessary create a collection files that have the configuration about every collection used in application
 
 Sample tree project:
+
 ```
  '-> backend
  |  '-> ** (collection folders)
@@ -34,27 +35,28 @@ Sample tree project:
 To separate info and configuration of data, create two files (optional):
 
 File: `customers.mock.ts`
-```typescript
-import { ICustomer } from 'src/app/entities/customer/customer.interface';
 
-export const collectionName = 'customers';
+```typescript
+import { ICustomer } from "src/app/entities/customer/customer.interface";
+
+export const collectionName = "customers";
 
 export const customers: ICustomer[] = [
-  { id: 1, name: 'Customer 12345' },
-  { id: 2, name: 'Customer 23451' },
-  { id: 3, name: 'Customer 34512' },
-  { id: 4, name: 'Customer 45123' },
-  { id: 5, name: 'Customer 51234' },
+  { id: 1, name: "Customer 12345" },
+  { id: 2, name: "Customer 23451" },
+  { id: 3, name: "Customer 34512" },
+  { id: 4, name: "Customer 45123" },
+  { id: 5, name: "Customer 51234" },
 ];
 ```
 
 File: `customers.data.ts`
+
 ```typescript
-import { dataService, IBackendService } from 'web-backend-api/src';
-import { collectionName, customers } from './customers.mock';
+import { dataService, IBackendService } from "web-backend-api";
+import { collectionName, customers } from "./customers.mock";
 
 dataService(collectionName, (dbService: IBackendService) => {
-
   // Load initial clients to backend
   customers.forEach((customer) => {
     dbService.storeData(collectionName, customer);
@@ -62,205 +64,180 @@ dataService(collectionName, (dbService: IBackendService) => {
 });
 ```
 
-_**Note:** To view all possible configurations for a collection see all methods in: [IBackendService](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/backend.interface.ts)\
-To view a sample project that use the lib, see: [Web Backend API Sample](https://github.com/jpwerka/web-backend-api)_
+_**Note:** To view all possible configurations for a collection see all methods in: [IBackendService](https://github.com/jpwerka/web-backend-api/blob/master/src/interfaces/backend.interface.ts)\
+To view a sample project that use the lib, see: [Web Backend API Sample](https://github.com/jpwerka/web-backend-api-sample)_
 
+## How to use with an Angular App
 
-To start and load all data to simulate backend is necessary create a different main entry file. In this sample use a main-mem.ts
+It's necessariy load all scripts that configure the backends data for use in application.
+
+To start and load all data to simulate backend is necessary create a different main entry file. In this sample use a main-mock.ts
 
 ```typescript
-import { enableProdMode } from '@angular/core';
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
-import { AppModule } from './app/app.module';
-import { environment } from './environments/environment';
-import { setupBackend, BackendConfigArgs } from 'web-backend-api/src';
-
+import { enableProdMode } from "@angular/core";
+import { platformBrowserDynamic } from "@angular/platform-browser-dynamic";
+import { AppModule } from "./app/app.module";
+import { environment } from "./environments/environment";
+import { setupBackend, BackendConfigArgs } from "web-backend-api/src";
 
 if (environment.production) {
   enableProdMode();
 }
 
-declare const require: any;
-
 // Define directory where find all *.data.ts files
-const dirDataSoruce = '../backend/';
-// Then we find all the mocks.
-const context = require.context(dirDataSoruce, true, /\.data\.ts$/);
+const dirDataSoruce = "../backend/";
+
+// Then we find all the mocks. For until angular 14
+// declare const require: any;
+// const context = require.context(dirDataSoruce, true, /\.data\.ts$/);
+
+// Then we find all the mocks. For angular above 14
+const context = (import.meta as any).webpackContext(dirDataSoruce, {
+  recursive: true,
+  regExp: /\.data\.ts$/,
+});
+
 // And load the modules.
 context.keys().map(context);
 
 const config: BackendConfigArgs = {
   post204: false, // return the item in body after POST
-  put204: false // return the item in body after PUT
+  put204: false, // return the item in body after PUT
 };
-setupBackend(config, {dbtype: 'memory'}).then(() => {
-  platformBrowserDynamic().bootstrapModule(AppModule).then(
-    () => {
-      console.log('[Backend]', 'Backend database application started!');
-    }
-  ).catch(err => console.error(err));
-}).catch(err => console.error(err));
-
+setupBackend(config, { dbtype: "memory" })
+  .then(() => {
+    platformBrowserDynamic()
+      .bootstrapModule(AppModule)
+      .then(() => {
+        console.log("[Backend]", "Backend database application started!");
+      })
+      .catch((err) => console.error(err));
+  })
+  .catch((err) => console.error(err));
 ```
-_**Note:** To view all possible configurations for a setup backend, see all configurations flags in: [BackendConfigArgs](https://github.com/jpwerka/web-backend-api/blob/master/web-backend-api/src/lib/interfaces/configuration.interface.ts)_
 
+_**Note:** To view all possible configurations for a setup backend, see all configurations flags in: [BackendConfigArgs](https://github.com/jpwerka/web-backend-api/blob/master/src/interfaces/configuration.interface.ts)_
 
 To enable the different main entry file is necessary create a configuration in `angular.json` file another configuration in configurations node.
+
 ```json
 ...
   "configurations": {
     "production": { ... },
-    "backend": {
-      "main": "src/main-mem.ts",
+    "mock-backend": {
+      "main": "src/main-mock.ts",
       ...
     }
   }
 ```
 
-Import the WebBackendApiModule into your root AppModule
+After this step, it's necessary replace angular default [HttpBackend](https://angular.io/api/common/http/HttpBackend) providers.
+To allow this crete a service to simulate mock backend with this configuration (sugestion): [HttpMockBackendService](https://github.com/jpwerka/web-backend-api-sample/blob/master/src/mocks/http-mock-backend.service.ts)
+
+Create the module taht configure replace provider for your application:
 
 ```typescript
-import { WebBackendApiModule } from 'web-backend-api';
+import { HttpBackend } from "@angular/common/http";
+import { ModuleWithProviders, NgModule } from "@angular/core";
+import { IBackendService, getBackendService } from "web-backend-api";
+import {
+  BACKEND_SERVICE,
+  HttpMockBackendService,
+} from "./http-mock-backend.service";
+
+function httpMockBackendFactory(dbService: IBackendService): HttpBackend {
+  return new HttpMockBackendService(dbService);
+}
+
+@NgModule({})
+export class MockBackendApiModule {
+  static forRoot(): ModuleWithProviders<MockBackendApiModule> {
+    return {
+      ngModule: MockBackendApiModule,
+      providers: [
+        { provide: BACKEND_SERVICE, useFactory: getBackendService },
+        {
+          provide: HttpBackend,
+          useFactory: httpMockBackendFactory,
+          deps: [BACKEND_SERVICE],
+        },
+      ],
+    };
+  }
+
+  static forFeature(): ModuleWithProviders<MockBackendApiModule> {
+    return MockBackendApiModule.forRoot();
+  }
+}
 ```
 
-Add WebBackendApiModule.forRoot() to your AppModule's import array
+Import the MockBackendApiModule into your root AppModule
+
+```typescript
+import { MockBackendApiModule } from "./shared/mocks/mock-backend-api.module";
+```
+
+Add MockBackendApiModule.forRoot() to your AppModule's import array
 
 ```typescript
 @NgModule({
-  imports : [CommonModule, WebBackendApiModule.forRoot(), ...],
+  imports : [CommonModule, MockBackendApiModule.forRoot(), ...],
 })
 export class AppModule {}
 ```
 
 To start your application with simulate backend use:
+
 ```bash
-$ ng serve --configuration=backend
+$ ng serve --configuration="mock-backend"
 ```
 
 ## Separate backend from production
 
-### Option 1 - With replace file in angular.json
+To separate backend from production is necessary create an environment in your application configuration that load web-backend-api when necessary and don't load it when unnecessary.
 
-To separate backend from production is necessary create an module in your app that load web-backend-api when necessary and don't load it when unnecessary.
+In yours enviroments files, create a property with name `imports` and add reference to the module use to load `web-backend-api.
 
-Create the same module in two different folders in your app:
-
-File `backend/app-web-backend-api.module.ts` is the module used for backend configuration.
-```typescript
-import { ModuleWithProviders, NgModule } from '@angular/core';
-import { WebBackendApiModule } from 'web-backend-api';
-
-@NgModule({})
-export class AppWebBackendApiModule {
-  static forRoot(): ModuleWithProviders {
-    return WebBackendApiModule.forRoot();
-  }
-
-  static forFeature(): ModuleWithProviders {
-    return WebBackendApiModule.forFeature();
-  }
-}
-```
-
-File `shared/app-web-backend-api.module.ts` is the module used for production configuration.
-```typescript
-import { ModuleWithProviders, NgModule } from '@angular/core';
-
-@NgModule({})
-export class AppWebBackendApiModule {
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: AppWebBackendApiModule,
-      providers: [] // Empty module
-    };
-  }
-
-  static forFeature(): ModuleWithProviders {
-    return AppWebBackendApiModule.forRoot();
-  }
-}
-```
-Import the WebBackendApiModule into your root AppModule
+File `src/environments/environment.mock.ts` is the module used for simulate backend configuration.
 
 ```typescript
-import { AppWebBackendApiModule } from './backend/app-web-backend-api.module';
-```
-
-Add WebBackendApiModule.forRoot() to your AppModule's import array
-
-```typescript
-@NgModule({
-  imports : [CommonModule, AppWebBackendApiModule.forRoot(), ...],
-})
-export class AppModule {}
-```
-Change configuration in `angular.json` file include file replacement for this module to configuration `production`
-```json
-...
-  "configurations": {
-    "production": { 
-      "fileReplacements": [
-        {
-          "replace": "src/app/backend/app-web-backend-api.module.ts",
-          "with": "src/app/shared/app-web-backend-api.module.ts"
-        }
-      ],
-    }
-  }
-```
-When app load and start this module is load too, but, was this an empty module then nothing is changed for production.
-
-### Option 2 - With module loaded via enviroment (recomended)
-
-Create only one empty module to serve with mock when real app is running:
-
-File `mocks/web-backend-api-mock.module.ts` is the module used for production configuration.
-```typescript
-import { ModuleWithProviders, NgModule } from '@angular/core';
-
-@NgModule({})
-export class WebBackendApiMockModule {
-  static forRoot(): ModuleWithProviders<WebBackendApiMockModule> {
-    return {
-      ngModule: WebBackendApiMockModule,
-      providers: [] // Empty module
-    };
-  }
-
-  static forFeature(): ModuleWithProviders<WebBackendApiMockModule> {
-    return WebBackendApiMockModule.forRoot();
-  }
-}
-```
-In yours enviroments files, create a property with name `webBackendApi` and add de reference to the module use to load `web-backend-api. 
-
-Real module, for simulate backend and mock module to load in your production enviroment.
-
-File `src/environments/environment.back.ts` is the module used for simulate backend configuration.
-```typescript
-import { WebBackendApiModule } from 'web-backend-api';
+import { MockBackendApiModule } from "src/mocks/mock-backend-api.module";
 
 export const environment = {
   production: false,
-  webBackendApi: {
-    modulo: WebBackendApiModule,
-  }
-}
+  imports: [MockBackendApiModule.forRoot()],
+};
 ```
 
 File `src/environments/environment.prod.ts` is the module used for production configuration.
-```typescript
-import { WebBackendApiMockModule } from '../mocks/web-backend-api-mock.module.ts';
 
+```typescript
 export const environment = {
   production: true,
-  webBackendApi: {
-    modulo: WebBackendApiMockModule,
-  }
-}
+  imports: [],
+};
 ```
 
-Add `environment.webBackendApi.modulo.forRoot()` to your AppModule's import array
+Change configuration in `angular.json` file include file replacement for this module to configuration `production`
+
+```json
+...
+  "configurations": {
+    "mock-backend": {
+      "main": "src/main-mock.ts",
+      "tsConfig": "tsconfig.mock.json",
+      "fileReplacements": [
+        {
+          "replace": "src/environments/environment.ts",
+          "with": "src/environments/environment.mock.ts"
+        }
+      ],
+      . . .
+    }
+  }
+```
+
+Add `environment.imports` to your AppModule's import array
 
 ```typescript
 import { environment } from './../environments/environment';
@@ -268,13 +245,17 @@ import { environment } from './../environments/environment';
 
 @NgModule({
   imports : [
-    CommonModule, 
-    environment.webBackendApi.modulo.forRoot(), 
-    ...
+    CommonModule,
+    . . ., // other modules
+    ...environment.imports
   ],
 })
 export class AppModule {}
 ```
+
+## Changes and Updates
+
+View [CHANGELOG](https://github.com/jpwerka/web-backend-api/blob/master/CHANGELOG.md)
 
 ## Autor
 
