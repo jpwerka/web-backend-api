@@ -35,8 +35,8 @@ describe('Testes para cenários de filtros', () => {
     // given
     const expectedDocument = documents[0];
     // when
-    dbService.get$(collectionDocuments, '1', undefined, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument>) => {
+    dbService.get$<IOutboundDocument>(collectionDocuments, '1', undefined, collectionDocuments).then(
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocument);
         done();
@@ -50,8 +50,8 @@ describe('Testes para cenários de filtros', () => {
     const expectedDocuments = documents.filter(doc => doc.identifier === '978342308');
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
-    dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+    dbService.get$<IOutboundDocument>(collectionDocuments, undefined, query, collectionDocuments).then(
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -66,8 +66,8 @@ describe('Testes para cenários de filtros', () => {
     const expectedDocuments = documents.filter(doc => doc.identifier === '978342308');
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
-    dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+    dbService.get$<IOutboundDocument>(collectionDocuments, undefined, query, collectionDocuments).then(
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -82,8 +82,8 @@ describe('Testes para cenários de filtros', () => {
     const expectedDocuments = documents.filter(doc => doc.identifier !== '978342308');
     const query = new Map<string, string[]>([['identifier', ['978342308']]]);
     // when
-    dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+    dbService.get$<IOutboundDocument>(collectionDocuments, undefined, query, collectionDocuments).then(
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -158,10 +158,10 @@ describe('Testes para cenários de filtros', () => {
       ['customer.id', ['1']],
     ]);
     // when
-    dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+    dbService.get$<IOutboundDocument>(collectionDocuments, undefined, query, collectionDocuments).then(
+      (response) => {
         // then
-        expect(response.body.length).toBe(0);
+        expect((response.body as IOutboundDocument[]).length).toBe(0);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -178,9 +178,9 @@ describe('Testes para cenários de filtros', () => {
     ]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(1);
+        expect((response.body as IOutboundDocument[]).length).toBe(1);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -198,9 +198,9 @@ describe('Testes para cenários de filtros', () => {
     })
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(1);
+        expect((response.body as IOutboundDocument[]).length).toBe(1);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -222,9 +222,9 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', 'eq');
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(1);
+        expect((response.body as IOutboundDocument[]).length).toBe(1);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -245,9 +245,9 @@ describe('Testes para cenários de filtros', () => {
     });
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(1);
+        expect((response.body as IOutboundDocument[]).length).toBe(1);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -263,9 +263,9 @@ describe('Testes para cenários de filtros', () => {
     ]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(0);
+        expect((response.body as IOutboundDocument[]).length).toBe(0);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -281,9 +281,9 @@ describe('Testes para cenários de filtros', () => {
     ]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
-        expect(response.body.length).toBe(0);
+        expect((response.body as IOutboundDocument[]).length).toBe(0);
         expect(response.body).toEqual(expectedDocuments);
         done();
       },
@@ -299,7 +299,7 @@ describe('Testes para cenários de filtros', () => {
     ]);
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -317,7 +317,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', 'gt');
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -335,7 +335,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', 'ge');
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -353,7 +353,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', 'lt');
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();
@@ -371,7 +371,7 @@ describe('Testes para cenários de filtros', () => {
     dbService.addFieldFilterMap(collectionDocuments, 'customerId', 'le');
     // when
     dbService.get$(collectionDocuments, undefined, query, collectionDocuments).then(
-      (response: IHttpResponse<IOutboundDocument[]>) => {
+      (response) => {
         // then
         expect(response.body).toEqual(expectedDocuments);
         done();

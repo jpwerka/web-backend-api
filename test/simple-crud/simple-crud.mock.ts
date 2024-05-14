@@ -1,4 +1,6 @@
-export interface ICustomer {
+import { ExtendEntity } from '../../src/data-service/backend.service';
+
+export interface ICustomer extends ExtendEntity {
   id?: number;
   name: string;
   active?: boolean;

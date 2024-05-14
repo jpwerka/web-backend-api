@@ -22,7 +22,7 @@
     "useDefineForClassFields": false,
     "allowSyntheticDefaultImports": true,
     "jsx": "preserve",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noUnusedParameters": true,
     "removeComments": false,
     "preserveConstEnums": true,

@@ -1,16 +1,17 @@
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
+import { ExtendEntity } from './backend.service';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, IExtendEntity } from './backend.service';
+import { BackendService } from './backend.service';
 import { cloneDeep } from '../utils/deep-clone';
 
 
 export class MemoryDbService extends BackendService implements IBackendService {
 
-  private db: Map<string, IExtendEntity[]>;
+  private db: Map<string, ExtendEntity[]>;
 
   constructor(config: BackendConfigArgs) {
     super(config);
@@ -18,7 +19,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
   createDatabase(): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this.db = new Map<string, IExtendEntity[]>();
+      this.db = new Map<string, ExtendEntity[]>();
       resolve(true);
     });
   }
@@ -51,14 +52,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  storeData(collectionName: string, data: unknown): Promise<string | number> {
+  storeData<T extends ExtendEntity>(collectionName: string, data: T): Promise<string | number> {
     return new Promise<string | number>((resolve, reject) => {
       try {
         const objectStore = this.db.get(collectionName);
         if (!data['id']) {
           data['id'] = this.generateStrategyId(objectStore, collectionName);
         }
-        objectStore.splice(this.sortedIndex(objectStore, data['id'] as string), 0, data as IExtendEntity);
+        objectStore.splice(this.sortedIndex(objectStore, data['id'] as string), 0, data);
         resolve(data['id'] as string);
       } catch (error) {
         reject(error);
@@ -81,12 +82,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return Array.from(this.db.keys());
   }
 
-  getInstance$<T = unknown>(collectionName: string, id: string | number): Promise<T> {
+  getInstance$<T = ExtendEntity>(collectionName: string, id: string | number): Promise<T> {
     return new Promise((resolve, reject) => {
       const objectStore = this.db.get(collectionName);
       if (id !== undefined && id !== null && id !== '') {
         id = this.config.strategyId === 'autoincrement' && typeof id !== 'number' ? parseInt(id, 10) : id;
-        resolve(cloneDeep(this.findById(objectStore, id)) as unknown as T);
+        resolve(cloneDeep(this.findById(objectStore, id)) as T);
       } else {
         reject('Não foi passado o id');
       }
@@ -94,13 +95,13 @@ export class MemoryDbService extends BackendService implements IBackendService {
   }
 
 
-  getAllByFilter$<T = unknown>(collectionName: string, conditions?: IQueryFilter[]): Promise<T[]> {
+  getAllByFilter$<T = ExtendEntity>(collectionName: string, conditions?: IQueryFilter[]): Promise<T[]> {
     return new Promise<T[]>((resolve) => {
       const objectStore = this.db.get(collectionName);
       const queryParams: IQueryParams = { count: 0, conditions };
-      const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+      const queryResults: IQueryResult<ExtendEntity> = { hasNext: false, items: [] };
 
-      const cursor: IQueryCursor<IExtendEntity> = {
+      const cursor: IQueryCursor<ExtendEntity> = {
         index: 0,
         value: null,
         continue: (): void => null
@@ -139,7 +140,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
 
         item = item ? cloneDeep(item) : item;
 
-        (async (itemAsync: IExtendEntity) => {
+        (async (itemAsync: ExtendEntity) => {
           if (itemAsync) {
             itemAsync = await this.applyTransformersGetById(collectionName, itemAsync, getJoinFields);
           }
@@ -159,12 +160,12 @@ export class MemoryDbService extends BackendService implements IBackendService {
         );
       } else {
         let queryParams: IQueryParams = { count: 0 };
-        let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+        let queryResults: IQueryResult<ExtendEntity> = { hasNext: false, items: [] };
         if (query) {
           queryParams = this.getQueryParams(collectionName, query, caseSensitiveSearch);
         }
         const queriesParams = this.getQueryParamsRootAndChild(queryParams);
-        const cursor: IQueryCursor<IExtendEntity> = {
+        const cursor: IQueryCursor<ExtendEntity> = {
           index: 0,
           value: null,
           continue: (): void => null
@@ -196,7 +197,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
+  post$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
     return new Promise((resolve, reject) => {
       const objectStore = this.db.get(collectionName);
 
@@ -271,7 +272,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
+  put$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
     return new Promise((resolve, reject) => {
       // eslint-disable-next-line eqeqeq
       if (id == undefined) {
@@ -380,7 +381,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     });
   }
 
-  private generateStrategyId(collection: IExtendEntity[], collectionName: string, url?: string): string | number {
+  private generateStrategyId(collection: ExtendEntity[], collectionName: string, url?: string): string | number {
     if (this.config.strategyId === 'provided') {
       const error = url ? this.utils.createErrorResponseOptions(
         url,
@@ -402,14 +403,14 @@ export class MemoryDbService extends BackendService implements IBackendService {
         throw error;
       }
       let maxId = 0;
-      collection.forEach((item: IExtendEntity) => {
+      collection.forEach((item: ExtendEntity) => {
         maxId = Math.max(maxId, typeof item.id === 'number' ? item.id : maxId);
       });
       return maxId + 1;
     }
   }
 
-  private isCollectionIdNumeric(collection: IExtendEntity[]): boolean {
+  private isCollectionIdNumeric(collection: ExtendEntity[]): boolean {
     // so that it could know the type of the `id` even when the collection is empty.
     if (Array.isArray(collection) && collection.length > 0) {
       return typeof collection[0].id === 'number';
@@ -417,15 +418,15 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return true;
   }
 
-  private findById(collection: IExtendEntity[], id: string | number): IExtendEntity {
+  private findById(collection: ExtendEntity[], id: string | number): ExtendEntity {
     return collection.find(item => item.id === id);
   }
 
-  private indexOf(collection: IExtendEntity[], id: string | number) {
+  private indexOf(collection: ExtendEntity[], id: string | number) {
     return collection.findIndex(item => item.id === id);
   }
 
-  private removeById(collection: IExtendEntity[], id: string | number) {
+  private removeById(collection: ExtendEntity[], id: string | number) {
     const ix = this.indexOf(collection, id);
     if (ix > -1) {
       collection.splice(ix, 1);
@@ -434,7 +435,7 @@ export class MemoryDbService extends BackendService implements IBackendService {
     return false;
   }
 
-  private sortedIndex(collection: IExtendEntity[], id: string | number) {
+  private sortedIndex(collection: ExtendEntity[], id: string | number) {
     let low = 0;
     let high = collection.length;
 

@@ -386,7 +386,7 @@ export interface IBackendService {
    * @alias IRequestInterceptor
    * @alias addRequestInterceptor
    */
-  addRequestInterceptorByValue(value: IRequestInterceptor | unknown): void;
+  addRequestInterceptorByValue(value: IRequestInterceptor | string): void;
 
   /**
    * Permite buscar um item diretamente da coleção. Pode ser utilizado para complementar informações

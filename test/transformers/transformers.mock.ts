@@ -1,5 +1,6 @@
+import { ExtendEntity } from '../../src/data-service/backend.service';
 
-export interface IProduct {
+export interface IProduct extends ExtendEntity {
   id?: string;
   code: string;
   codBar: string;

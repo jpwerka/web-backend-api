@@ -11,10 +11,10 @@ import { parseUri } from '../utils/parse-uri';
 
 import 'json.date-extensions';
 
-export type IExtendEntity = { [key: string]: unknown } & { id?: string | number }
+export type ExtendEntity = { [key: string]: unknown; } & { id?: string | number; };
 
 interface IRequestInfo {
-  req: IRequestCore<IExtendEntity>;
+  req: IRequestCore<ExtendEntity>;
   method: string;
   url: string;
   apiBase: string;
@@ -23,7 +23,7 @@ interface IRequestInfo {
   query: Map<string, string[]>;
   extras?: string;
   resourceUrl: string;
-  body?: IExtendEntity;
+  body?: ExtendEntity;
   interceptor?: IRequestInterceptor;
   interceptorIds?: string[];
 }
@@ -88,9 +88,10 @@ export abstract class BackendService {
   constructor(
     config: BackendConfigArgs = {}
   ) {
-    for (const prop in config) {
+    let prop: keyof BackendConfigArgs;
+    for (prop in config) {
       if (config.hasOwnProperty(prop)) {
-        this.config[prop] = config[prop] as unknown;
+        (this.config[prop] as unknown) = config[prop] as unknown;
       }
     }
     const loc = this.getLocation('/');
@@ -332,7 +333,7 @@ export abstract class BackendService {
     return ret;
   }
 
-  addRequestInterceptorByValue(value: IRequestInterceptor | unknown): void {
+  addRequestInterceptorByValue(value: IRequestInterceptor | string): void {
     let obj: IRequestInterceptor;
     let response: IHttpResponse<unknown>;
     if (typeof value === 'string') {
@@ -344,7 +345,7 @@ export abstract class BackendService {
         throw new Error(msg);
       }
     } else {
-      obj = value as IRequestInterceptor;
+      obj = value;
     }
     if (obj && obj.path && typeof obj.path === 'string' && obj.response) {
       const path = '/' + obj.path.replace(/^\//, '');
@@ -374,8 +375,7 @@ export abstract class BackendService {
     }
 
     let params: Map<string, string[]>;
-    const query = obj.query ? obj.query :
-      (obj['queryStringParameters'] ? obj['queryStringParameters'] as string : undefined);
+    const query = obj.query ? obj.query : undefined;
     if (query) {
       if (typeof query === 'string') {
         params = paramParser(query);
@@ -433,7 +433,7 @@ export abstract class BackendService {
     });
   }
 
-  protected logRequest(request: IRequestCore<IExtendEntity>): void {
+  protected logRequest(request: IRequestCore<ExtendEntity>): void {
     LOG.info(request);
   }
 
@@ -455,7 +455,7 @@ export abstract class BackendService {
   }
 
   async handleRequest<T>(req: IRequestCore<unknown>): Promise<IHttpResponse<T>>;
-  async handleRequest(req: IRequestCore<IExtendEntity>): Promise<IHttpResponse<unknown>> {
+  async handleRequest(req: IRequestCore<ExtendEntity>): Promise<IHttpResponse<unknown>> {
 
     await this.dbReadyPromise;
     this.logRequest(req);
@@ -473,7 +473,7 @@ export abstract class BackendService {
     return response;
   }
 
-  private handleRequest_(req: IRequestCore<IExtendEntity>): Promise<IHttpResponse<unknown>> {
+  private handleRequest_(req: IRequestCore<ExtendEntity>): Promise<IHttpResponse<unknown>> {
 
     const url = req.urlWithParams ? req.urlWithParams : req.url;
     let method = req.method || 'GET';
@@ -568,18 +568,18 @@ export abstract class BackendService {
     return response$;
   }
 
-  abstract getInstance$(collectionName: string, id: string | number): Promise<unknown>;
-  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Promise<unknown[]>;
+  abstract getInstance$(collectionName: string, id: string | number): Promise<ExtendEntity>;
+  abstract getAllByFilter$(collectionName: string, conditions?: Array<IQueryFilter>): Promise<ExtendEntity[]>;
 
-  abstract get$(
+  abstract get$<T = ExtendEntity>(
     collectionName: string,
-    id: string,
-    query: Map<string, string[]>,
+    id: string | undefined,
+    query: Map<string, string[]> | undefined,
     url: string,
     getJoinFields?: IJoinField[],
     caseSensitiveSearch?: boolean
   ): Promise<
-    IHttpResponse<(unknown | unknown[]) | { data: (unknown | unknown[]) } | IQueryResult<unknown>>
+    IHttpResponse<(T | T[]) | { data: (T | T[]) } | IQueryResult<T>>
   >;
 
   private get(
@@ -601,8 +601,8 @@ export abstract class BackendService {
   }
 
   private createJoinTransformGetFn(properties: (string | { field: string, property: string })[]): TransformGetFn {
-    return (item: IExtendEntity): IExtendEntity => {
-      const result = {};
+    return (item: ExtendEntity): ExtendEntity => {
+      const result: ExtendEntity = {};
       properties.forEach(property => {
         if (typeof property === 'string') {
           if (item.hasOwnProperty(property)) {
@@ -619,8 +619,8 @@ export abstract class BackendService {
   }
 
   protected async applyTransformersGetById(
-    collectionName: string, item: IExtendEntity, getJoinFields?: IJoinField[]
-  ): Promise<IExtendEntity> {
+    collectionName: string, item: ExtendEntity, getJoinFields?: IJoinField[]
+  ): Promise<ExtendEntity> {
     let _getJoinFields: IJoinField[];
     const transformGetFn = this.transformGetByIdMap.get(collectionName);
 
@@ -641,7 +641,7 @@ export abstract class BackendService {
   }
 
   protected async applyTransformersGetAll(
-    collectionName: string, items: IExtendEntity[], getJoinFields?: IJoinField[]
+    collectionName: string, items: ExtendEntity[], getJoinFields?: IJoinField[]
   ): Promise<void> {
     let _getJoinFields: IJoinField[];
     const transformGetFn = this.transformGetAllMap.get(collectionName);
@@ -666,22 +666,22 @@ export abstract class BackendService {
     }
   }
 
-  protected async applyJoinFields(item: IExtendEntity, joinFields: IJoinField[]): Promise<IExtendEntity> {
+  protected async applyJoinFields(item: ExtendEntity, joinFields: IJoinField[]): Promise<ExtendEntity> {
     for (const joinField of joinFields) {
       const isCollectionField = joinField.collectionField !== undefined && joinField.collectionField.trim().length > 0;
       const joinFieldValue = isCollectionField ? item[joinField.collectionField] : item[joinField.fieldId];
       if (joinFieldValue) {
         const fieldDest = joinField.fieldDest ? joinField.fieldDest : joinField.fieldId.substr(0, joinField.fieldId.length - 2);
         if (Array.isArray(joinFieldValue)) {
-          const joinFieldValues = joinFieldValue as IExtendEntity[];
+          const joinFieldValues = joinFieldValue as ExtendEntity[];
           const ids = isCollectionField ? joinFieldValues.map(element => element[joinField.fieldId]) : joinFieldValue;
           const conditions: IQueryFilter[] = [{
             name: 'id',
             fn: this.createFilterArrayFn('id', ids as string[], null)
           }];
-          const data = await (this.getAllByFilter$(joinField.collectionSource, conditions) as unknown) as IExtendEntity[];
+          const data = await this.getAllByFilter$(joinField.collectionSource, conditions);
           // Reordena na mesma ordem existente dos ids de busca
-          const dataAux: IExtendEntity[] = [];
+          const dataAux: ExtendEntity[] = [];
           ids.forEach((id, index) => {
             dataAux[index] = data.find(element => element.id === id);
           });
@@ -704,13 +704,13 @@ export abstract class BackendService {
               // eslint-disable-next-line max-len
               console.warn(`Don't use field destination '${joinField.collectionField}[i].${joinField.fieldDest}', because field '${joinField.collectionField}[i].${joinField.fieldId}' is unwrapped.`);
             }
-            joinFieldValues.forEach((element: IExtendEntity, index: number, self: IExtendEntity[]) => {
+            joinFieldValues.forEach((element: ExtendEntity, index: number, self: ExtendEntity[]) => {
               if (dataAux[index] !== undefined) {
                 if (joinField.removeFieldId) {
                   delete element[joinField.fieldId];
                 }
                 if (joinField.unwrapField) {
-                  self[index] = Object.assign(element, dataAux[index]) as IExtendEntity;
+                  self[index] = Object.assign(element, dataAux[index]) as ExtendEntity;
                 } else {
                   element[fieldDest] = dataAux[index];
                 }
@@ -726,9 +726,9 @@ export abstract class BackendService {
             item[fieldDest] = dataAux;
           }
         } else {
-          let data: IExtendEntity;
-          const id = (isCollectionField ? (joinFieldValue as IExtendEntity)[joinField.fieldId] : joinFieldValue) as string;
-          data = await this.getInstance$(joinField.collectionSource, id) as IExtendEntity;
+          let data: ExtendEntity;
+          const id = (isCollectionField ? (joinFieldValue as ExtendEntity)[joinField.fieldId] : joinFieldValue) as string;
+          data = await this.getInstance$(joinField.collectionSource, id);
           if (data && joinField.joinFields) {
             data = await this.applyJoinFields(data, joinField.joinFields as IJoinField[]);
           }
@@ -738,7 +738,7 @@ export abstract class BackendService {
           if (data) {
             if (isCollectionField) {
               if (joinField.removeFieldId) {
-                delete item[joinField.collectionField][joinField.fieldId];
+                delete (item[joinField.collectionField] as ExtendEntity)[joinField.fieldId];
               }
               if (joinField.unwrapField) {
                 if (joinField.fieldDest) {
@@ -747,7 +747,7 @@ export abstract class BackendService {
                 }
                 item[joinField.collectionField] = Object.assign(item[joinField.collectionField], data);
               } else {
-                item[joinField.collectionField][fieldDest] = data;
+                (item[joinField.collectionField] as ExtendEntity)[fieldDest] = data;
               }
             } else {
               if (joinField.removeFieldId) {
@@ -769,9 +769,9 @@ export abstract class BackendService {
     return item;
   }
 
-  protected applyTransformGetFn(item: IExtendEntity, transformfn: TransformGetFn): Promise<IExtendEntity> {
-    return new Promise<IExtendEntity>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, this) as (IExtendEntity | Promise<IExtendEntity>);
+  protected applyTransformGetFn(item: ExtendEntity, transformfn: TransformGetFn): Promise<ExtendEntity> {
+    return new Promise<ExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, this) as (ExtendEntity | Promise<ExtendEntity>);
       if (retorno instanceof Promise) {
         retorno.then(item => resolve(item), error => reject(error));
       } else {
@@ -780,7 +780,7 @@ export abstract class BackendService {
     });
   }
 
-  abstract post$(collectionName: string, id: string, item: unknown, url: string): Promise<IHttpResponse<unknown>>;
+  abstract post$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>>;
 
   private post({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Promise<IHttpResponse<unknown>> {
     let response$: Promise<IHttpResponse<unknown>>;
@@ -798,9 +798,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPost(body: unknown, transformfn: TransformPostFn): Promise<IExtendEntity> {
-    return new Promise<IExtendEntity>((resolve, reject) => {
-      const retorno = transformfn.call(this, body, this) as (IExtendEntity | Promise<IExtendEntity>);
+  protected applyTransformPost(body: unknown, transformfn: TransformPostFn): Promise<ExtendEntity> {
+    return new Promise<ExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, body, this) as (ExtendEntity | Promise<ExtendEntity>);
       if (retorno instanceof Promise) {
         retorno.then(item => resolve(item)).catch(error => reject(error));
       } else {
@@ -809,7 +809,7 @@ export abstract class BackendService {
     });
   }
 
-  abstract put$(collectionName: string, id: string, item: unknown, url: string): Promise<IHttpResponse<unknown>>;
+  abstract put$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>>;
 
   private put({ collectionName, id, body, url, interceptor, interceptorIds }: IRequestInfo): Promise<IHttpResponse<unknown>> {
     let response$: Promise<IHttpResponse<unknown>>;
@@ -827,9 +827,9 @@ export abstract class BackendService {
     return this.addDelay(response$, this.config.delay);
   }
 
-  protected applyTransformPut(item: IExtendEntity, body: unknown, transformfn: TransformPutFn): Promise<IExtendEntity> {
-    return new Promise<IExtendEntity>((resolve, reject) => {
-      const retorno = transformfn.call(this, item, body, this) as (IExtendEntity | Promise<IExtendEntity>);
+  protected applyTransformPut(item: ExtendEntity, body: ExtendEntity, transformfn: TransformPutFn): Promise<ExtendEntity> {
+    return new Promise<ExtendEntity>((resolve, reject) => {
+      const retorno = transformfn.call(this, item, body, this) as (ExtendEntity | Promise<ExtendEntity>);
       if (retorno instanceof Promise) {
         retorno.then(item => resolve(item)).catch(error => reject(error));
       } else {
@@ -857,8 +857,8 @@ export abstract class BackendService {
   }
 
   protected pagefy(
-    queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
-  ): IQueryResult<IExtendEntity> | { data: IExtendEntity[] } | IExtendEntity[] {
+    queryResults: IQueryResult<ExtendEntity>, queryParams: IQueryParams
+  ): IQueryResult<ExtendEntity> | { data: ExtendEntity[] } | ExtendEntity[] {
     if (queryParams.page || this.config.pageEncapsulation) {
       LOG.trace('Body will be returned as QueryResult (hasNext: boolean, items: unknow[])');
     } else if (this.config.dataEncapsulation) {
@@ -893,7 +893,7 @@ export abstract class BackendService {
     }
   }
 
-  private filterItem(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
+  private filterItem(item: ExtendEntity, conditions: IQueryFilter[]): boolean {
     if (conditions === undefined) {
       return true;
     }
@@ -901,12 +901,12 @@ export abstract class BackendService {
     return useFilterOr ? this.filterItemOr(item, conditions) : this.filterItemAnd(item, conditions);
   }
 
-  private getFieldValue(item: IExtendEntity, name: string): unknown {
+  private getFieldValue(item: ExtendEntity, name: string): unknown {
     if (name.includes('.')) {
       const root = name.substring(0, name.indexOf('.'));
       const child = name.substring(name.indexOf('.') + 1);
       if (item && item.hasOwnProperty(root)) {
-        return this.getFieldValue(item[root] as IExtendEntity, child);
+        return this.getFieldValue(item[root] as ExtendEntity, child);
       } else {
         return undefined;
       }
@@ -915,7 +915,7 @@ export abstract class BackendService {
     }
   }
 
-  private filterItemAnd(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
+  private filterItemAnd(item: ExtendEntity, conditions: IQueryFilter[]): boolean {
     let ok = true;
     let i = conditions.length;
     let cond: IQueryFilter;
@@ -938,7 +938,7 @@ export abstract class BackendService {
     return ok;
   }
 
-  private filterItemOr(item: IExtendEntity, conditions: IQueryFilter[]): boolean {
+  private filterItemOr(item: ExtendEntity, conditions: IQueryFilter[]): boolean {
     let okOr = false;
     let okAnd = true;
     let i = conditions.length;
@@ -981,13 +981,13 @@ export abstract class BackendService {
   }
 
   private createFilterFn(value: string | string[], filterFn: FilterFn): FieldFn {
-    return (item: IExtendEntity): boolean => {
+    return (item: ExtendEntity): boolean => {
       return filterFn.call(this, value, item) as boolean;
     };
   }
 
   private createFilterOpFn(field: string, value: string, filterOp: FilterOp, caseSensitive: CaseSensitive): FieldFn {
-    return (item: IExtendEntity): boolean => {
+    return (item: ExtendEntity): boolean => {
       const fieldValue = this.getFieldValue(item, field);
       switch (filterOp) {
         case 'eq':
@@ -1039,7 +1039,7 @@ export abstract class BackendService {
   }
 
   private createFilterArrayFn(field: string, value: string[], caseSensitive: CaseSensitive): FieldFn {
-    return (item: IExtendEntity) => {
+    return (item: ExtendEntity) => {
       const fieldValue = this.getFieldValue(item, field) as string;
       if (typeof fieldValue === 'string' && caseSensitive === 'i') {
         return value.findIndex(v => (fieldValue.localeCompare(v, 'en', { sensitivity: 'base' }) === 0)) >= 0;
@@ -1157,7 +1157,7 @@ export abstract class BackendService {
   }
 
   protected getAllItems(
-    cursor: IQueryCursor<IExtendEntity>, queryResults: IQueryResult<IExtendEntity>, queryParams: IQueryParams
+    cursor: IQueryCursor<ExtendEntity>, queryResults: IQueryResult<ExtendEntity>, queryParams: IQueryParams
   ): boolean {
     let retorna = false;
     if (cursor) {
@@ -1190,13 +1190,13 @@ export abstract class BackendService {
     return retorna;
   }
 
-  protected getAllItemsFilterByChildren(items: IExtendEntity[], queryParams: IQueryParams): IQueryResult<IExtendEntity> {
-    const cursor: IQueryCursor<IExtendEntity> = {
+  protected getAllItemsFilterByChildren(items: ExtendEntity[], queryParams: IQueryParams): IQueryResult<ExtendEntity> {
+    const cursor: IQueryCursor<ExtendEntity> = {
       index: 0,
       value: null,
       continue: (): void => null
     };
-    const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+    const queryResults: IQueryResult<ExtendEntity> = { hasNext: false, items: [] };
     while (cursor.index <= items.length) {
       cursor.value = (cursor.index < items.length) ? items[cursor.index++] : null;
       if (this.getAllItems((cursor.value ? cursor : null), queryResults, queryParams)) {
@@ -1555,7 +1555,7 @@ export abstract class BackendService {
     }
   }
 
-  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: IExtendEntity): string {
+  private getPostToOtherMethod(collectionName: string, urlExtras?: string, query?: Map<string, string[]>, body?: ExtendEntity): string {
     let method = 'POST';
     let postsToOtherMethod = this.postToOtherMethodMap.get(collectionName);
     if (postsToOtherMethod === undefined) {
@@ -1682,7 +1682,7 @@ export abstract class BackendService {
     reject(this.utils.createErrorResponseOptions(url, STATUS.INTERNAL_SERVER_ERROR, errorMessage));
   }
 
-  protected orderItems(collectionName: string, items: IExtendEntity[], orders: IQueryOrder[]): IExtendEntity[] {
+  protected orderItems(collectionName: string, items: ExtendEntity[], orders: IQueryOrder[]): ExtendEntity[] {
     const collectionCompareMap = this.fieldsCompareMap.get(collectionName);
     // utility functions
     const defaultCmp = function (a: unknown, b: unknown, caseSensitive: CaseSensitive): number {
@@ -1750,7 +1750,7 @@ export abstract class BackendService {
       }
 
       // final comparison function
-      return function (a: unknown, b: unknown) {
+      return function (a: ExtendEntity, b: ExtendEntity) {
         let name: string;
         let result: number;
         let field: Field;

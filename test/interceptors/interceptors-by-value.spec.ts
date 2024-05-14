@@ -46,7 +46,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
     const intercetor = {
       path: 'qualquer'
     };
-    expect(() => dbService.addRequestInterceptorByValue(intercetor))
+    expect(() => dbService.addRequestInterceptorByValue(intercetor as any))
       .toThrow('O valor informado não é possível de ser interpretado como uma interface IRequestInterceptor');
   });
 
@@ -56,7 +56,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       applyToPath: 'afterId',
       response: { status: STATUS.INTERNAL_SERVER_ERROR }
     };
-    expect(() => dbService.addRequestInterceptorByValue(intercetor))
+    expect(() => dbService.addRequestInterceptorByValue(intercetor as any))
       .toThrow('For no complete interceptor paths, must be informed collectionName in interceptor.');
   });
 
@@ -165,7 +165,7 @@ describe('Testes para cenários de intercptação de respostas via objeto', () =
       query: new Map<string, string[]>().set('multiValueParam', ['value1', 'value2']),
       response: { statusCode: STATUS.MULTIPLE_CHOICES }
     };
-    dbService.addRequestInterceptorByValue(intercetor);
+    dbService.addRequestInterceptorByValue(intercetor as any);
     const req1: IRequestCore<null> = {
       method: 'GET',
       url: 'api/v1/multiValueParam/values?multiValueParam=value1&multiValueParam=value2'

@@ -25,6 +25,6 @@ export function parseUri(str: string): IUriInfo {
   const keys = Object.keys(uri);
   let i = keys.length;
 
-  while (i--) { uri[keys[i]] = m[i] || ''; }
+  while (i--) { (uri as unknown as { [key: string]: string })[keys[i]] = m[i] || ''; }
   return uri;
 }

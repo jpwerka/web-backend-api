@@ -2,11 +2,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { IndexedDbService, MemoryDbService } from '../../src/data-service';
 import { BackendConfig } from '../../src/data-service/backend-config';
-import { IBackendService, IHttpResponse, LoadFn } from '../../src/interfaces';
+import { IBackendService, LoadFn } from '../../src/interfaces';
+import { cloneDeep } from '../../src/utils/deep-clone';
 import { configureBackendUtils } from '../utils/configure-backend-utils';
 import { getDateWithoutSeconds } from '../utils/date-utils';
 import { IProduct, collectionProducts, products } from './transformers.mock';
-import { cloneDeep } from '../../src/utils/deep-clone';
 
 const dataServiceFn = new Map<string, LoadFn[]>();
 
@@ -78,7 +78,7 @@ describe('Testes para as funções de transformação', () => {
       const expectedProduct = transformeGet(transformePost(cloneDeep(products[0])));
       // when
       dbService.get$<IProduct>(collectionProducts, products[0].id, undefined, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();
@@ -91,7 +91,8 @@ describe('Testes para as funções de transformação', () => {
       void (async (): Promise<void> => {
         await dbService.clearData(collectionProducts);
         for (const product of products) {
-          await dbService.storeData(collectionProducts, transformePost(cloneDeep(product)));
+          const newLocal = transformePost(cloneDeep(product));
+          await dbService.storeData(collectionProducts, newLocal);
         }
       })().then(() => {
         // given
@@ -99,7 +100,7 @@ describe('Testes para as funções de transformação', () => {
         const expectedProducts = products.map(product => transformeGet(transformePost(cloneDeep(product))));
         // when
         dbService.get$<IProduct>(collectionProducts, undefined, undefined, collectionProducts).then(
-          (response: IHttpResponse<{ data: IProduct[] }>) => {
+          (response) => {
             // then
             try {
               expect(response.body).toEqual({ data: expectedProducts }); 
@@ -125,7 +126,7 @@ describe('Testes para as funções de transformação', () => {
       const expectedProduct = transformePost(cloneDeep(postProduct));
       // when
       dbService.post$(collectionProducts, undefined, { ...postProduct }, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();
@@ -141,7 +142,7 @@ describe('Testes para as funções de transformação', () => {
       expectedProduct.active = false;
       // when
       dbService.put$(collectionProducts, products[1].id, { active: false }, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();
@@ -157,7 +158,7 @@ describe('Testes para as funções de transformação', () => {
       const expectedProduct = transformeGet(transformePost(cloneDeep(products[0])));
       // when
       dbService.get$(collectionProducts, products[0].id, undefined, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();
@@ -179,7 +180,7 @@ describe('Testes para as funções de transformação', () => {
       const expectedProduct = transformePost(cloneDeep(postProduct));
       // when
       dbService.post$(collectionProducts, undefined, { ...postProduct }, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();
@@ -196,7 +197,7 @@ describe('Testes para as funções de transformação', () => {
       expectedProduct.active = false;
       // when
       dbService.put$(collectionProducts, products[1].id, { active: false }, collectionProducts).then(
-        (response: IHttpResponse<{ data: IProduct }>) => {
+        (response) => {
           // then
           expect(response.body).toEqual({ data: expectedProduct });
           done();

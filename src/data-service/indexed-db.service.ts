@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { v4 } from 'uuid';
 import { IBackendService, IJoinField, LoadFn } from '../interfaces/backend.interface';
+import { ExtendEntity } from './backend.service';
 import { BackendConfigArgs } from '../interfaces/configuration.interface';
 import { IHttpResponse, IPassThruBackend } from '../interfaces/interceptor.interface';
 import { IQueryCursor, IQueryFilter, IQueryParams, IQueryResult } from '../interfaces/query.interface';
 import { STATUS } from '../utils/http-status-codes';
-import { BackendService, IExtendEntity, LOG } from './backend.service';
+import { BackendService, LOG } from './backend.service';
 import { cloneDeep } from '../utils/deep-clone';
 
 interface IEventTargetError extends EventTarget {
@@ -111,7 +112,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  storeData(collectionName: string, data: unknown): Promise<string | number> {
+  storeData<T extends ExtendEntity>(collectionName: string, data: T): Promise<string | number> {
     const self = this;
     return new Promise<string | number>((resolve, reject) => {
       try {
@@ -160,7 +161,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return result;
   }
 
-  getInstance$<T = unknown>(collectionName: string, id: string | number): Promise<T> {
+  getInstance$<T = ExtendEntity>(collectionName: string, id: string | number): Promise<T> {
     return new Promise((resolve, reject) => {
       let request: IDBRequest<unknown>;
       const objectStore = this.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
@@ -179,17 +180,17 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  getAllByFilter$<T = unknown>(collectionName: string, conditions?: IQueryFilter[]): Promise<T[]> {
+  getAllByFilter$<T = ExtendEntity>(collectionName: string, conditions?: IQueryFilter[]): Promise<T[]> {
     const self = this;
     return new Promise<T[]>((resolve, reject) => {
       const objectStore = self.db.transaction(collectionName, 'readwrite').objectStore(collectionName);
       const request = objectStore.openCursor();
       const queryParams: IQueryParams = { count: 0, conditions };
-      const queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
+      const queryResults: IQueryResult<ExtendEntity> = { hasNext: false, items: [] };
 
       request.onsuccess = (event) => {
         const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
-        if (self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queryParams)) {
+        if (self.getAllItems(cursor as unknown as IQueryCursor<ExtendEntity>, queryResults, queryParams)) {
           resolve(queryResults.items as T[]);
         }
       };
@@ -209,7 +210,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  get$<T = unknown>(
+  get$<T = ExtendEntity>(
     collectionName: string,
     id: string | undefined,
     query: Map<string, string[]> | undefined,
@@ -225,8 +226,8 @@ export class IndexedDbService extends BackendService implements IBackendService 
       let isCursor = false;
       let queryParams: IQueryParams = { count: 0 };
       let queriesParams: { root: IQueryParams, children: IQueryParams };
-      let queryResults: IQueryResult<IExtendEntity> = { hasNext: false, items: [] };
-      let orderedItems: IExtendEntity[] = [];
+      let queryResults: IQueryResult<ExtendEntity> = { hasNext: false, items: [] };
+      let orderedItems: ExtendEntity[] = [];
 
       if (id !== undefined && id !== '') {
         const findId = self.config.strategyId === 'autoincrement' ? parseInt(id, 10) : id;
@@ -244,12 +245,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
 
       request.onsuccess = (event) => {
         if (!isCursor) {
-          (async (item: IExtendEntity) => {
+          (async (item: ExtendEntity) => {
             if (item) {
               item = await self.applyTransformersGetById(collectionName, item, getJoinFields);
             }
             return item;
-          })(request.result as IExtendEntity).then(
+          })(request.result as ExtendEntity).then(
             item => {
               if (item) {
                 const response = self.utils.createResponseOptions(url, STATUS.OK, this.bodify(item));
@@ -265,10 +266,10 @@ export class IndexedDbService extends BackendService implements IBackendService 
         } else {
           const cursor = (event.target as IDBRequest<unknown>).result as IDBCursorWithValue;
           if (queryParams.orders && queryParams.orders.length) {
-            if (!self.getAllItemsToArray(cursor as unknown as IQueryCursor<IExtendEntity>, orderedItems)) {
+            if (!self.getAllItemsToArray(cursor as unknown as IQueryCursor<ExtendEntity>, orderedItems)) {
               return;
             }
-            const cursorArray: IQueryCursor<IExtendEntity> = {
+            const cursorArray: IQueryCursor<ExtendEntity> = {
               index: 0,
               value: null,
               continue: (): void => null
@@ -281,7 +282,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
               }
             }
           } else {
-            if (!self.getAllItems(cursor as unknown as IQueryCursor<IExtendEntity>, queryResults, queriesParams.root)) {
+            if (!self.getAllItems(cursor as unknown as IQueryCursor<ExtendEntity>, queryResults, queriesParams.root)) {
               return;
             }
           }
@@ -310,7 +311,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  private getAllItemsToArray(cursor: IQueryCursor<IExtendEntity>, items: IExtendEntity[]): boolean {
+  private getAllItemsToArray(cursor: IQueryCursor<ExtendEntity>, items: ExtendEntity[]): boolean {
     let retorna = false;
     if (cursor) {
       const item = cursor.value;
@@ -322,7 +323,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     return retorna;
   }
 
-  post$(collectionName: string, id: string, item: IExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
+  post$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
     const self = this;
     return new Promise((resolve, reject) => {
 
@@ -403,7 +404,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
           void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
-              item = await this.applyTransformPut(requestGet.result as IExtendEntity, item, transformfn);
+              item = await this.applyTransformPut(requestGet.result as ExtendEntity, item, transformfn);
             }
           })().then(() => {
 
@@ -458,7 +459,7 @@ export class IndexedDbService extends BackendService implements IBackendService 
     });
   }
 
-  put$(collectionName: string, id: string, item: IExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
+  put$(collectionName: string, id: string, item: ExtendEntity, url: string): Promise<IHttpResponse<unknown>> {
     const self = this;
     return new Promise((resolve, reject) => {
       // eslint-disable-next-line eqeqeq
@@ -489,12 +490,12 @@ export class IndexedDbService extends BackendService implements IBackendService 
           void (async () => {
             const transformfn = this.transformPutMap.get(collectionName);
             if (transformfn !== undefined) {
-              item = await this.applyTransformPut(requestGet.result as IExtendEntity, item, transformfn);
+              item = await this.applyTransformPut(requestGet.result as ExtendEntity, item, transformfn);
             }
           })().then(() => {
 
             if (self.config.appendPut) {
-              item = Object.assign({}, requestGet.result as IExtendEntity, item);
+              item = Object.assign({}, requestGet.result as ExtendEntity, item);
             }
 
             if (!item.id) {

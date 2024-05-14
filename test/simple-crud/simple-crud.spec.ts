@@ -121,7 +121,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
         (responsePost: IHttpResponse<ICustomer>) => {
           expect(responsePost.body).toEqual(expectedCustomer);
           dbService.get$<ICustomer>(collectionCustomers, '1000', undefined, collectionCustomers).then(
-            (responseGet: IHttpResponse<ICustomer>) => {
+            (responseGet) => {
               expect(responseGet.body).toEqual(expectedCustomer);
               done();
             },
@@ -144,11 +144,12 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
       };
       dbService.handleRequest<ICustomer>(req).then(
         (responsePost: IHttpResponse<ICustomer>) => {
-          const { name, active } = responsePost.body;
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          const { name, active } = responsePost.body as ICustomer;
           expect({ name, active }).toEqual(expectedCustomer);
-          expectedCustomer = Object.assign(expectedCustomer, { id: responsePost.body.id });
-          dbService.get$<ICustomer>(collectionCustomers, responsePost.body.id.toString(), undefined, collectionCustomers).then(
-            (responseGet: IHttpResponse<ICustomer>) => {
+          expectedCustomer = Object.assign(expectedCustomer, { id: responsePost.body?.id });
+          dbService.get$<ICustomer>(collectionCustomers, responsePost.body?.id?.toString(), undefined, collectionCustomers).then(
+            (responseGet) => {
               expect(responseGet.body).toEqual(expectedCustomer);
               done();
             },
@@ -176,8 +177,8 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
             const { name } = responsePost.body;
             expect({ name }).toEqual({ name: 'Alterado nome cliente 1' });
             const expectedCustomer = Object.assign({}, customers[0], { name: 'Alterado nome cliente 1' });
-            dbService.get$(collectionCustomers, '1', undefined, collectionCustomers).then(
-              (responseGet: IHttpResponse<ICustomer>) => {
+            dbService.get$<ICustomer>(collectionCustomers, '1', undefined, collectionCustomers).then(
+              (responseGet) => {
                 expect(responseGet.body).toEqual(expectedCustomer);
                 done();
               },
@@ -205,7 +206,7 @@ describe('Testes para uma aplicação CRUD pura e simples', () => {
             const { url, status } = responseDelete;
             expect({ url, status }).toEqual({ url: `http://localhost/${collectionCustomers}/5`, status: 204 });
             dbService.get$<ICustomer>(collectionCustomers, '5', undefined, collectionCustomers).then(
-              (responseGet: IHttpResponse<ICustomer>) => done(`Should not return a customer with id ${responseGet.body.id}`),
+              (responseGet) => done(`Should not return a customer with id ${(responseGet.body as ICustomer)?.id}`),
               error => {
                 expect(error).toEqual({ url: 'customers', status: 404, error: 'Request id does not match item with id: 5' });
                 done();

@@ -456,9 +456,9 @@ export const STATUS_CODE_INFO = {
 /**
  * get the status text from StatusCode
  */
-export function getStatusText(status: number): string {
+export function getStatusText(status: keyof typeof STATUS_CODE_INFO): string {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  return STATUS_CODE_INFO[status].text as string || 'Unknown Status';
+  return STATUS_CODE_INFO[status].text || 'Unknown Status';
 }
 
 /**
