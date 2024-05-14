@@ -11,9 +11,17 @@ because this is a development tool, not a production product.
 We do try to tell you about such changes in this `CHANGELOG.md`
 and we fix bugs as fast as we can.
 
+<a id="7.0.1"></a>
+
+## 7.0.1 (2024-05-14)
+
+- Fix: Removido dependência do deepclone
+
+Incorporado código da biblioteca deepclone, pois estava dando conflito de importação
+
 <a id="7.0.0"></a>
 
-## 7.0.0 (2024-05-13)
+## 7.0.0 (2024-05-13) (Não publicada)
 
 ---
 
