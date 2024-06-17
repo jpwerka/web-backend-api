@@ -11,6 +11,16 @@ because this is a development tool, not a production product.
 We do try to tell you about such changes in this `CHANGELOG.md`
 and we fix bugs as fast as we can.
 
+<a id="7.0.2"></a>
+
+## 7.0.2 (2024-06-16)
+
+- Fix: Ajustado JOIN com campo inexistente
+
+Quando havia uma configuração de JOIN para um campo de coleção, porém a a coleção 
+não possuia o campo `fieldId`, estava tentando buscar de forma indevida os dados.\
+_Nota: caso exista o campo `field` e `fieldId`, será lançado um WARNING._
+
 <a id="7.0.1"></a>
 
 ## 7.0.1 (2024-05-14)

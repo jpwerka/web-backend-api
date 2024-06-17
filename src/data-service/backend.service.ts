@@ -727,6 +727,14 @@ export abstract class BackendService {
           }
         } else {
           let data: ExtendEntity;
+          if (isCollectionField) {
+            if (!joinFieldValue.hasOwnProperty(joinField.fieldId)) {
+              continue;
+            } else if (joinFieldValue.hasOwnProperty(fieldDest)) {
+              // eslint-disable-next-line max-len
+              console.warn(`Object has both properties (${joinField.fieldId}, ${fieldDest}), the field will be replaced by the JOIN configuration.`);
+            }
+          }
           const id = (isCollectionField ? (joinFieldValue as ExtendEntity)[joinField.fieldId] : joinFieldValue) as string;
           data = await this.getInstance$(joinField.collectionSource, id);
           if (data && joinField.joinFields) {
