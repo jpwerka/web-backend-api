@@ -1798,7 +1798,8 @@ export abstract class BackendService {
           if (response.ok) {
 
             let body: unknown;
-            if (response.headers.get('Content-Type').includes('application/json')) {
+            const contentType = response.headers.get('Content-Type');
+            if (contentType && contentType.includes('application/json')) {
               body = await response.json();
             } else {
               body = await response.blob();

@@ -40,7 +40,6 @@ export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArg
     backendType = Object.assign(backendType, dbtype);
   }
 
-  console.log(backendType);
   if (backendType.dbtype === 'memory') {
     dbService = new MemoryDbService(backendConfig);
   } else {
@@ -51,7 +50,6 @@ export function setupBackend(config?: BackendConfigArgs, dbtype?: BackendTypeArg
     dbService.deleteDatabase().then(() => {
       dbService.createDatabase().then(() => {
         dbService.createObjectStore(dataServiceFn).then(() => {
-          // console.log('[WebBackendApi]', 'Database data created!');
           resolve(true);
         }, error => {
           console.error('[WebBackendApi]', error);

@@ -1,6 +1,6 @@
 {
   "name": "web-backend-api",
-  "version": "7.0.2",
+  "version": "7.0.3",
   "private": false,
   "description": "Biblioteca para simular um backend em tempo de excução diretamente no browser.",
   "readmeFilename": "README.md",
